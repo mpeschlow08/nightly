@@ -1,43 +1,31 @@
-import Image from "next/image";
-
-import Navbar from '../components/Navbar'
-import Hero from '../components/Hero'
-import Section from '../components/Section'
-import EventCard from '../components/EventCard'
-import ClubCard from '../components/ClubCard'
-import DJCard from '../components/DJCard'
+import Navbar from "@/components/Navbar";
+import Hero from "@/components/Hero";
+import GenreChips from "@/components/GenreChips";
+import HappeningTonightSection from "@/components/HappeningTonightSection";
+import LiveVibeSection from "@/components/LiveVibeSection";
+import PopularNearYouSection from "@/components/PopularNearYouSection";
+import CrewPromoSection from "@/components/CrewPromoSection";
+import BottomNav from "@/components/BottomNav";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-gray-100 antialiased">
-      <Navbar />
-      <main>
-        <Hero />
+    <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
+      <div className="relative isolate overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,179,255,0.16),_transparent_32%),radial-gradient(circle_at_90%_10%,_rgba(155,92,255,0.16),_transparent_24%)]" />
 
-        <Section title="Featured Events">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-4">
-            <EventCard title="Neon Nights" date="Sat, Jul 25" location="Velvet Room" />
-            <EventCard title="Glow Rave" date="Fri, Aug 7" location="Pulse Hall" />
-            <EventCard title="Moonlight Sessions" date="Sun, Aug 16" location="SkyDeck" />
-          </div>
-        </Section>
+        <Navbar />
 
-        <Section title="Trending Clubs">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-4">
-            <ClubCard name="Velvet Room" vibe="Upscale lounge" />
-            <ClubCard name="Pulse Hall" vibe="Mainstage DJs" />
-            <ClubCard name="SkyDeck" vibe="Rooftop terrace" />
-          </div>
-        </Section>
+        <main className="pb-24 md:pb-12">
+          <Hero />
+          <GenreChips />
+          <HappeningTonightSection />
+          <LiveVibeSection />
+          <PopularNearYouSection />
+          <CrewPromoSection />
+        </main>
 
-        <Section title="Popular DJs">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-4 pb-20">
-            <DJCard name="DJ Aurora" genre="House" />
-            <DJCard name="MC Neon" genre="Techno" />
-            <DJCard name="K-Beat" genre="Electro" />
-          </div>
-        </Section>
-      </main>
+        <BottomNav />
+      </div>
     </div>
-  )
+  );
 }

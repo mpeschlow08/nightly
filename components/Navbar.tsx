@@ -1,46 +1,59 @@
-"use client"
-import { useState } from 'react'
-import Link from 'next/link'
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+
+const navItems = [
+  { label: "Discover", href: "/discover" },
+  { label: "Map", href: "#map" },
+  { label: "Events", href: "#events" },
+  { label: "Crews", href: "#crews" },
+];
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="w-full bg-black/60 backdrop-blur-md sticky top-0 z-30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
-              Nightly
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#04070b]/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <Link href="/" className="text-xl font-semibold tracking-[0.24em] text-white">
+          NIGHTLY
+        </Link>
+
+        <nav className="hidden items-center gap-6 text-sm text-zinc-300 md:flex">
+          {navItems.map((item) => (
+            <Link key={item.label} href={item.href} className="transition hover:text-white">
+              {item.label}
             </Link>
-            <nav className="hidden md:flex items-center gap-4 text-sm text-gray-300">
-              <Link href="#">Home</Link>
-              <Link href="#events">Events</Link>
-              <Link href="#clubs">Clubs</Link>
-              <Link href="#djs">DJs</Link>
-            </nav>
-          </div>
+          ))}
+        </nav>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="#login" className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">Login</Link>
-          </div>
+        <div className="flex items-center gap-3">
+          <button className="hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/10 md:block">
+            Profile
+          </button>
+          <button
+            onClick={() => setOpen((value) => !value)}
+            className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-zinc-200 transition hover:bg-white/10 md:hidden"
+          >
+            {open ? "Close" : "Menu"}
+          </button>
+        </div>
+      </div>
 
-          <div className="md:hidden">
-            <button onClick={() => setOpen(!open)} className="p-2 rounded-md text-gray-200 hover:text-white">
-              {open ? 'Close' : 'Menu'}
-            </button>
+      {open ? (
+        <div className="border-t border-white/10 bg-[#04070b]/95 px-4 py-4 text-sm text-zinc-300 md:hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3">
+            {navItems.map((item) => (
+              <Link key={item.label} href={item.href} className="transition hover:text-white" onClick={() => setOpen(false)}>
+                {item.label}
+              </Link>
+            ))}
+            <Link href="#profile" className="mt-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-center font-medium text-white" onClick={() => setOpen(false)}>
+              Profile
+            </Link>
           </div>
         </div>
-        {open && (
-          <div className="md:hidden py-4 flex flex-col gap-3 text-gray-300">
-            <Link href="#">Home</Link>
-            <Link href="#events">Events</Link>
-            <Link href="#clubs">Clubs</Link>
-            <Link href="#djs">DJs</Link>
-            <Link href="#login" className="mt-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm w-max">Login</Link>
-          </div>
-        )}
-      </div>
+      ) : null}
     </header>
-  )
+  );
 }
