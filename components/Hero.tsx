@@ -30,9 +30,9 @@ export default function Hero() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:opacity-90">
+            <Link href="/discover" className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-center text-sm font-medium text-white transition hover:opacity-90">
               Explore Tonight
-            </button>
+            </Link>
             <Link href="#map" className="rounded-full border border-white/15 px-5 py-3 text-center text-sm font-medium text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
               View Live Map
             </Link>
