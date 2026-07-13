@@ -112,8 +112,8 @@ async function VenueContent({ params }: { params: Promise<{ slug: string }> }) {
               <p className="mt-2 text-sm leading-6 text-zinc-300">
                 Skip the guesswork and lock in a premium start with a spot near the main room, a quick entry plan, and a backup lounge nearby.
               </p>
-              <Link href="/discover" className="mt-4 inline-flex items-center text-sm font-medium text-cyan-200 transition hover:text-cyan-100">
-                Browse more venues →
+              <Link href={`/crews?venue=${encodeURIComponent(venue.name)}`} className="mt-4 inline-flex items-center text-sm font-medium text-cyan-200 transition hover:text-cyan-100">
+                Invite a crew for this venue →
               </Link>
             </div>
           </aside>

@@ -3,9 +3,9 @@ import Link from "next/link";
 const items = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
-  { label: "Map", href: "#map" },
-  { label: "Crews", href: "#crews" },
-  { label: "Profile", href: "#profile" },
+  { label: "Map", href: "/map" },
+  { label: "Events", href: "/events" },
+  { label: "Crews", href: "/crews" },
 ];
 
 export default function BottomNav() {

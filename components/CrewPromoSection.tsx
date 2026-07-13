@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function CrewPromoSection() {
   return (
     <section id="crews" className="mx-auto mt-16 max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
@@ -11,12 +13,12 @@ export default function CrewPromoSection() {
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:opacity-90">
+          <Link href="/crews" className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:opacity-90">
             Create a Crew
-          </button>
-          <button className="rounded-full border border-white/15 px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
+          </Link>
+          <Link href="/crews" className="rounded-full border border-white/15 px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
             See how it works
-          </button>
+          </Link>
         </div>
       </div>
     </section>
