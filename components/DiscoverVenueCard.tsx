@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { DiscoverVenue } from "@/data/nightly";
 
 type DiscoverVenueCardProps = {
@@ -98,12 +100,12 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
+          <Link
+            href={`/venues/${venue.slug}`}
             className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-center text-sm font-medium text-zinc-100 transition hover:border-cyan-400/40 hover:bg-white/10"
           >
             View Details
-          </button>
+          </Link>
           <button
             type="button"
             className="flex-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-center text-sm font-medium text-white transition hover:opacity-90"

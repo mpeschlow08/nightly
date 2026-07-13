@@ -110,6 +110,7 @@ export const popularVenues = [
 
 export type DiscoverVenue = {
   id: number;
+  slug: string;
   name: string;
   neighborhood: string;
   tagline: string;
@@ -128,11 +129,38 @@ export type DiscoverVenue = {
   isLive: boolean;
   badge?: string;
   imageClass: string;
+  address: string;
+  hours: string;
+  dressCode: string;
+  ageRequirement: string;
+  parkingInfo: string;
+  phoneNumber: string;
+  instagram: string;
+  website: string;
+  currentEvent: {
+    name: string;
+    djName: string;
+    startTime: string;
+    closingTime: string;
+    cover: number;
+    waitTime: string;
+    crowdEstimate: string;
+  };
+  upcomingEvents: {
+    name: string;
+    date: string;
+    time: string;
+    djName: string;
+    genre: string;
+    cover: number;
+  }[];
+  amenities: string[];
 };
 
 export const discoverVenues: DiscoverVenue[] = [
   {
     id: 1,
+    slug: "tongue-and-groove",
     name: "Tongue & Groove",
     neighborhood: "Midtown",
     tagline: "A high-energy room with polished late-night sets",
@@ -151,9 +179,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-fuchsia-500/85 via-violet-500/70 to-slate-950",
+    address: "584 10th St NW, Atlanta, GA 30318",
+    hours: "Thu-Sun • 9 PM - 3 AM",
+    dressCode: "Smart casual",
+    ageRequirement: "21+",
+    parkingInfo: "Validated parking at the adjacent lot",
+    phoneNumber: "(404) 555-0142",
+    instagram: "@tongueandgrooveatl",
+    website: "nightly.example/tongue-and-groove",
+    currentEvent: {
+      name: "Midnight Mirage",
+      djName: "DJ Sabine",
+      startTime: "9:30 PM",
+      closingTime: "3:00 AM",
+      cover: 25,
+      waitTime: "12 min",
+      crowdEstimate: "Packed",
+    },
+    upcomingEvents: [
+      { name: "Afterglow Sessions", date: "Fri • Jul 18", time: "10:00 PM", djName: "DJ Ren", genre: "Afrobeats", cover: 20 },
+      { name: "Blue Hour Drop", date: "Sat • Jul 19", time: "11:15 PM", djName: "Mina Vale", genre: "House", cover: 28 },
+      { name: "Neon Lounge", date: "Sun • Jul 20", time: "9:45 PM", djName: "Zara V", genre: "R&B", cover: 22 },
+      { name: "After Hours", date: "Wed • Jul 23", time: "10:30 PM", djName: "DJ Kairo", genre: "Hip-Hop", cover: 24 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Food", "Coat check", "Accessibility"],
   },
   {
     id: 2,
+    slug: "district-atlanta",
     name: "District Atlanta",
     neighborhood: "Downtown",
     tagline: "Immersive lighting and a premium main-room scene",
@@ -172,9 +225,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-cyan-500/85 via-blue-600/70 to-slate-950",
+    address: "300 Marietta St NW, Atlanta, GA 30313",
+    hours: "Fri-Sun • 10 PM - 4 AM",
+    dressCode: "Elevated nightlife",
+    ageRequirement: "21+",
+    parkingInfo: "Garage entry on West Peachtree",
+    phoneNumber: "(404) 555-0185",
+    instagram: "@districtatl",
+    website: "nightly.example/district-atlanta",
+    currentEvent: {
+      name: "Apex Night",
+      djName: "DJ Niko",
+      startTime: "10:00 PM",
+      closingTime: "4:00 AM",
+      cover: 30,
+      waitTime: "8 min",
+      crowdEstimate: "Buzzing",
+    },
+    upcomingEvents: [
+      { name: "Pulse Lab", date: "Fri • Jul 18", time: "11:30 PM", djName: "Milo K", genre: "EDM", cover: 32 },
+      { name: "Afterlight", date: "Sat • Jul 19", time: "10:45 PM", djName: "Lena P", genre: "House", cover: 34 },
+      { name: "Mainline", date: "Sun • Jul 20", time: "10:15 PM", djName: "Ari M", genre: "Tech House", cover: 30 },
+      { name: "Halo Session", date: "Wed • Jul 23", time: "11:00 PM", djName: "DJ Tavi", genre: "EDM", cover: 28 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Coat check", "Accessibility"],
   },
   {
     id: 3,
+    slug: "believe-music-hall",
     name: "Believe Music Hall",
     neighborhood: "Old Fourth Ward",
     tagline: "A luxe hall with velvet energy and headline sets",
@@ -193,9 +271,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-pink-500/85 via-purple-600/70 to-slate-950",
+    address: "45 Auburn Ave NE, Atlanta, GA 30303",
+    hours: "Thu-Sat • 9 PM - 2 AM",
+    dressCode: "Dress to impress",
+    ageRequirement: "21+",
+    parkingInfo: "Street parking and nearby garages",
+    phoneNumber: "(404) 555-0192",
+    instagram: "@believemusichall",
+    website: "nightly.example/believe-music-hall",
+    currentEvent: {
+      name: "Velvet Royale",
+      djName: "Mia Cruz",
+      startTime: "9:15 PM",
+      closingTime: "2:00 AM",
+      cover: 28,
+      waitTime: "11 min",
+      crowdEstimate: "High",
+    },
+    upcomingEvents: [
+      { name: "Soul Motion", date: "Fri • Jul 18", time: "10:30 PM", djName: "Avery N", genre: "R&B", cover: 26 },
+      { name: "Mainstage", date: "Sat • Jul 19", time: "11:00 PM", djName: "Rex V", genre: "Hip-Hop", cover: 30 },
+      { name: "Curtain Call", date: "Sun • Jul 20", time: "9:30 PM", djName: "Nia Q", genre: "Live Music", cover: 24 },
+      { name: "The Loft", date: "Wed • Jul 23", time: "10:15 PM", djName: "Dre Bloom", genre: "R&B", cover: 25 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Food", "Coat check", "Accessibility"],
   },
   {
     id: 4,
+    slug: "mjq",
     name: "MJQ",
     neighborhood: "Midtown",
     tagline: "A polished lounge for conversation and late-night grooves",
@@ -214,9 +317,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: false,
     badge: "",
     imageClass: "from-emerald-500/85 via-cyan-500/70 to-slate-950",
+    address: "1080 Peachtree St NE, Atlanta, GA 30309",
+    hours: "Fri-Sat • 8 PM - 1 AM",
+    dressCode: "Smart casual",
+    ageRequirement: "21+",
+    parkingInfo: "Street parking with nearby garage access",
+    phoneNumber: "(404) 555-0170",
+    instagram: "@mjqatl",
+    website: "nightly.example/mjq",
+    currentEvent: {
+      name: "Velvet Hour",
+      djName: "DJ Marcell",
+      startTime: "8:30 PM",
+      closingTime: "1:00 AM",
+      cover: 20,
+      waitTime: "5 min",
+      crowdEstimate: "Mellow",
+    },
+    upcomingEvents: [
+      { name: "Sugar Room", date: "Fri • Jul 18", time: "9:15 PM", djName: "Jules C", genre: "R&B", cover: 18 },
+      { name: "After Glow", date: "Sat • Jul 19", time: "10:00 PM", djName: "Kelli A", genre: "Soul", cover: 20 },
+      { name: "Late Lounge", date: "Sun • Jul 20", time: "9:00 PM", djName: "Kris M", genre: "Live Music", cover: 18 },
+      { name: "Soft Light", date: "Wed • Jul 23", time: "9:30 PM", djName: "Mara L", genre: "R&B", cover: 20 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Food", "Accessibility"],
   },
   {
     id: 5,
+    slug: "johnnys-hideaway",
     name: "Johnny's Hideaway",
     neighborhood: "Buckhead",
     tagline: "Classic Atlanta charm with a lively late-night crowd",
@@ -235,9 +363,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: false,
     badge: "",
     imageClass: "from-slate-500/85 via-blue-700/70 to-slate-950",
+    address: "1776 Cheshire Bridge Rd NE, Atlanta, GA 30324",
+    hours: "Fri-Sat • 8 PM - 12 AM",
+    dressCode: "Casual chic",
+    ageRequirement: "21+",
+    parkingInfo: "Adjacent parking lot",
+    phoneNumber: "(404) 555-0111",
+    instagram: "@johnnyshideaway",
+    website: "nightly.example/johnnys-hideaway",
+    currentEvent: {
+      name: "Backstage Country",
+      djName: "The Southern Line",
+      startTime: "8:15 PM",
+      closingTime: "12:00 AM",
+      cover: 18,
+      waitTime: "7 min",
+      crowdEstimate: "Buzzing",
+    },
+    upcomingEvents: [
+      { name: "The Long Road", date: "Fri • Jul 18", time: "8:45 PM", djName: "Cody H", genre: "Country", cover: 16 },
+      { name: "River House", date: "Sat • Jul 19", time: "9:30 PM", djName: "Mara K", genre: "Live Music", cover: 20 },
+      { name: "Midnight Rodeo", date: "Sun • Jul 20", time: "8:30 PM", djName: "Wes T", genre: "Country", cover: 18 },
+      { name: "Back Porch", date: "Wed • Jul 23", time: "8:00 PM", djName: "Haley R", genre: "Live Music", cover: 14 },
+    ],
+    amenities: ["VIP tables", "Outdoor area", "Food", "Coat check"],
   },
   {
     id: 6,
+    slug: "havana-club",
     name: "Havana Club",
     neighborhood: "Midtown",
     tagline: "Warm lighting, rich rhythms, and a romantic late crowd",
@@ -256,9 +409,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-orange-500/85 via-rose-500/70 to-slate-950",
+    address: "1200 Peachtree St NE, Atlanta, GA 30309",
+    hours: "Thu-Sat • 8 PM - 2 AM",
+    dressCode: "Cocktail attire",
+    ageRequirement: "21+",
+    parkingInfo: "Validated valet on the corner",
+    phoneNumber: "(404) 555-0124",
+    instagram: "@havanaclubatl",
+    website: "nightly.example/havana-club",
+    currentEvent: {
+      name: "Cuban Nights",
+      djName: "DJ Lila",
+      startTime: "8:45 PM",
+      closingTime: "2:00 AM",
+      cover: 22,
+      waitTime: "9 min",
+      crowdEstimate: "High",
+    },
+    upcomingEvents: [
+      { name: "Golden Hour", date: "Fri • Jul 18", time: "9:15 PM", djName: "Ari D", genre: "Latin", cover: 20 },
+      { name: "Salsa After Dark", date: "Sat • Jul 19", time: "10:30 PM", djName: "Carmen S", genre: "Afrobeats", cover: 24 },
+      { name: "Tropical Heat", date: "Sun • Jul 20", time: "8:30 PM", djName: "Sergio R", genre: "Latin", cover: 22 },
+      { name: "Night Market", date: "Wed • Jul 23", time: "9:45 PM", djName: "Jules V", genre: "House", cover: 20 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Food", "Accessibility"],
   },
   {
     id: 7,
+    slug: "rose-bar",
     name: "Rose Bar",
     neighborhood: "West Midtown",
     tagline: "An intimate room with sculptural lighting and deep grooves",
@@ -277,9 +455,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-purple-500/85 via-indigo-500/70 to-slate-950",
+    address: "950 North Ave NW, Atlanta, GA 30318",
+    hours: "Fri-Sun • 9 PM - 3 AM",
+    dressCode: "Polished nightlife",
+    ageRequirement: "21+",
+    parkingInfo: "Street parking and valet nearby",
+    phoneNumber: "(404) 555-0108",
+    instagram: "@rosebaratl",
+    website: "nightly.example/rose-bar",
+    currentEvent: {
+      name: "Midnight Bloom",
+      djName: "Nia Sol",
+      startTime: "9:00 PM",
+      closingTime: "3:00 AM",
+      cover: 24,
+      waitTime: "13 min",
+      crowdEstimate: "Packed",
+    },
+    upcomingEvents: [
+      { name: "Soft Focus", date: "Fri • Jul 18", time: "10:00 PM", djName: "Amara P", genre: "House", cover: 22 },
+      { name: "Rose Room", date: "Sat • Jul 19", time: "11:30 PM", djName: "Evan B", genre: "Live Music", cover: 26 },
+      { name: "Velvet Shift", date: "Sun • Jul 20", time: "9:45 PM", djName: "Rae M", genre: "R&B", cover: 24 },
+      { name: "Night Bloom", date: "Wed • Jul 23", time: "10:15 PM", djName: "Luca R", genre: "House", cover: 22 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Food", "Accessibility"],
   },
   {
     id: 8,
+    slug: "cosmolava",
     name: "CosmoLava",
     neighborhood: "Buckhead",
     tagline: "A cinematic nightlife destination with vivid visuals",
@@ -298,9 +501,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-violet-500/85 via-fuchsia-500/70 to-slate-950",
+    address: "2900 Lenox Rd NE, Atlanta, GA 30324",
+    hours: "Fri-Sun • 10 PM - 4 AM",
+    dressCode: "Statement nightlife",
+    ageRequirement: "21+",
+    parkingInfo: "Attached garage with valet",
+    phoneNumber: "(404) 555-0133",
+    instagram: "@cosmolavaatl",
+    website: "nightly.example/cosmolava",
+    currentEvent: {
+      name: "Neon Orbit",
+      djName: "DJ Orion",
+      startTime: "10:15 PM",
+      closingTime: "4:00 AM",
+      cover: 35,
+      waitTime: "15 min",
+      crowdEstimate: "Buzzing",
+    },
+    upcomingEvents: [
+      { name: "Lumen Vault", date: "Fri • Jul 18", time: "11:15 PM", djName: "Tess R", genre: "EDM", cover: 36 },
+      { name: "Astral", date: "Sat • Jul 19", time: "10:45 PM", djName: "Kade J", genre: "House", cover: 38 },
+      { name: "Glowline", date: "Sun • Jul 20", time: "10:30 PM", djName: "Celia N", genre: "Tech House", cover: 34 },
+      { name: "Starlight", date: "Wed • Jul 23", time: "11:00 PM", djName: "Jae L", genre: "EDM", cover: 32 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Accessibility"],
   },
   {
     id: 9,
+    slug: "the-basement",
     name: "The Basement",
     neighborhood: "Old Fourth Ward",
     tagline: "Low-lit and intimate with a soulful late-night pulse",
@@ -319,9 +547,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: false,
     badge: "",
     imageClass: "from-amber-500/85 via-rose-500/70 to-slate-950",
+    address: "620 Auburn Ave NE, Atlanta, GA 30312",
+    hours: "Fri-Sat • 8 PM - 1 AM",
+    dressCode: "Casual cool",
+    ageRequirement: "21+",
+    parkingInfo: "Street parking with garage nearby",
+    phoneNumber: "(404) 555-0164",
+    instagram: "@thebasementatl",
+    website: "nightly.example/the-basement",
+    currentEvent: {
+      name: "Resident Pulse",
+      djName: "K. Cole",
+      startTime: "8:30 PM",
+      closingTime: "1:00 AM",
+      cover: 19,
+      waitTime: "6 min",
+      crowdEstimate: "High",
+    },
+    upcomingEvents: [
+      { name: "Night Shift", date: "Fri • Jul 18", time: "9:00 PM", djName: "Tee M", genre: "Hip-Hop", cover: 18 },
+      { name: "Low Light", date: "Sat • Jul 19", time: "10:15 PM", djName: "Nia S", genre: "Afrobeats", cover: 20 },
+      { name: "Basement Sessions", date: "Sun • Jul 20", time: "8:45 PM", djName: "Rico V", genre: "Soul", cover: 18 },
+      { name: "After Hours", date: "Wed • Jul 23", time: "9:30 PM", djName: "K. Cole", genre: "Hip-Hop", cover: 18 },
+    ],
+    amenities: ["VIP tables", "Food", "Accessibility"],
   },
   {
     id: 10,
+    slug: "red-martini",
     name: "Red Martini",
     neighborhood: "Midtown",
     tagline: "A chic after-hours room with polished service and sound",
@@ -340,9 +593,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: false,
     badge: "",
     imageClass: "from-sky-500/85 via-cyan-500/70 to-slate-950",
+    address: "40 14th St NW, Atlanta, GA 30309",
+    hours: "Fri-Sat • 8 PM - 12 AM",
+    dressCode: "Cocktail attire",
+    ageRequirement: "21+",
+    parkingInfo: "Nearby valet on 14th Street",
+    phoneNumber: "(404) 555-0158",
+    instagram: "@redmartiniatl",
+    website: "nightly.example/red-martini",
+    currentEvent: {
+      name: "Slow Burn",
+      djName: "Sage Lane",
+      startTime: "8:15 PM",
+      closingTime: "12:00 AM",
+      cover: 17,
+      waitTime: "4 min",
+      crowdEstimate: "Mellow",
+    },
+    upcomingEvents: [
+      { name: "Lantern Room", date: "Fri • Jul 18", time: "9:00 PM", djName: "Moe L", genre: "R&B", cover: 16 },
+      { name: "Midnight Martini", date: "Sat • Jul 19", time: "9:45 PM", djName: "Paris G", genre: "Lounges", cover: 18 },
+      { name: "Aftertaste", date: "Sun • Jul 20", time: "8:30 PM", djName: "Demi R", genre: "Live Music", cover: 16 },
+      { name: "Velvet Pour", date: "Wed • Jul 23", time: "9:15 PM", djName: "Luna K", genre: "R&B", cover: 16 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Food", "Accessibility"],
   },
   {
     id: 11,
+    slug: "future-atlanta",
     name: "Future Atlanta",
     neighborhood: "Downtown",
     tagline: "A striking modern venue with high-gloss nightlife energy",
@@ -361,9 +639,34 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-indigo-500/85 via-violet-500/70 to-slate-950",
+    address: "10 Peachtree St NW, Atlanta, GA 30303",
+    hours: "Fri-Sun • 10 PM - 3 AM",
+    dressCode: "Night-out polish",
+    ageRequirement: "21+",
+    parkingInfo: "Garage access beneath the building",
+    phoneNumber: "(404) 555-0147",
+    instagram: "@futureatlanta",
+    website: "nightly.example/future-atlanta",
+    currentEvent: {
+      name: "Nova Hour",
+      djName: "DJ Sora",
+      startTime: "10:15 PM",
+      closingTime: "3:00 AM",
+      cover: 32,
+      waitTime: "14 min",
+      crowdEstimate: "Packed",
+    },
+    upcomingEvents: [
+      { name: "Signal Run", date: "Fri • Jul 18", time: "11:30 PM", djName: "DJ Taro", genre: "EDM", cover: 34 },
+      { name: "Night Shift", date: "Sat • Jul 19", time: "10:45 PM", djName: "Mina R", genre: "Tech House", cover: 36 },
+      { name: "After Orbit", date: "Sun • Jul 20", time: "10:15 PM", djName: "Syd M", genre: "House", cover: 32 },
+      { name: "Lumen Wave", date: "Wed • Jul 23", time: "11:00 PM", djName: "Ari V", genre: "EDM", cover: 30 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Coat check", "Accessibility"],
   },
   {
     id: 12,
+    slug: "eclipse-di-luna",
     name: "Eclipse di Luna",
     neighborhood: "Virginia-Highland",
     tagline: "Moonlit cocktails and an upbeat Latin-night crowd",
@@ -382,5 +685,37 @@ export const discoverVenues: DiscoverVenue[] = [
     isLive: true,
     badge: "LIVE",
     imageClass: "from-amber-500/85 via-pink-500/70 to-slate-950",
+    address: "1000 N Highland Ave NE, Atlanta, GA 30306",
+    hours: "Fri-Sat • 8 PM - 2 AM",
+    dressCode: "Night-out chic",
+    ageRequirement: "21+",
+    parkingInfo: "Street parking plus nearby garage",
+    phoneNumber: "(404) 555-0151",
+    instagram: "@eclipsediluna",
+    website: "nightly.example/eclipse-di-luna",
+    currentEvent: {
+      name: "Moonlight Rhythm",
+      djName: "Benny Alvarez",
+      startTime: "8:30 PM",
+      closingTime: "2:00 AM",
+      cover: 21,
+      waitTime: "8 min",
+      crowdEstimate: "Buzzing",
+    },
+    upcomingEvents: [
+      { name: "Cielo Latin", date: "Fri • Jul 18", time: "9:15 PM", djName: "Mina H", genre: "Latin", cover: 20 },
+      { name: "Satin Night", date: "Sat • Jul 19", time: "10:00 PM", djName: "Javi R", genre: "Live Music", cover: 22 },
+      { name: "Starlight Sessions", date: "Sun • Jul 20", time: "8:45 PM", djName: "Nadia C", genre: "Latin", cover: 20 },
+      { name: "After Moon", date: "Wed • Jul 23", time: "9:30 PM", djName: "Ben O", genre: "House", cover: 18 },
+    ],
+    amenities: ["VIP tables", "Bottle service", "Outdoor area", "Food", "Accessibility"],
   },
 ];
+
+export function getVenueBySlug(slug: string) {
+  return discoverVenues.find((venue) => venue.slug === slug);
+}
+
+export function getVenueSlugs() {
+  return discoverVenues.map((venue) => ({ slug: venue.slug }));
+}
