@@ -1,16 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo,useState } from "react";
+
 
 import BottomNav from "@/components/BottomNav";
 import DiscoverVenueCard from "@/components/DiscoverVenueCard";
 import Navbar from "@/components/Navbar";
-import { discoverVenues, genres } from "@/data/nightly";
+import { genres } from "@/data/nightly";
 
 type SortOption = "recommended" | "closest" | "highest-vibe" | "lowest-cover";
 
 export default function DiscoverPage() {
+  const [discoverVenues, setDiscoverVenues] = useState<any[]>([]);
+
+useEffect(() => {
+  fetch("/api/venues")
+    .then((res) => res.json())
+    .then((data) => setDiscoverVenues(data));
+}, []);
   const [search, setSearch] = useState("");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [distance, setDistance] = useState("any");
@@ -98,8 +106,17 @@ export default function DiscoverPage() {
     }
 
     return sorted;
-  }, [cover, crowd, distance, liveOnly, openNowOnly, search, selectedGenres, sortBy]);
-
+}, [
+  cover,
+  crowd,
+  discoverVenues,
+  distance,
+  liveOnly,
+  openNowOnly,
+  search,
+  selectedGenres,
+  sortBy,
+]);
   return (
     <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
       <div className="relative isolate overflow-hidden">
@@ -304,7 +321,7 @@ export default function DiscoverPage() {
             </div>
 
             <div className="mt-4 flex items-center justify-between text-sm text-zinc-400">
-              <span>{filteredVenues.length} venues matching your mood</span>
+             <span>{filteredVenues.length} venues matching your mood</span>
               <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">Atlanta nightlife • live tonight</span>
             </div>
           </section>

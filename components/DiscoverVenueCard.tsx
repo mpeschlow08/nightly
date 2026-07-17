@@ -65,11 +65,14 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {venue.genres.map((genre) => (
-            <span key={genre} className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-200">
-              {genre}
-            </span>
-          ))}
+         {(venue.genres ?? []).map((genre) => (
+  <span
+    key={genre}
+    className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
+  >
+    {genre}
+  </span>
+))}
         </div>
 
         <div className="rounded-[1.25rem] border border-white/10 bg-black/20 p-3 text-sm text-zinc-300">
