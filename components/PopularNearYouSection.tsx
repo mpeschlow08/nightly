@@ -1,7 +1,12 @@
-import { popularVenues } from "@/data/nightly";
+import Link from "next/link";
 
-export default function PopularNearYouSection() {
+import { getVenues } from "@/app/api/venues/lib/venues";
+
+export default async function PopularNearYouSection() {
+  const popularVenues = await getVenues();
+
   return (
+
     <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between gap-3">
         <div>
@@ -17,11 +22,15 @@ export default function PopularNearYouSection() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.24),_transparent_50%)]" />
             </div>
             <div className="p-5">
-              <h3 className="text-lg font-semibold text-white">{venue.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">{venue.blurb}</p>
-              <button className="mt-4 text-sm font-medium text-cyan-300 transition group-hover:text-cyan-200">
+              <h3 className="text-lg font-semibold text-white">
+                <Link href={`/venues/${venue.id}`} className="transition hover:text-cyan-200">
+                  {venue.name}
+                </Link>
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">{venue.city && venue.crowdLevel ? `${venue.city} • ${venue.crowdLevel}` : venue.city}</p>
+              <Link href={`/venues/${venue.id}`} className="mt-4 inline-flex text-sm font-medium text-cyan-300 transition group-hover:text-cyan-200">
                 Open details →
-              </button>
+              </Link>
             </div>
           </article>
         ))}
