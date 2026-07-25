@@ -9,7 +9,7 @@ export default function SignInPage() {
           <h1 className="mt-2 text-3xl font-semibold text-white">Sign in</h1>
           <p className="mt-2 text-sm text-zinc-400">Join the city’s most polished nightlife circle.</p>
         </div>
-        <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" forceRedirectUrl="/onboarding" />
+        <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" forceRedirectUrl="/select-role" />
       </div>
     </main>
   );

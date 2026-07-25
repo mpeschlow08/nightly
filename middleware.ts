@@ -1,7 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isProtectedRoute = createRouteMatcher([
+  "/select-role(.*)",
   "/onboarding(.*)",
+  "/dj/onboarding(.*)",
+  "/dj/dashboard(.*)",
+  "/dj/mixes(.*)",
   "/profile(.*)",
   "/owner(.*)",
   "/api/owner/google-places(.*)",

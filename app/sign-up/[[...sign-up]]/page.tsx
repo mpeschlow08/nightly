@@ -9,7 +9,7 @@ export default function SignUpPage() {
           <h1 className="mt-2 text-3xl font-semibold text-white">Create your account</h1>
           <p className="mt-2 text-sm text-zinc-400">Use Google, Apple, Facebook, email, or phone.</p>
         </div>
-        <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" forceRedirectUrl="/onboarding" />
+        <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" forceRedirectUrl="/select-role" />
       </div>
     </main>
   );

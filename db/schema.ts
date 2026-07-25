@@ -1,12 +1,79 @@
 import {
   boolean,
+  index,
   integer,
+  pgEnum,
   pgTable,
   real,
   serial,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const userRoleEnum = pgEnum("user_role", ["consumer", "dj", "owner", "admin"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  role: userRoleEnum("role").notNull().default("consumer"),
+  isOnboarded: boolean("is_onboarded").notNull().default(false),
+  isVerified: boolean("is_verified").notNull().default(false),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const djProfiles = pgTable("dj_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  stageName: text("stage_name").notNull(),
+  username: text("username").notNull().unique(),
+  bio: text("bio"),
+  city: text("city"),
+  profileImageUrl: text("profile_image_url"),
+  genres: text("genres").array().notNull().default(sql`ARRAY[]::text[]`),
+  yearsPerforming: integer("years_performing"),
+  isResidentDj: boolean("is_resident_dj").notNull().default(false),
+  residentVenueName: text("resident_venue_name"),
+  instagramUrl: text("instagram_url"),
+  tiktokUrl: text("tiktok_url"),
+  soundcloudUrl: text("soundcloud_url"),
+  websiteUrl: text("website_url"),
+  bookingEmail: text("booking_email"),
+  rateCents: integer("rate_cents"),
+  isAvailableForBooking: boolean("is_available_for_booking").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const djSampleMixes = pgTable(
+  "dj_sample_mixes",
+  {
+    id: serial("id").primaryKey(),
+    djProfileId: integer("dj_profile_id")
+      .notNull()
+      .references(() => djProfiles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    audioUrl: text("audio_url").notNull(),
+    audioFilename: text("audio_filename"),
+    durationSeconds: integer("duration_seconds"),
+    coverImageUrl: text("cover_image_url"),
+    genre: text("genre"),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    isPublic: boolean("is_public").notNull().default(true),
+    playCount: integer("play_count").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    djProfileIdIdx: index("dj_sample_mixes_dj_profile_id_idx").on(table.djProfileId),
+  })
+);
 
 export const venues = pgTable("venues", {
   id: serial("id").primaryKey(),

@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
-import BottomNav from "@/components/BottomNav";
-import Navbar from "@/components/Navbar";
 import { discoverVenues, genres } from "@/data/nightly";
 
 type CrowdFilter = "any" | "quiet" | "busy" | "packed";
@@ -83,7 +81,6 @@ export default function MapPage() {
     <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
       <div className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,179,255,0.18),_transparent_30%),radial-gradient(circle_at_90%_10%,_rgba(155,92,255,0.16),_transparent_22%)]" />
-        <Navbar />
 
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
           <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-8 lg:p-10">
@@ -157,8 +154,6 @@ export default function MapPage() {
             />
           </section>
         </main>
-
-        <BottomNav />
       </div>
     </div>
   );

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { Geist, Geist_Mono } from "next/font/google";
+import AppNavigation from "@/components/navigation/AppNavigation";
+import { getUserRole } from "@/app/lib/user-roles";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,18 +21,23 @@ export const metadata: Metadata = {
   description: "A premium mobile-first nightlife discovery experience for Atlanta evenings.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { userId } = await auth();
+  const role = userId ? await getUserRole(userId) : null;
+
   return (
     <ClerkProvider>
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
-        <body className="min-h-full flex flex-col">{children}</body>
+        <body className="min-h-full flex flex-col">
+          <AppNavigation role={role}>{children}</AppNavigation>
+        </body>
       </html>
     </ClerkProvider>
   );
