@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { updateOwnerVenueAction } from "../actions";
 import { getOwnerVenue } from "../lib/data";
+import { OwnerBlobImageUpload } from "@/components/owner/OwnerBlobImageUpload";
 
 type OwnerVenuePageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
@@ -30,6 +31,35 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
           {params.error}
         </div>
       ) : null}
+
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+        <p className="text-sm font-medium text-zinc-200">Venue logo</p>
+        <p className="mt-1 text-xs text-zinc-400">Upload a square-friendly logo. New uploads replace the current logo.</p>
+
+        <div className="mt-4">
+          {venue.logoUrl ? (
+            <img
+              src={venue.logoUrl}
+              alt={`${venue.name} logo`}
+              className="h-24 w-24 rounded-2xl border border-white/10 bg-white/5 object-contain p-2"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-white/20 bg-zinc-900/70 text-[11px] uppercase tracking-[0.18em] text-zinc-400">
+              No logo
+            </div>
+          )}
+        </div>
+
+        <OwnerBlobImageUpload
+          venueId={venueId}
+          mode="logo"
+          maxSizeBytes={5 * 1024 * 1024}
+          title="Upload logo"
+          description="JPEG, PNG, WebP, or AVIF. Up to 5 MB."
+          buttonLabel="Upload logo"
+          successText="Logo updated."
+        />
+      </div>
 
       <form action={updateOwnerVenueAction} className="mt-6 grid gap-4 sm:grid-cols-2">
         <input type="hidden" name="venueId" value={venueId} />

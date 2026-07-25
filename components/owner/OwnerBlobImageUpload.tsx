@@ -6,14 +6,22 @@ import { useRef, useState, useTransition } from "react";
 
 import {
   addOwnerVenueImageFromBlobAction,
+  addOwnerVenueLogoFromBlobAction,
   type AddOwnerVenueImageFromBlobActionResult,
 } from "@/app/owner/actions";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+
+type UploadMode = "gallery" | "logo";
 
 type OwnerBlobImageUploadProps = {
   venueId: number;
+  mode?: UploadMode;
+  maxSizeBytes?: number;
+  title?: string;
+  description?: string;
+  buttonLabel?: string;
+  successText?: string;
 };
 
 function extensionForFile(file: File) {
@@ -36,7 +44,15 @@ function extensionForFile(file: File) {
   return null;
 }
 
-export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
+export function OwnerBlobImageUpload({
+  venueId,
+  mode = "gallery",
+  maxSizeBytes = 10 * 1024 * 1024,
+  title = "Upload from computer",
+  description = "JPEG, PNG, WebP, or AVIF. Up to 10 MB.",
+  buttonLabel = "Upload image",
+  successText = "Image uploaded.",
+}: OwnerBlobImageUploadProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,8 +78,9 @@ export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
         return;
       }
 
-      if (selectedFile.size > MAX_IMAGE_SIZE_BYTES) {
-        setErrorMessage("Image must be 10 MB or smaller.");
+      if (selectedFile.size > maxSizeBytes) {
+        const maxSizeMb = Math.round((maxSizeBytes / (1024 * 1024)) * 10) / 10;
+        setErrorMessage(`Image must be ${maxSizeMb} MB or smaller.`);
         return;
       }
 
@@ -74,20 +91,27 @@ export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
         return;
       }
 
-      const pathname = `venue-images/${venueId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const pathPrefix = mode === "logo" ? "venue-logos" : "venue-images";
+      const pathname = `${pathPrefix}/${venueId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
       try {
         const blob = await upload(pathname, selectedFile, {
           access: "public",
           handleUploadUrl: "/api/owner/images/upload",
-          clientPayload: JSON.stringify({ venueId }),
+          clientPayload: JSON.stringify({ venueId, uploadType: mode }),
           multipart: selectedFile.size > 4_500_000,
         });
 
-        const result: AddOwnerVenueImageFromBlobActionResult = await addOwnerVenueImageFromBlobAction({
-          venueId,
-          blobUrl: blob.url,
-        });
+        const result: AddOwnerVenueImageFromBlobActionResult =
+          mode === "logo"
+            ? await addOwnerVenueLogoFromBlobAction({
+                venueId,
+                blobUrl: blob.url,
+              })
+            : await addOwnerVenueImageFromBlobAction({
+                venueId,
+                blobUrl: blob.url,
+              });
 
         if (!result.success) {
           setErrorMessage(result.error);
@@ -98,7 +122,7 @@ export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
           inputRef.current.value = "";
         }
 
-        setSuccessMessage("Image uploaded.");
+        setSuccessMessage(successText);
         router.refresh();
       } catch (error) {
         const message = error instanceof Error ? error.message : "Upload failed.";
@@ -110,9 +134,9 @@ export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
   return (
     <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
       <label htmlFor="owner-image-file" className="text-sm font-medium text-zinc-200">
-        Upload from computer
+        {title}
       </label>
-      <p className="mt-1 text-xs text-zinc-400">JPEG, PNG, WebP, or AVIF. Up to 10 MB.</p>
+      <p className="mt-1 text-xs text-zinc-400">{description}</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           ref={inputRef}
@@ -128,7 +152,7 @@ export function OwnerBlobImageUpload({ venueId }: OwnerBlobImageUploadProps) {
           disabled={isPending}
           className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "Uploading..." : "Upload image"}
+          {isPending ? "Uploading..." : buttonLabel}
         </button>
       </div>
       {successMessage ? (

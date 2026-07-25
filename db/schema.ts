@@ -17,6 +17,7 @@ export const venues = pgTable("venues", {
   slug: text("slug"),
   neighborhood: text("neighborhood"),
   tagline: text("tagline"),
+  logoUrl: text("logo_url"),
 
   genres: text("genres").array(),
 

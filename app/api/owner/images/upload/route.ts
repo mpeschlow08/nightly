@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { assertMockOwnerVenueId } from "@/app/owner/lib/ownership";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_GALLERY_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_LOGO_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function getConfiguredBlobStoreId() {
   const storeId = process.env.PUBLIC_BLOB_STORE_ID?.trim();
@@ -28,6 +29,7 @@ function getPublicBlobReadWriteToken() {
 
 type UploadClientPayload = {
   venueId: number;
+  uploadType?: "gallery" | "logo";
 };
 
 function parseVenueId(value: unknown) {
@@ -52,12 +54,19 @@ function parseClientPayload(clientPayload: string | null) {
   }
 
   const venueId = parseVenueId((parsed as UploadClientPayload).venueId);
+  const uploadType = (parsed as UploadClientPayload).uploadType;
 
-  return { venueId };
+  if (uploadType && uploadType !== "gallery" && uploadType !== "logo") {
+    throw new Error("Upload payload type is invalid.");
+  }
+
+  return { venueId, uploadType: uploadType ?? "gallery" };
 }
 
-function expectedPathPrefix(venueId: number) {
-  return `venue-images/${venueId}/`;
+function expectedPathPrefix(venueId: number, uploadType: "gallery" | "logo") {
+  return uploadType === "logo"
+    ? `venue-logos/${venueId}/`
+    : `venue-images/${venueId}/`;
 }
 
 export async function POST(request: Request) {
@@ -78,25 +87,30 @@ export async function POST(request: Request) {
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
-        const { venueId } = parseClientPayload(clientPayload);
+        const { venueId, uploadType } = parseClientPayload(clientPayload);
         assertMockOwnerVenueId(venueId);
 
-        const pathPrefix = expectedPathPrefix(venueId);
+        const pathPrefix = expectedPathPrefix(venueId, uploadType);
 
         if (!pathname.startsWith(pathPrefix)) {
           throw new Error("Upload pathname is invalid for this venue.");
         }
 
+        const maximumSizeInBytes =
+          uploadType === "logo"
+            ? MAX_LOGO_IMAGE_SIZE_BYTES
+            : MAX_GALLERY_IMAGE_SIZE_BYTES;
+
         return {
           allowedContentTypes: ALLOWED_IMAGE_CONTENT_TYPES,
-          maximumSizeInBytes: MAX_IMAGE_SIZE_BYTES,
+          maximumSizeInBytes,
           addRandomSuffix: false,
-          tokenPayload: JSON.stringify({ venueId }),
+          tokenPayload: JSON.stringify({ venueId, uploadType }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        const { venueId } = parseClientPayload(tokenPayload ?? null);
-        const pathPrefix = expectedPathPrefix(venueId);
+        const { venueId, uploadType } = parseClientPayload(tokenPayload ?? null);
+        const pathPrefix = expectedPathPrefix(venueId, uploadType);
 
         if (!blob.pathname.startsWith(pathPrefix)) {
           throw new Error("Uploaded file path is invalid.");

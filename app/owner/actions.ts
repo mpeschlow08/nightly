@@ -198,7 +198,7 @@ function normalizeHttpUrl(value: FormDataEntryValue | null) {
   return parsed.toString();
 }
 
-function asValidBlobVenueImageUrl(value: string, venueId: number) {
+function asValidBlobVenueAssetUrl(value: string, expectedPrefix: string) {
   const raw = value.trim();
 
   if (!raw) {
@@ -220,8 +220,6 @@ function asValidBlobVenueImageUrl(value: string, venueId: number) {
   if (!parsed.hostname.endsWith(".public.blob.vercel-storage.com")) {
     throw new Error("Blob URL must be a Vercel Blob URL.");
   }
-
-  const expectedPrefix = `/venue-images/${venueId}/`;
 
   if (!parsed.pathname.startsWith(expectedPrefix)) {
     throw new Error("Blob URL path is invalid for this venue.");
@@ -251,6 +249,7 @@ const ALLOWED_OWNER_IMAGE_CONTENT_TYPES = new Set([
 ]);
 
 const MAX_OWNER_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_OWNER_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
 
 async function normalizeImageSortOrder(venueId: number) {
   const images = await db
@@ -428,7 +427,7 @@ export async function addOwnerVenueImageFromBlobAction(
     }
 
     const venueId = assertMockOwnerVenueId(input.venueId);
-    const blobUrl = asValidBlobVenueImageUrl(input.blobUrl, venueId);
+    const blobUrl = asValidBlobVenueAssetUrl(input.blobUrl, `/venue-images/${venueId}/`);
     const blob = await head(blobUrl, { token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN });
     const expectedPathPrefix = `venue-images/${venueId}/`;
 
@@ -462,6 +461,54 @@ export async function addOwnerVenueImageFromBlobAction(
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload persistence failed.";
+    return { success: false, error: message };
+  }
+}
+
+type AddOwnerVenueLogoFromBlobActionInput = {
+  venueId: number;
+  blobUrl: string;
+};
+
+export async function addOwnerVenueLogoFromBlobAction(
+  input: AddOwnerVenueLogoFromBlobActionInput
+): Promise<AddOwnerVenueImageFromBlobActionResult> {
+  try {
+    if (!process.env.PUBLIC_BLOB_READ_WRITE_TOKEN?.trim()) {
+      throw new Error("Blob upload token is not configured.");
+    }
+
+    if (!Number.isInteger(input.venueId)) {
+      throw new Error("Venue ID must be a valid number.");
+    }
+
+    const venueId = assertMockOwnerVenueId(input.venueId);
+    const blobUrl = asValidBlobVenueAssetUrl(input.blobUrl, `/venue-logos/${venueId}/`);
+    const blob = await head(blobUrl, { token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN });
+    const expectedPathPrefix = `venue-logos/${venueId}/`;
+
+    if (!blob.pathname.startsWith(expectedPathPrefix)) {
+      throw new Error("Uploaded logo path is invalid for this venue.");
+    }
+
+    if (!ALLOWED_OWNER_IMAGE_CONTENT_TYPES.has(blob.contentType)) {
+      throw new Error("Uploaded logo type is not supported.");
+    }
+
+    if (blob.size > MAX_OWNER_LOGO_SIZE_BYTES) {
+      throw new Error("Uploaded logo must be 5 MB or smaller.");
+    }
+
+    await db
+      .update(venues)
+      .set({ logoUrl: blob.url })
+      .where(eq(venues.id, venueId));
+
+    revalidateOwnerAndVenue(venueId);
+
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Logo upload persistence failed.";
     return { success: false, error: message };
   }
 }
