@@ -4,8 +4,10 @@ import {
   addOwnerVenueImageAction,
   deleteOwnerVenueImageAction,
   moveOwnerVenueImageAction,
+  setOwnerVenueCoverImageAction,
 } from "../actions";
 import { getOwnerVenue, getOwnerVenueImages } from "../lib/data";
+import { OwnerBlobImageUpload } from "@/components/owner/OwnerBlobImageUpload";
 
 type OwnerImagesPageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
@@ -38,6 +40,8 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
         </div>
       ) : null}
 
+      <OwnerBlobImageUpload venueId={venueId} />
+
       <form action={addOwnerVenueImageAction} className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
         <input type="hidden" name="venueId" value={venueId} />
         <label htmlFor="owner-image-url" className="text-sm font-medium text-zinc-200">
@@ -66,16 +70,33 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
         <div className="mt-6 grid gap-3">
           {images.map((image, index) => (
             <article key={image.id} className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:grid-cols-[100px_1fr_auto] lg:items-center">
-              <img
-                src={image.imageUrl}
-                alt={`Venue image ${index + 1}`}
-                className="h-24 w-full rounded-xl object-cover lg:w-24"
-              />
+              <div className="relative">
+                <img
+                  src={image.imageUrl}
+                  alt={`Venue image ${index + 1}`}
+                  className="h-24 w-full rounded-xl object-cover lg:w-24"
+                />
+                {index === 0 ? (
+                  <span className="absolute left-2 top-2 rounded-full border border-amber-300/60 bg-amber-500/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-950">
+                    Cover
+                  </span>
+                ) : null}
+              </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">Sort #{image.sortOrder}</p>
                 <p className="mt-2 break-all text-sm text-zinc-200">{image.imageUrl}</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <form action={setOwnerVenueCoverImageAction}>
+                  <input type="hidden" name="imageId" value={image.id} />
+                  <button
+                    type="submit"
+                    disabled={index === 0}
+                    className="rounded-full border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-xs text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {index === 0 ? "Cover photo" : "Make cover"}
+                  </button>
+                </form>
                 <form action={moveOwnerVenueImageAction}>
                   <input type="hidden" name="imageId" value={image.id} />
                   <input type="hidden" name="direction" value="up" />

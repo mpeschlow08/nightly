@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { asc, eq, sql } from "drizzle-orm";
+import { head } from "@vercel/blob";
 
 import { db } from "@/db";
 import { events, venueBusinessHours, venueImages, venues } from "@/db/schema";
@@ -197,6 +198,38 @@ function normalizeHttpUrl(value: FormDataEntryValue | null) {
   return parsed.toString();
 }
 
+function asValidBlobVenueImageUrl(value: string, venueId: number) {
+  const raw = value.trim();
+
+  if (!raw) {
+    throw new Error("Blob URL is required.");
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("Blob URL must be a valid URL.");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Blob URL must use https.");
+  }
+
+  if (!parsed.hostname.endsWith(".public.blob.vercel-storage.com")) {
+    throw new Error("Blob URL must be a Vercel Blob URL.");
+  }
+
+  const expectedPrefix = `/venue-images/${venueId}/`;
+
+  if (!parsed.pathname.startsWith(expectedPrefix)) {
+    throw new Error("Blob URL path is invalid for this venue.");
+  }
+
+  return parsed.toString();
+}
+
 function mutationErrorPath(path: string, error: unknown) {
   const message = error instanceof Error ? error.message : "Request failed.";
   const query = new URLSearchParams({ error: message });
@@ -209,6 +242,15 @@ function mutationSuccessPath(path: string, success: string) {
 
   return `${path}?${query.toString()}`;
 }
+
+const ALLOWED_OWNER_IMAGE_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+]);
+
+const MAX_OWNER_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 async function normalizeImageSortOrder(venueId: number) {
   const images = await db
@@ -364,6 +406,66 @@ export async function addOwnerVenueImageAction(formData: FormData) {
   }
 }
 
+export type AddOwnerVenueImageFromBlobActionResult =
+  | { success: true }
+  | { success: false; error: string };
+
+type AddOwnerVenueImageFromBlobActionInput = {
+  venueId: number;
+  blobUrl: string;
+};
+
+export async function addOwnerVenueImageFromBlobAction(
+  input: AddOwnerVenueImageFromBlobActionInput
+): Promise<AddOwnerVenueImageFromBlobActionResult> {
+  try {
+    if (!process.env.PUBLIC_BLOB_READ_WRITE_TOKEN?.trim()) {
+      throw new Error("Blob upload token is not configured.");
+    }
+
+    if (!Number.isInteger(input.venueId)) {
+      throw new Error("Venue ID must be a valid number.");
+    }
+
+    const venueId = assertMockOwnerVenueId(input.venueId);
+    const blobUrl = asValidBlobVenueImageUrl(input.blobUrl, venueId);
+    const blob = await head(blobUrl, { token: process.env.PUBLIC_BLOB_READ_WRITE_TOKEN });
+    const expectedPathPrefix = `venue-images/${venueId}/`;
+
+    if (!blob.pathname.startsWith(expectedPathPrefix)) {
+      throw new Error("Uploaded image path is invalid for this venue.");
+    }
+
+    if (!ALLOWED_OWNER_IMAGE_CONTENT_TYPES.has(blob.contentType)) {
+      throw new Error("Uploaded image type is not supported.");
+    }
+
+    if (blob.size > MAX_OWNER_IMAGE_SIZE_BYTES) {
+      throw new Error("Uploaded image must be 10 MB or smaller.");
+    }
+
+    const [maxResult] = await db
+      .select({ maxOrder: sql<number>`coalesce(max(${venueImages.sortOrder}), -1)` })
+      .from(venueImages)
+      .where(eq(venueImages.venueId, venueId));
+
+    const nextSortOrder = (maxResult?.maxOrder ?? -1) + 1;
+
+    await db.insert(venueImages).values({
+      venueId,
+      imageUrl: blob.url,
+      sortOrder: nextSortOrder,
+    });
+
+    revalidateOwnerAndVenue(venueId);
+
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload persistence failed.";
+    return { success: false, error: message };
+  }
+}
+
 export async function deleteOwnerVenueImageAction(formData: FormData) {
   try {
     const imageId = asInt(formData.get("imageId"), "Image ID");
@@ -415,6 +517,40 @@ export async function moveOwnerVenueImageAction(formData: FormData) {
   } catch (error) {
     redirect(mutationErrorPath("/owner/images", error));
   }
+}
+
+export async function setOwnerVenueCoverImageAction(formData: FormData) {
+  let successMessage = "Cover photo updated.";
+
+  try {
+    const imageId = asInt(formData.get("imageId"), "Image ID");
+    const image = await ensureImageOwnedByMockOwner(imageId);
+
+    const images = await db
+      .select({ id: venueImages.id, sortOrder: venueImages.sortOrder })
+      .from(venueImages)
+      .where(eq(venueImages.venueId, image.venueId))
+      .orderBy(asc(venueImages.sortOrder), asc(venueImages.id));
+
+    const selected = images.find((item) => item.id === imageId);
+
+    if (!selected) {
+      throw new Error("Image not found in ordering.");
+    }
+
+    if (selected.sortOrder === 0) {
+      successMessage = "Image is already the cover photo.";
+    } else {
+      await db.update(venueImages).set({ sortOrder: -1 }).where(eq(venueImages.id, imageId));
+      await normalizeImageSortOrder(image.venueId);
+
+      revalidateOwnerAndVenue(image.venueId);
+    }
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/images", error));
+  }
+
+  redirect(mutationSuccessPath("/owner/images", successMessage));
 }
 
 export async function createOwnerEventAction(formData: FormData) {
