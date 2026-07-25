@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
-import { updateOwnerVenueAction } from "../actions";
+import { importOwnerVenueFromGoogleAction, updateOwnerVenueAction } from "../actions";
 import { getOwnerVenue } from "../lib/data";
 import { OwnerBlobImageUpload } from "@/components/owner/OwnerBlobImageUpload";
+import { ImportBusinessInformationSection } from "@/components/owner/ImportBusinessInformationSection";
 
 type OwnerVenuePageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
@@ -61,6 +62,28 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
         />
       </div>
 
+      <ImportBusinessInformationSection
+        venueId={venueId}
+        importAction={importOwnerVenueFromGoogleAction}
+        existingVenue={{
+          name: venue.name,
+          address: venue.address ?? "",
+          city: venue.city ?? "",
+          phone: venue.phone ?? "",
+          websiteUrl: venue.websiteUrl ?? "",
+          openingHoursJson: venue.openingHoursJson ?? "",
+          latitude:
+            typeof venue.latitude === "number" && Number.isFinite(venue.latitude)
+              ? String(venue.latitude)
+              : "",
+          longitude:
+            typeof venue.longitude === "number" && Number.isFinite(venue.longitude)
+              ? String(venue.longitude)
+              : "",
+          googleMapsUrl: venue.googleMapsUrl ?? "",
+        }}
+      />
+
       <form action={updateOwnerVenueAction} className="mt-6 grid gap-4 sm:grid-cols-2">
         <input type="hidden" name="venueId" value={venueId} />
 
@@ -89,6 +112,18 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
           />
         </div>
 
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-address" className="text-sm font-medium text-zinc-200">
+            Address
+          </label>
+          <input
+            id="owner-venue-address"
+            name="address"
+            defaultValue={venue.address ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
         <div>
           <label htmlFor="owner-venue-city" className="text-sm font-medium text-zinc-200">
             City
@@ -110,6 +145,79 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
             name="genre"
             defaultValue={venue.genres?.[0] ?? ""}
             className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="owner-venue-phone" className="text-sm font-medium text-zinc-200">
+            Phone
+          </label>
+          <input
+            id="owner-venue-phone"
+            name="phone"
+            defaultValue={venue.phone ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-website" className="text-sm font-medium text-zinc-200">
+            Website URL
+          </label>
+          <input
+            id="owner-venue-website"
+            name="websiteUrl"
+            defaultValue={venue.websiteUrl ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="owner-venue-latitude" className="text-sm font-medium text-zinc-200">
+            Latitude
+          </label>
+          <input
+            id="owner-venue-latitude"
+            name="latitude"
+            defaultValue={venue.latitude ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="owner-venue-longitude" className="text-sm font-medium text-zinc-200">
+            Longitude
+          </label>
+          <input
+            id="owner-venue-longitude"
+            name="longitude"
+            defaultValue={venue.longitude ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-google-maps" className="text-sm font-medium text-zinc-200">
+            Google Maps URL
+          </label>
+          <input
+            id="owner-venue-google-maps"
+            name="googleMapsUrl"
+            defaultValue={venue.googleMapsUrl ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-opening-hours-json" className="text-sm font-medium text-zinc-200">
+            Opening hours JSON
+          </label>
+          <textarea
+            id="owner-venue-opening-hours-json"
+            name="openingHoursJson"
+            rows={6}
+            defaultValue={venue.openingHoursJson ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-xs text-white outline-none"
           />
         </div>
 

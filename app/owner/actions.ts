@@ -8,7 +8,9 @@ import { head } from "@vercel/blob";
 import { db } from "@/db";
 import { events, venueBusinessHours, venueImages, venues } from "@/db/schema";
 
+import { requireAuthorizedOwnerForVenue } from "./lib/authorization";
 import { isTableMissingError } from "./lib/events-support";
+import { getGooglePlaceVenueDetails } from "./lib/google-places";
 import {
   assertMockOwnerVenueId,
   ensureEventOwnedByMockOwner,
@@ -29,6 +31,60 @@ function asOptionalString(value: FormDataEntryValue | null) {
   const text = typeof value === "string" ? value.trim() : "";
 
   return text.length > 0 ? text : null;
+}
+
+function asOptionalFloat(value: FormDataEntryValue | null, label: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+
+  if (!text) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(text);
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a valid number.`);
+  }
+
+  return parsed;
+}
+
+function asOptionalHttpUrl(value: FormDataEntryValue | null, label: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+
+  if (!text) {
+    return null;
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(text);
+  } catch {
+    throw new Error(`${label} must be a valid URL.`);
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`${label} must start with http:// or https://.`);
+  }
+
+  return parsed.toString();
+}
+
+function asOptionalJsonString(value: FormDataEntryValue | null, label: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    JSON.parse(text);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+
+  return text;
 }
 
 function asInt(value: FormDataEntryValue | null, label: string) {
@@ -177,7 +233,14 @@ function normalizeCrowdLevel(value: FormDataEntryValue | null) {
 function normalizeGenre(value: FormDataEntryValue | null) {
   const text = typeof value === "string" ? value.trim() : "";
 
-  return text.length > 0 ? [text] : null;
+  if (!text) {
+    return [];
+  }
+
+  return text
+    .split(",")
+    .map((genre) => genre.trim())
+    .filter((genre) => genre.length > 0);
 }
 
 function normalizeHttpUrl(value: FormDataEntryValue | null) {
@@ -284,6 +347,18 @@ function revalidateHoursConsumers(venueId: number) {
   revalidatePath(`/venues/${venueId}`);
 }
 
+function hasNonEmptyValue(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+
+  return false;
+}
+
 export async function updateOwnerVenueHoursAction(formData: FormData) {
   try {
     const venueId = asInt(formData.get("venueId"), "Venue ID");
@@ -358,24 +433,131 @@ export async function updateOwnerVenueAction(formData: FormData) {
     const genres = normalizeGenre(formData.get("genre"));
     const crowdLevel = normalizeCrowdLevel(formData.get("crowdLevel"));
     const isLive = asBoolean(formData.get("isLive"));
+    const address = asOptionalString(formData.get("address"));
+    const phone = asOptionalString(formData.get("phone"));
+    const websiteUrl = asOptionalHttpUrl(formData.get("websiteUrl"), "Website URL");
+    const openingHoursJson = asOptionalJsonString(formData.get("openingHoursJson"), "Opening hours JSON");
+    const latitude = asOptionalFloat(formData.get("latitude"), "Latitude");
+    const longitude = asOptionalFloat(formData.get("longitude"), "Longitude");
+    const googleMapsUrl = asOptionalHttpUrl(formData.get("googleMapsUrl"), "Google Maps URL");
+
+    try {
+      await db
+        .update(venues)
+        .set({
+          name,
+          tagline,
+          city,
+          genres,
+          crowdLevel,
+          isLive,
+          address,
+          phone,
+          websiteUrl,
+          openingHoursJson,
+          latitude,
+          longitude,
+          googleMapsUrl,
+        })
+        .where(eq(venues.id, venueId));
+    } catch (error) {
+      console.error("[owner] Failed to update venue profile", {
+        venueId,
+        error,
+      });
+      throw new Error("Failed to save venue profile. Please try again.");
+    }
+
+    revalidateOwnerAndVenue(venueId);
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/venue", error));
+  }
+
+  redirect(mutationSuccessPath("/owner/venue", "Venue saved."));
+}
+
+export async function importOwnerVenueFromGoogleAction(formData: FormData) {
+  try {
+    const venueId = asInt(formData.get("venueId"), "Venue ID");
+    const selectedPlaceId = asNonEmptyString(formData.get("googlePlaceId"), "Google place ID");
+    const confirmReview = asBoolean(formData.get("confirmReview"));
+    const confirmOverwrite = asBoolean(formData.get("confirmOverwrite"));
+
+    if (!confirmReview) {
+      throw new Error("Review confirmation is required before saving imported data.");
+    }
+
+    const { venue } = await requireAuthorizedOwnerForVenue(venueId);
+
+    const latestGoogleDetails = await getGooglePlaceVenueDetails(selectedPlaceId);
+
+    const name = asNonEmptyString(formData.get("name"), "Venue name");
+    const address = asOptionalString(formData.get("address"));
+    const city = asOptionalString(formData.get("city"));
+    const phone = asOptionalString(formData.get("phone"));
+    const websiteUrl = asOptionalHttpUrl(formData.get("websiteUrl"), "Website URL");
+    const openingHoursJson = asOptionalJsonString(formData.get("openingHoursJson"), "Opening hours JSON");
+    const latitude = asOptionalFloat(formData.get("latitude"), "Latitude");
+    const longitude = asOptionalFloat(formData.get("longitude"), "Longitude");
+    const googleMapsUrl = asOptionalHttpUrl(formData.get("googleMapsUrl"), "Google Maps URL");
+
+    const overwriteCandidates: Array<{
+      existing: unknown;
+      incoming: unknown;
+    }> = [
+      { existing: venue.name, incoming: name },
+      { existing: venue.address, incoming: address },
+      { existing: venue.city, incoming: city },
+      { existing: venue.phone, incoming: phone },
+      { existing: venue.websiteUrl, incoming: websiteUrl },
+      { existing: venue.openingHoursJson, incoming: openingHoursJson },
+      { existing: venue.latitude, incoming: latitude },
+      { existing: venue.longitude, incoming: longitude },
+      { existing: venue.googleMapsUrl, incoming: googleMapsUrl },
+    ];
+
+    const hasConflict = overwriteCandidates.some((candidate) => {
+      if (!hasNonEmptyValue(candidate.existing)) {
+        return false;
+      }
+
+      if (!hasNonEmptyValue(candidate.incoming)) {
+        return false;
+      }
+
+      return candidate.existing !== candidate.incoming;
+    });
+
+    if (hasConflict && !confirmOverwrite) {
+      throw new Error(
+        "This import would overwrite existing venue fields. Confirm overwrite to continue."
+      );
+    }
 
     await db
       .update(venues)
       .set({
         name,
-        tagline,
+        address,
         city,
-        genres,
-        crowdLevel,
-        isLive,
+        phone,
+        websiteUrl,
+        openingHoursJson,
+        latitude,
+        longitude,
+        googleMapsUrl,
+        googlePlaceId: latestGoogleDetails.placeId,
+        googleImportedAt: new Date(),
+        googleDataConfirmedByOwnerAt: new Date(),
       })
       .where(eq(venues.id, venueId));
 
     revalidateOwnerAndVenue(venueId);
-    redirect(mutationSuccessPath("/owner/venue", "Venue saved."));
   } catch (error) {
     redirect(mutationErrorPath("/owner/venue", error));
   }
+
+  redirect("/owner/venue?success=business-information-imported");
 }
 
 export async function addOwnerVenueImageAction(formData: FormData) {

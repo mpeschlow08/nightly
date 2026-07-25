@@ -17,7 +17,17 @@ export const venues = pgTable("venues", {
   slug: text("slug"),
   neighborhood: text("neighborhood"),
   tagline: text("tagline"),
+  googlePlaceId: text("google_place_id"),
   logoUrl: text("logo_url"),
+  address: text("address"),
+  phone: text("phone"),
+  websiteUrl: text("website_url"),
+  openingHoursJson: text("opening_hours_json"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  googleMapsUrl: text("google_maps_url"),
+  googleImportedAt: timestamp("google_imported_at"),
+  googleDataConfirmedByOwnerAt: timestamp("google_data_confirmed_by_owner_at"),
 
   genres: text("genres").array(),
 
