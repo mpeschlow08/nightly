@@ -1,4 +1,4 @@
-export const MOCK_OWNER_VENUE_ID = 1;
+export const MOCK_OWNER_VENUE_ID = 3;
 
 // TODO: Replace mock venue ownership with Clerk user-to-venue mapping.
 export function getMockOwnerVenueId() {
