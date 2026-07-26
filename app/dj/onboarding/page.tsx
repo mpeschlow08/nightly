@@ -23,8 +23,9 @@ function firstParam(value: string | string[] | undefined) {
 export default async function DjOnboardingPage({ searchParams }: DjOnboardingPageProps) {
   const [user, query] = await Promise.all([requireDjForOnboarding(), searchParams]);
   const profile = await getDjProfileForUser(user.id);
+  const isEditMode = firstParam(query.edit) === "1";
 
-  if (user.isOnboarded && profile) {
+  if (user.isOnboarded && profile && !isEditMode) {
     redirect("/dj/dashboard");
   }
 
@@ -36,9 +37,11 @@ export default async function DjOnboardingPage({ searchParams }: DjOnboardingPag
       <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] backdrop-blur-xl sm:p-8 lg:p-10">
         <div className="max-w-3xl">
           <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Nightly DJ</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Build your DJ profile.</h1>
+          <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">{isEditMode ? "Edit your DJ profile." : "Build your DJ profile."}</h1>
           <p className="mt-4 text-base leading-7 text-zinc-300">
-            Set your public identity, music lane, and booking details so venues and event teams can discover you.
+            {isEditMode
+              ? "Update your public identity, music lane, and booking details."
+              : "Set your public identity, music lane, and booking details so venues and event teams can discover you."}
           </p>
         </div>
 
@@ -49,6 +52,7 @@ export default async function DjOnboardingPage({ searchParams }: DjOnboardingPag
         ) : null}
 
         <form action={saveDjOnboarding} className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <input type="hidden" name="editMode" value={isEditMode ? "1" : "0"} />
           <section className="space-y-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
             <h2 className="text-lg font-semibold text-white">Core profile</h2>
 
@@ -234,7 +238,7 @@ export default async function DjOnboardingPage({ searchParams }: DjOnboardingPag
             </label>
 
             <button type="submit" className="w-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">
-              Save DJ profile
+              {isEditMode ? "Save changes" : "Save DJ profile"}
             </button>
           </section>
         </form>

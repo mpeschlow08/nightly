@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import BottomNav from "@/components/BottomNav";
-import Navbar from "@/components/Navbar";
 import ChartCard from "@/components/admin-analytics/ChartCard";
 import DateFilter from "@/components/admin-analytics/DateFilter";
 import MetricGrid from "@/components/admin-analytics/MetricGrid";
@@ -88,8 +86,6 @@ export default function AnalyticsDashboard() {
       <div className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,179,255,0.16),_transparent_30%),radial-gradient(circle_at_90%_10%,_rgba(155,92,255,0.16),_transparent_22%)]" />
 
-        <Navbar />
-
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
           <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-8 lg:p-10">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -165,8 +161,6 @@ export default function AnalyticsDashboard() {
             </ChartCard>
           </section>
         </main>
-
-        <BottomNav />
       </div>
     </div>
   );

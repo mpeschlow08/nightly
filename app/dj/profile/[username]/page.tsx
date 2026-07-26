@@ -1,10 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
 
 import {
   formatCentsAsUsd,
   getDjFeaturedPublicMixForProfile,
   getDjPublicProfileByUsername,
 } from "../../lib/data";
+import { db } from "@/db";
+import { users } from "@/db/schema";
 
 type DjPublicProfilePageProps = {
   params: Promise<{ username: string }>;
@@ -34,6 +39,18 @@ export default async function DjPublicProfilePage({ params }: DjPublicProfilePag
   const links = socialLinks(profile);
   const rateLabel = formatCentsAsUsd(profile.rateCents);
   const featuredMix = await getDjFeaturedPublicMixForProfile(profile.id);
+  const { userId: clerkUserId } = await auth();
+
+  let isDjOwnerViewingProfile = false;
+
+  if (clerkUserId) {
+    const viewer = await db.query.users.findFirst({
+      where: eq(users.clerkUserId, clerkUserId),
+      columns: { id: true, role: true },
+    });
+
+    isDjOwnerViewingProfile = viewer?.role === "dj" && viewer.id === profile.userId;
+  }
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_35%),radial-gradient(circle_at_85%_15%,_rgba(167,139,250,0.12),_transparent_28%),linear-gradient(140deg,_#04070b_0%,_#090d18_50%,_#101428_100%)] px-4 py-10 text-zinc-100 sm:px-6 lg:px-8">
@@ -47,6 +64,29 @@ export default async function DjPublicProfilePage({ params }: DjPublicProfilePag
           </section>
 
           <section className="rounded-[1.5rem] border border-white/10 bg-zinc-950/75 p-5">
+            {isDjOwnerViewingProfile ? (
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Link
+                  href="/dj/dashboard"
+                  className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 transition hover:border-cyan-300/60"
+                >
+                  Back to DJ Dashboard
+                </Link>
+                <Link
+                  href="/dj/onboarding?edit=1"
+                  className="rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+                >
+                  Edit Profile
+                </Link>
+                <Link
+                  href="/dj/mixes"
+                  className="rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+                >
+                  Manage Mixes
+                </Link>
+              </div>
+            ) : null}
+
             <h1 className="text-3xl font-semibold text-white sm:text-4xl">{profile.stageName}</h1>
             <p className="mt-2 text-zinc-300">{profile.city ?? "City coming soon"}</p>
             <p className="mt-4 text-sm leading-7 text-zinc-300">{profile.bio ?? "Bio coming soon."}</p>

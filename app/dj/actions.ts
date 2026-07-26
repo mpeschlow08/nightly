@@ -14,8 +14,13 @@ import {
   usernameTakenByAnotherUser,
 } from "./lib/data";
 
-function failOnboarding(message: string): never {
+function failOnboarding(message: string, editMode = false): never {
   const query = new URLSearchParams({ error: message });
+
+  if (editMode) {
+    query.set("edit", "1");
+  }
+
   redirect(`/dj/onboarding?${query.toString()}`);
 }
 
@@ -24,17 +29,17 @@ function asOptionalString(value: FormDataEntryValue | null) {
   return text.length > 0 ? text : null;
 }
 
-function asRequiredString(value: FormDataEntryValue | null, label: string) {
+function asRequiredString(value: FormDataEntryValue | null, label: string, editMode: boolean) {
   const text = asOptionalString(value);
 
   if (!text) {
-    failOnboarding(`${label} is required.`);
+    failOnboarding(`${label} is required.`, editMode);
   }
 
   return text;
 }
 
-function asOptionalInteger(value: FormDataEntryValue | null, label: string) {
+function asOptionalInteger(value: FormDataEntryValue | null, label: string, editMode: boolean) {
   const text = asOptionalString(value);
 
   if (!text) {
@@ -44,13 +49,13 @@ function asOptionalInteger(value: FormDataEntryValue | null, label: string) {
   const parsed = Number.parseInt(text, 10);
 
   if (!Number.isFinite(parsed) || parsed < 0) {
-    failOnboarding(`${label} must be a non-negative number.`);
+    failOnboarding(`${label} must be a non-negative number.`, editMode);
   }
 
   return parsed;
 }
 
-function asOptionalNonNegativeCents(value: FormDataEntryValue | null) {
+function asOptionalNonNegativeCents(value: FormDataEntryValue | null, editMode: boolean) {
   const text = asOptionalString(value);
 
   if (!text) {
@@ -60,13 +65,13 @@ function asOptionalNonNegativeCents(value: FormDataEntryValue | null) {
   const parsed = Number.parseFloat(text);
 
   if (!Number.isFinite(parsed) || parsed < 0) {
-    failOnboarding("Starting rate must be zero or greater.");
+    failOnboarding("Starting rate must be zero or greater.", editMode);
   }
 
   return Math.round(parsed * 100);
 }
 
-function asOptionalHttpUrl(value: FormDataEntryValue | null, label: string) {
+function asOptionalHttpUrl(value: FormDataEntryValue | null, label: string, editMode: boolean) {
   const text = asOptionalString(value);
 
   if (!text) {
@@ -78,17 +83,17 @@ function asOptionalHttpUrl(value: FormDataEntryValue | null, label: string) {
   try {
     parsed = new URL(text);
   } catch {
-    failOnboarding(`${label} must be a valid URL.`);
+    failOnboarding(`${label} must be a valid URL.`, editMode);
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    failOnboarding(`${label} must start with http:// or https://.`);
+    failOnboarding(`${label} must start with http:// or https://.`, editMode);
   }
 
   return parsed.toString();
 }
 
-function asOptionalEmail(value: FormDataEntryValue | null) {
+function asOptionalEmail(value: FormDataEntryValue | null, editMode: boolean) {
   const text = asOptionalString(value);
 
   if (!text) {
@@ -98,7 +103,7 @@ function asOptionalEmail(value: FormDataEntryValue | null) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailRegex.test(text)) {
-    failOnboarding("Booking email must be a valid email address.");
+    failOnboarding("Booking email must be a valid email address.", editMode);
   }
 
   return text.toLowerCase();
@@ -106,40 +111,41 @@ function asOptionalEmail(value: FormDataEntryValue | null) {
 
 export async function saveDjOnboarding(formData: FormData) {
   const user = await requireDjForOnboarding();
+  const isEditMode = formData.get("editMode") === "1";
 
-  const stageName = asRequiredString(formData.get("stageName"), "Stage name");
-  const usernameRaw = asRequiredString(formData.get("username"), "Username");
+  const stageName = asRequiredString(formData.get("stageName"), "Stage name", isEditMode);
+  const usernameRaw = asRequiredString(formData.get("username"), "Username", isEditMode);
   const username = toUsernameSlug(usernameRaw);
-  const city = asRequiredString(formData.get("city"), "City");
+  const city = asRequiredString(formData.get("city"), "City", isEditMode);
   const genres = normalizeGenres(formData.getAll("genres").map((value) => String(value)));
 
   const bio = asOptionalString(formData.get("bio"));
-  const profileImageUrl = asOptionalHttpUrl(formData.get("profileImageUrl"), "Profile image URL");
-  const yearsPerforming = asOptionalInteger(formData.get("yearsPerforming"), "Years performing");
+  const profileImageUrl = asOptionalHttpUrl(formData.get("profileImageUrl"), "Profile image URL", isEditMode);
+  const yearsPerforming = asOptionalInteger(formData.get("yearsPerforming"), "Years performing", isEditMode);
   const isResidentDj = formData.get("isResidentDj") === "on";
   const residentVenueName = isResidentDj
-    ? asRequiredString(formData.get("residentVenueName"), "Resident venue name")
+    ? asRequiredString(formData.get("residentVenueName"), "Resident venue name", isEditMode)
     : null;
-  const instagramUrl = asOptionalHttpUrl(formData.get("instagramUrl"), "Instagram URL");
-  const tiktokUrl = asOptionalHttpUrl(formData.get("tiktokUrl"), "TikTok URL");
-  const soundcloudUrl = asOptionalHttpUrl(formData.get("soundcloudUrl"), "SoundCloud URL");
-  const websiteUrl = asOptionalHttpUrl(formData.get("websiteUrl"), "Website URL");
-  const bookingEmail = asOptionalEmail(formData.get("bookingEmail"));
-  const rateCents = asOptionalNonNegativeCents(formData.get("rateDollars"));
+  const instagramUrl = asOptionalHttpUrl(formData.get("instagramUrl"), "Instagram URL", isEditMode);
+  const tiktokUrl = asOptionalHttpUrl(formData.get("tiktokUrl"), "TikTok URL", isEditMode);
+  const soundcloudUrl = asOptionalHttpUrl(formData.get("soundcloudUrl"), "SoundCloud URL", isEditMode);
+  const websiteUrl = asOptionalHttpUrl(formData.get("websiteUrl"), "Website URL", isEditMode);
+  const bookingEmail = asOptionalEmail(formData.get("bookingEmail"), isEditMode);
+  const rateCents = asOptionalNonNegativeCents(formData.get("rateDollars"), isEditMode);
   const isAvailableForBooking = formData.get("isAvailableForBooking") === "on";
 
   if (!DJ_USERNAME_REGEX.test(username)) {
-    failOnboarding("Username can include lowercase letters, numbers, hyphens, and underscores only.");
+    failOnboarding("Username can include lowercase letters, numbers, hyphens, and underscores only.", isEditMode);
   }
 
   if (genres.length === 0) {
-    failOnboarding("Select at least one genre.");
+    failOnboarding("Select at least one genre.", isEditMode);
   }
 
   const isUsernameTaken = await usernameTakenByAnotherUser(username, user.id);
 
   if (isUsernameTaken) {
-    failOnboarding("This username is already taken.");
+    failOnboarding("This username is already taken.", isEditMode);
   }
 
   const now = new Date();
