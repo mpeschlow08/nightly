@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import NightlyLogoLink from "@/components/navigation/NightlyLogoLink";
 
 const navItems = [
   { label: "Discover", href: "/discover" },
@@ -14,20 +15,20 @@ const navItems = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
+
+  const role = pathname.startsWith("/owner")
+    ? "owner"
+    : pathname.startsWith("/dj")
+      ? "dj"
+      : pathname.startsWith("/admin")
+        ? "admin"
+        : "consumer";
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#04070b]/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center transition duration-200 hover:drop-shadow-[0_0_16px_rgba(74,222,255,0.45)]">
-          <Image
-            src="/assets/nightly-logo.png"
-            alt="Nightly"
-            width={160}
-            height={44}
-            className="h-[44px] w-auto object-contain"
-            priority
-          />
-        </Link>
+        <NightlyLogoLink role={role} width={160} height={44} imageClassName="h-[44px] w-auto object-contain" priority />
 
         <nav className="hidden items-center gap-6 text-sm text-zinc-300 md:flex">
           {navItems.map((item) => (

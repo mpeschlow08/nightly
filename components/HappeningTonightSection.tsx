@@ -2,11 +2,11 @@ import { happeningTonight } from "@/data/nightly";
 
 export default function HappeningTonightSection() {
   return (
-    <section id="events" className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="live-tonight" className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between gap-3">
         <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Tonight</p>
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Happening Tonight</h2>
+          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Live now</p>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Live Tonight</h2>
         </div>
         <button className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-cyan-400/50 hover:text-white">
           See all

@@ -1,7 +1,9 @@
 import Hero from "@/components/Hero";
 import GenreChips from "@/components/GenreChips";
+import TrendingVenuesSection from "@/components/TrendingVenuesSection";
 import HappeningTonightSection from "@/components/HappeningTonightSection";
 import LiveVibeSection from "@/components/LiveVibeSection";
+import EventsTonightSection from "@/components/EventsTonightSection";
 import PopularNearYouSection from "@/components/PopularNearYouSection";
 import CrewPromoSection from "@/components/CrewPromoSection";
 import Link from "next/link";
@@ -26,8 +28,10 @@ export default function ConsumerHomePage() {
 
           <Hero />
           <GenreChips />
-          <HappeningTonightSection />
           <LiveVibeSection />
+          <HappeningTonightSection />
+          <TrendingVenuesSection />
+          <EventsTonightSection />
           <PopularNearYouSection />
           <CrewPromoSection />
         </main>
