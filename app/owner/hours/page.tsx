@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { dayLabels, formatHourLabel } from "@/app/api/venues/lib/venues";
 
-import { updateOwnerVenueHoursAction } from "../actions";
+import { copyMondayHoursToWeekdaysAction, updateOwnerVenueHoursAction } from "../actions";
 import { getOwnerVenue, getOwnerVenueBusinessHours } from "../lib/data";
 
 type OwnerHoursPageProps = {
@@ -92,9 +92,18 @@ export default async function OwnerHoursPage({ searchParams }: OwnerHoursPagePro
           </article>
         ))}
 
-        <button type="submit" className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
-          Save business hours
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
+            Save business hours
+          </button>
+          <button
+            type="submit"
+            formAction={copyMondayHoursToWeekdaysAction}
+            className="rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+          >
+            Copy Monday to weekdays
+          </button>
+        </div>
       </form>
     </section>
   );

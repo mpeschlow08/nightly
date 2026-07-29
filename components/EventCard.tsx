@@ -13,7 +13,7 @@ export default function EventCard({ event }: EventCardProps) {
   const [saved, setSaved] = useState(false);
 
   return (
-    <article className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+    <article className="nightly-card nightly-card-interactive overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 backdrop-blur-xl">
       <div className={`relative h-40 bg-gradient-to-br ${event.imageClass}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.22),_transparent_55%)]" />
         {event.live ? (
@@ -38,7 +38,7 @@ export default function EventCard({ event }: EventCardProps) {
           <button
             type="button"
             onClick={() => setSaved((value) => !value)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${saved ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" : "border-white/10 bg-white/10 text-zinc-300 hover:border-cyan-400/40 hover:text-white"}`}
+            className={`nightly-btn-secondary rounded-full border px-2.5 py-1 text-xs font-medium ${saved ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-200" : "border-white/10 bg-white/10 text-zinc-300 hover:text-white"}`}
           >
             {saved ? "Saved" : "Save"}
           </button>
@@ -78,10 +78,10 @@ export default function EventCard({ event }: EventCardProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
+          <button type="button" className="nightly-btn-secondary rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-200 hover:text-white">
             Share
           </button>
-          <Link href={`/events/${event.slug}`} className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-3 py-2 text-sm font-medium text-white transition hover:opacity-90">
+          <Link href={`/events/${event.slug}`} className="nightly-btn-primary rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90">
             View Event
           </Link>
         </div>

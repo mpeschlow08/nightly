@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Crew } from "@/data/crews";
 export default function CrewCard({ crew }: { crew: Crew }) {
   return (
-    <article className="flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-zinc-950/80 p-5 shadow-[0_0_70px_rgba(34,211,238,0.07)] backdrop-blur-xl">
+    <article className="nightly-card nightly-card-interactive flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-zinc-950/80 p-5 backdrop-blur-xl">
       <div className={`h-20 rounded-[1.25rem] bg-gradient-to-br ${crew.gradient}`} />
       <div className="mt-5 flex flex-1 flex-col">
         <div className="flex items-start justify-between gap-3">
@@ -33,7 +33,7 @@ export default function CrewCard({ crew }: { crew: Crew }) {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/crews/${crew.slug}`} className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
+          <Link href={`/crews/${crew.slug}`} className="nightly-btn-primary rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90">
             Open Crew
           </Link>
           <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300">

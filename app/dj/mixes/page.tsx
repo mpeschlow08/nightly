@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import EmptyStateCard from "@/components/EmptyStateCard";
 import {
   deleteDjMixAction,
   featureDjMixAction,
@@ -45,10 +46,21 @@ export default async function DjMixesPage({ searchParams }: DjMixesPageProps) {
         ) : null}
 
         {mixes.length === 0 ? (
-          <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-300">
-            <p className="text-base font-medium text-white">No sample mixes uploaded yet.</p>
-            <p className="mt-2">Upload your first mix to showcase your sound.</p>
-          </section>
+          <EmptyStateCard
+            className="mt-6"
+            icon="mixes"
+            eyebrow="No Mixes"
+            title="No sample mixes uploaded"
+            description="Start with one featured set so venues can hear your sound instantly from your profile."
+            actions={
+              <Link
+                href="/dj/mixes/new"
+                className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                Upload First Mix
+              </Link>
+            }
+          />
         ) : (
           <section className="mt-6 grid gap-4">
             {mixes.map((mix) => (

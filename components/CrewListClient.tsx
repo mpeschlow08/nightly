@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import CreateCrewModal from "@/components/CreateCrewModal";
 import CrewCard from "@/components/CrewCard";
+import EmptyStateCard from "@/components/EmptyStateCard";
 import { initialCrews, type Crew } from "@/data/crews";
 
 type Props = {
@@ -57,11 +58,38 @@ export default function CrewListClient({ selectedVenue }: Props) {
             </div>
           </section>
 
-          <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {crews.map((crew) => (
-              <CrewCard key={crew.id} crew={crew} />
-            ))}
-          </section>
+          {crews.length > 0 ? (
+            <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {crews.map((crew) => (
+                <CrewCard key={crew.id} crew={crew} />
+              ))}
+            </section>
+          ) : (
+            <EmptyStateCard
+              className="mt-8"
+              icon="friends"
+              eyebrow="No Crews"
+              title="No crew plans yet"
+              description="Start a crew to invite friends, share a vote, and coordinate your night without group-chat chaos."
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(true)}
+                    className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                  >
+                    Create a Crew
+                  </button>
+                  <Link
+                    href="/discover"
+                    className="rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+                  >
+                    Find a Venue
+                  </Link>
+                </>
+              }
+            />
+          )}
         </main>
       </div>
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
@@ -5,7 +6,8 @@ import {
   deleteOwnerEventAction,
   updateOwnerEventAction,
 } from "../actions";
-import { getOwnerEvents, getOwnerVenue } from "../lib/data";
+import { getOwnerEvents, getOwnerVenue, type OwnerEventRecord } from "../lib/data";
+import EmptyStateCard from "@/components/EmptyStateCard";
 
 function toDateTimeLocalValue(value: Date | null) {
   if (!value) {
@@ -17,25 +19,185 @@ function toDateTimeLocalValue(value: Date | null) {
   return local.toISOString().slice(0, 16);
 }
 
-function toDateInputValue(value: Date) {
-  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
-
-  return local.toISOString().slice(0, 10);
-}
-
-function toTimeInputValue(value: Date) {
-  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
-
-  return local.toISOString().slice(11, 16);
-}
-
 function toDollars(cents: number) {
   return (cents / 100).toFixed(2);
+}
+
+function splitEventGroups(events: OwnerEventRecord[]) {
+  const now = Date.now();
+
+  return {
+    upcoming: events.filter((event) => event.startsAt.getTime() >= now),
+    past: events.filter((event) => event.startsAt.getTime() < now),
+  };
 }
 
 type OwnerEventsPageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
 };
+
+function EventEditorCard({ event }: { event: OwnerEventRecord }) {
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+      <form action={updateOwnerEventAction} className="grid gap-3 sm:grid-cols-2">
+        <input type="hidden" name="eventId" value={event.id} />
+
+        <div className="sm:col-span-2">
+          <label htmlFor={`owner-event-title-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Title
+          </label>
+          <input
+            id={`owner-event-title-${event.id}`}
+            name="title"
+            defaultValue={event.title}
+            required
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor={`owner-event-description-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Description
+          </label>
+          <textarea
+            id={`owner-event-description-${event.id}`}
+            name="description"
+            rows={3}
+            defaultValue={event.description ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-starts-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Start date/time
+          </label>
+          <input
+            id={`owner-event-starts-${event.id}`}
+            type="datetime-local"
+            name="startsAt"
+            defaultValue={toDateTimeLocalValue(event.startsAt)}
+            required
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-ends-${event.id}`} className="text-sm font-medium text-zinc-200">
+            End date/time
+          </label>
+          <input
+            id={`owner-event-ends-${event.id}`}
+            type="datetime-local"
+            name="endsAt"
+            defaultValue={toDateTimeLocalValue(event.endsAt)}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-cover-image-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Cover image URL
+          </label>
+          <input
+            id={`owner-event-cover-image-${event.id}`}
+            name="coverImageUrl"
+            defaultValue={event.coverImageUrl ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-ticket-url-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Ticket URL
+          </label>
+          <input
+            id={`owner-event-ticket-url-${event.id}`}
+            name="ticketUrl"
+            defaultValue={event.ticketUrl ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-price-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Price (USD)
+          </label>
+          <input
+            id={`owner-event-price-${event.id}`}
+            name="priceDollars"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={toDollars(event.coverCents)}
+            required
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-age-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Age requirement
+          </label>
+          <input
+            id={`owner-event-age-${event.id}`}
+            name="ageRequirement"
+            type="number"
+            min="0"
+            max="25"
+            defaultValue={event.ageRequirement ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-genre-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Genre
+          </label>
+          <input
+            id={`owner-event-genre-${event.id}`}
+            name="genre"
+            defaultValue={event.genre ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`owner-event-dress-${event.id}`} className="text-sm font-medium text-zinc-200">
+            Dress code
+          </label>
+          <input
+            id={`owner-event-dress-${event.id}`}
+            name="dressCode"
+            defaultValue={event.dressCode ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-100">
+            <input type="checkbox" name="isPublished" defaultChecked={event.isPublished} className="h-4 w-4 accent-cyan-500" />
+            Published
+          </label>
+          <button type="submit" className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100">
+            Save changes
+          </button>
+        </div>
+      </form>
+
+      <form action={deleteOwnerEventAction} className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+        <input type="hidden" name="eventId" value={event.id} />
+        <label className="inline-flex items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+          <input type="checkbox" name="confirmDelete" value="yes" required className="h-4 w-4 accent-rose-500" />
+          Confirm deletion
+        </label>
+        <button type="submit" className="rounded-full border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-100">
+          Delete event
+        </button>
+      </form>
+    </article>
+  );
+}
 
 export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageProps) {
   const [{ venueId, venue }, ownerEvents, params] = await Promise.all([
@@ -47,6 +209,8 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
   if (!venue) {
     notFound();
   }
+
+  const { upcoming, past } = splitEventGroups(ownerEvents.events);
 
   return (
     <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
@@ -87,27 +251,26 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
             />
           </div>
 
-          <div>
-            <label htmlFor="owner-event-create-date" className="text-sm font-medium text-zinc-200">
-              Date
+          <div className="sm:col-span-2">
+            <label htmlFor="owner-event-create-description" className="text-sm font-medium text-zinc-200">
+              Description
             </label>
-            <input
-              id="owner-event-create-date"
-              type="date"
-              name="date"
-              required
+            <textarea
+              id="owner-event-create-description"
+              name="description"
+              rows={3}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
             />
           </div>
 
           <div>
             <label htmlFor="owner-event-create-start" className="text-sm font-medium text-zinc-200">
-              Start Time
+              Start date/time
             </label>
             <input
               id="owner-event-create-start"
-              type="time"
-              name="startTime"
+              type="datetime-local"
+              name="startsAt"
               required
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
             />
@@ -115,28 +278,64 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
 
           <div>
             <label htmlFor="owner-event-create-end" className="text-sm font-medium text-zinc-200">
-              End Time
+              End date/time
             </label>
             <input
               id="owner-event-create-end"
-              type="time"
-              name="endTime"
+              type="datetime-local"
+              name="endsAt"
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
             />
           </div>
 
           <div>
-            <label htmlFor="owner-event-create-cover" className="text-sm font-medium text-zinc-200">
-              Cover price (USD)
+            <label htmlFor="owner-event-create-cover-image" className="text-sm font-medium text-zinc-200">
+              Cover image URL
             </label>
             <input
-              id="owner-event-create-cover"
-              name="coverDollars"
+              id="owner-event-create-cover-image"
+              name="coverImageUrl"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="owner-event-create-ticket" className="text-sm font-medium text-zinc-200">
+              Ticket URL
+            </label>
+            <input
+              id="owner-event-create-ticket"
+              name="ticketUrl"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="owner-event-create-price" className="text-sm font-medium text-zinc-200">
+              Price (USD)
+            </label>
+            <input
+              id="owner-event-create-price"
+              name="priceDollars"
               type="number"
               min="0"
               step="0.01"
               defaultValue="0.00"
               required
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="owner-event-create-age" className="text-sm font-medium text-zinc-200">
+              Age requirement
+            </label>
+            <input
+              id="owner-event-create-age"
+              name="ageRequirement"
+              type="number"
+              min="0"
+              max="25"
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
             />
           </div>
@@ -154,7 +353,7 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
 
           <div>
             <label htmlFor="owner-event-create-dress" className="text-sm font-medium text-zinc-200">
-              Dress Code
+              Dress code
             </label>
             <input
               id="owner-event-create-dress"
@@ -164,25 +363,9 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor="owner-event-create-description" className="text-sm font-medium text-zinc-200">
-              Description
-            </label>
-            <textarea
-              id="owner-event-create-description"
-              name="description"
-              rows={3}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-            />
-          </div>
-
-          <div className="sm:col-span-2 flex flex-wrap gap-3">
             <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-zinc-100">
-              <input type="checkbox" name="isFeatured" className="h-4 w-4 accent-cyan-500" />
-              Featured
-            </label>
-            <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-zinc-100">
-              <input type="checkbox" name="is21Plus" className="h-4 w-4 accent-cyan-500" />
-              21+
+              <input type="checkbox" name="isPublished" className="h-4 w-4 accent-cyan-500" />
+              Published
             </label>
           </div>
         </div>
@@ -193,151 +376,49 @@ export default async function OwnerEventsPage({ searchParams }: OwnerEventsPageP
       </form>
 
       {ownerEvents.events.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-300">
-          No events yet for this venue.
-        </div>
+        <EmptyStateCard
+          className="mt-6"
+          icon="events"
+          eyebrow="No Events"
+          title="No events created yet"
+          description="Publish your first event to boost visibility and help guests discover your venue faster."
+          actions={
+            <>
+              <a
+                href="#owner-event-create-title"
+                className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                Create First Event
+              </a>
+              <Link
+                href="/owner/venue"
+                className="rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+              >
+                Update Venue Details
+              </Link>
+            </>
+          }
+        />
       ) : (
-        <div className="mt-6 grid gap-4">
-          {ownerEvents.events.map((event) => (
-            <article key={event.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-              <form action={updateOwnerEventAction} className="grid gap-3 sm:grid-cols-2">
-                <input type="hidden" name="eventId" value={event.id} />
+        <>
+          <div className="mt-6">
+            <h3 className="text-sm uppercase tracking-[0.24em] text-cyan-200/80">Upcoming events</h3>
+            {upcoming.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-400">No upcoming events.</p>
+            ) : (
+              <div className="mt-3 grid gap-4">{upcoming.map((event) => <EventEditorCard key={event.id} event={event} />)}</div>
+            )}
+          </div>
 
-                <div className="sm:col-span-2">
-                  <label htmlFor={`owner-event-title-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Title
-                  </label>
-                  <input
-                    id={`owner-event-title-${event.id}`}
-                    name="title"
-                    defaultValue={event.title}
-                    required
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-date-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Date
-                  </label>
-                  <input
-                    id={`owner-event-date-${event.id}`}
-                    type="date"
-                    name="date"
-                    defaultValue={toDateInputValue(event.eventDate)}
-                    required
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-start-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Start Time
-                  </label>
-                  <input
-                    id={`owner-event-start-${event.id}`}
-                    type="time"
-                    name="startTime"
-                    defaultValue={event.startTime || toTimeInputValue(event.startsAt)}
-                    required
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-end-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    End Time
-                  </label>
-                  <input
-                    id={`owner-event-end-${event.id}`}
-                    type="time"
-                    name="endTime"
-                    defaultValue={event.endTime || (event.endsAt ? toTimeInputValue(event.endsAt) : "")}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-cover-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Cover price (USD)
-                  </label>
-                  <input
-                    id={`owner-event-cover-${event.id}`}
-                    name="coverDollars"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    defaultValue={toDollars(event.coverCents)}
-                    required
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-genre-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Genre
-                  </label>
-                  <input
-                    id={`owner-event-genre-${event.id}`}
-                    name="genre"
-                    defaultValue={event.genre ?? ""}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor={`owner-event-dress-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Dress Code
-                  </label>
-                  <input
-                    id={`owner-event-dress-${event.id}`}
-                    name="dressCode"
-                    defaultValue={event.dressCode ?? ""}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label htmlFor={`owner-event-description-${event.id}`} className="text-sm font-medium text-zinc-200">
-                    Description
-                  </label>
-                  <textarea
-                    id={`owner-event-description-${event.id}`}
-                    name="description"
-                    rows={3}
-                    defaultValue={event.description ?? ""}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
-                  <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-100">
-                    <input type="checkbox" name="isFeatured" defaultChecked={event.isFeatured} className="h-4 w-4 accent-cyan-500" />
-                    Featured
-                  </label>
-                  <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-100">
-                    <input type="checkbox" name="is21Plus" defaultChecked={event.is21Plus} className="h-4 w-4 accent-cyan-500" />
-                    21+
-                  </label>
-                  <button type="submit" className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100">
-                    Save changes
-                  </button>
-                </div>
-              </form>
-
-              <form action={deleteOwnerEventAction} className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
-                <input type="hidden" name="eventId" value={event.id} />
-                <label className="inline-flex items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
-                  <input type="checkbox" name="confirmDelete" value="yes" required className="h-4 w-4 accent-rose-500" />
-                  Confirm deletion
-                </label>
-                <button type="submit" className="rounded-full border border-rose-400/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-100">
-                  Delete event
-                </button>
-              </form>
-            </article>
-          ))}
-        </div>
+          <div className="mt-8">
+            <h3 className="text-sm uppercase tracking-[0.24em] text-zinc-300">Past events</h3>
+            {past.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-500">No past events.</p>
+            ) : (
+              <div className="mt-3 grid gap-4">{past.map((event) => <EventEditorCard key={event.id} event={event} />)}</div>
+            )}
+          </div>
+        </>
       )}
     </section>
   );

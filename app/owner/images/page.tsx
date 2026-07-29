@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
@@ -5,8 +6,10 @@ import {
   deleteOwnerVenueImageAction,
   moveOwnerVenueImageAction,
   setOwnerVenueCoverImageAction,
+  updateOwnerVenueImageCaptionAction,
 } from "../actions";
 import { getOwnerVenue, getOwnerVenueImages } from "../lib/data";
+import EmptyStateCard from "@/components/EmptyStateCard";
 import { OwnerBlobImageUpload } from "@/components/owner/OwnerBlobImageUpload";
 
 type OwnerImagesPageProps = {
@@ -47,13 +50,18 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
         <label htmlFor="owner-image-url" className="text-sm font-medium text-zinc-200">
           Add image URL
         </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <input
             id="owner-image-url"
             name="imageUrl"
             type="url"
             required
             placeholder="https://example.com/venue-image.jpg"
+            className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+          <input
+            name="caption"
+            placeholder="Optional caption"
             className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
           />
           <button type="submit" className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
@@ -63,9 +71,29 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
       </form>
 
       {images.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-300">
-          No images yet. Add your first image URL above.
-        </div>
+        <EmptyStateCard
+          className="mt-6"
+          icon="gallery"
+          eyebrow="Empty Gallery"
+          title="No gallery images yet"
+          description="Add your first venue photo to make your page stand out in discovery and event views."
+          actions={
+            <>
+              <a
+                href="#owner-image-url"
+                className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                Add First Image
+              </a>
+              <Link
+                href="/owner/venue"
+                className="rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+              >
+                Edit Venue Profile
+              </Link>
+            </>
+          }
+        />
       ) : (
         <div className="mt-6 grid gap-3">
           {images.map((image, index) => (
@@ -85,6 +113,18 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">Sort #{image.sortOrder}</p>
                 <p className="mt-2 break-all text-sm text-zinc-200">{image.imageUrl}</p>
+                <form action={updateOwnerVenueImageCaptionAction} className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input type="hidden" name="imageId" value={image.id} />
+                  <input
+                    name="caption"
+                    defaultValue={image.caption ?? ""}
+                    placeholder="Add caption"
+                    className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
+                  />
+                  <button type="submit" className="rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs text-zinc-100">
+                    Save caption
+                  </button>
+                </form>
               </div>
               <div className="flex flex-wrap gap-2">
                 <form action={setOwnerVenueCoverImageAction}>

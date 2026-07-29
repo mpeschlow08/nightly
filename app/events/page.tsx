@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import EmptyStateCard from "@/components/EmptyStateCard";
 import EventCard from "@/components/EventCard";
 import { genres } from "@/data/nightly";
 import { nightlyEvents } from "@/data/events";
@@ -244,12 +245,30 @@ export default function EventsPage() {
               ))}
             </div>
           ) : (
-            <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-              <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">No matches</p>
-              <h3 className="mt-3 text-2xl font-semibold text-white">Try widening your filters</h3>
-              <p className="mt-3 text-sm leading-7 text-zinc-400">The current mix is a little too narrow for tonight’s city pulse. Reset the controls and browse the full lineup again.</p>
-              <button type="button" onClick={clearFilters} className="mt-6 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90">Reset Filters</button>
-            </div>
+            <EmptyStateCard
+              className="mt-8"
+              icon="events"
+              eyebrow="No Matches"
+              title="No events match this filter set"
+              description="The current combination is too narrow for tonight's pulse. Reset filters or explore venues to quickly discover more options."
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+                  >
+                    Reset Filters
+                  </button>
+                  <Link
+                    href="/discover"
+                    className="rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+                  >
+                    Browse Venues
+                  </Link>
+                </>
+              }
+            />
           )}
         </main>
       </div>

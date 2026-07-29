@@ -50,6 +50,27 @@
       "when": 1785182403000,
       "tag": "0006_parched_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785349667512,
+      "tag": "0007_huge_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785352559855,
+      "tag": "0008_neat_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785352935746,
+      "tag": "0009_flowery_lake",
+      "breakpoints": true
     }
   ]
 }

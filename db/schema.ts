@@ -8,10 +8,12 @@ import {
   serial,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const userRoleEnum = pgEnum("user_role", ["consumer", "dj", "owner", "admin"]);
+export const venueMemberRoleEnum = pgEnum("venue_member_role", ["owner", "manager"]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -79,6 +81,7 @@ export const venues = pgTable("venues", {
   id: serial("id").primaryKey(),
 
   name: text("name").notNull(),
+  description: text("description"),
   city: text("city"),
 
   slug: text("slug"),
@@ -89,6 +92,9 @@ export const venues = pgTable("venues", {
   address: text("address"),
   phone: text("phone"),
   websiteUrl: text("website_url"),
+  priceLevel: integer("price_level"),
+  dressCode: text("dress_code"),
+  ageRequirement: integer("age_requirement"),
   openingHoursJson: text("opening_hours_json"),
   latitude: real("latitude"),
   longitude: real("longitude"),
@@ -114,12 +120,34 @@ export const venues = pgTable("venues", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const venueMembers = pgTable(
+  "venue_members",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    clerkUserId: text("clerk_user_id").notNull(),
+    role: venueMemberRoleEnum("role").notNull().default("owner"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdIdx: index("venue_members_venue_id_idx").on(table.venueId),
+    clerkUserIdIdx: index("venue_members_clerk_user_id_idx").on(table.clerkUserId),
+    venueUserUnique: unique("venue_members_venue_id_clerk_user_id_unique").on(
+      table.venueId,
+      table.clerkUserId
+    ),
+  })
+);
+
 export const venueImages = pgTable("venue_images", {
   id: serial("id").primaryKey(),
   venueId: integer("venue_id")
     .notNull()
     .references(() => venues.id, { onDelete: "cascade" }),
   imageUrl: text("image_url").notNull(),
+  caption: text("caption"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -136,11 +164,15 @@ export const events = pgTable("events", {
   endTime: text("end_time"),
   startsAt: timestamp("starts_at").notNull(),
   endsAt: timestamp("ends_at"),
+  coverImageUrl: text("cover_image_url"),
+  ticketUrl: text("ticket_url"),
   coverCents: integer("cover_cents").notNull().default(0),
+  ageRequirement: integer("age_requirement"),
   genre: text("genre"),
   dressCode: text("dress_code"),
   isFeatured: boolean("is_featured").notNull().default(false),
   is21Plus: boolean("is_21_plus").notNull().default(false),
+  isPublished: boolean("is_published").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -155,3 +187,23 @@ export const venueBusinessHours = pgTable("venue_business_hours", {
   isClosed: boolean("is_closed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const venueCameras = pgTable(
+  "venue_cameras",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    streamUrl: text("stream_url").notNull(),
+    streamType: text("stream_type").notNull(),
+    status: text("status").notNull().default("enabled"),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdIdx: index("venue_cameras_venue_id_idx").on(table.venueId),
+    isPrimaryIdx: index("venue_cameras_is_primary_idx").on(table.isPrimary),
+  })
+);

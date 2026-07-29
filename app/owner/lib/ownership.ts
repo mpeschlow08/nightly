@@ -1,12 +1,41 @@
+import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { events, venueImages } from "@/db/schema";
+import { events, venueCameras, venueImages, venueMembers, venues } from "@/db/schema";
 
-import { getMockOwnerVenueId } from "./mock-owner";
+export async function getCurrentOwnerVenue() {
+  const { userId: clerkUserId } = await auth();
 
-export function assertMockOwnerVenueId(venueId: number) {
-  const expectedVenueId = getMockOwnerVenueId();
+  if (!clerkUserId) {
+    throw new Error("Unauthorized. Please sign in.");
+  }
+
+  const [membership] = await db
+    .select({
+      venueId: venues.id,
+      role: venueMembers.role,
+      venue: venues,
+    })
+    .from(venueMembers)
+    .innerJoin(venues, eq(venueMembers.venueId, venues.id))
+    .where(eq(venueMembers.clerkUserId, clerkUserId))
+    .limit(1);
+
+  if (!membership?.venue) {
+    throw new Error("Forbidden. You do not have venue access.");
+  }
+
+  return {
+    venueId: membership.venueId,
+    role: membership.role,
+    venue: membership.venue,
+    clerkUserId,
+  };
+}
+
+export async function assertCurrentOwnerVenueId(venueId: number) {
+  const { venueId: expectedVenueId } = await getCurrentOwnerVenue();
 
   if (venueId !== expectedVenueId) {
     throw new Error("Unauthorized venue access.");
@@ -15,7 +44,7 @@ export function assertMockOwnerVenueId(venueId: number) {
   return venueId;
 }
 
-export async function ensureImageOwnedByMockOwner(imageId: number) {
+export async function ensureImageOwnedByCurrentOwner(imageId: number) {
   const [image] = await db
     .select({ id: venueImages.id, venueId: venueImages.venueId, sortOrder: venueImages.sortOrder })
     .from(venueImages)
@@ -26,12 +55,12 @@ export async function ensureImageOwnedByMockOwner(imageId: number) {
     throw new Error("Image not found.");
   }
 
-  assertMockOwnerVenueId(image.venueId);
+  await assertCurrentOwnerVenueId(image.venueId);
 
   return image;
 }
 
-export async function ensureEventOwnedByMockOwner(eventId: number) {
+export async function ensureEventOwnedByCurrentOwner(eventId: number) {
   const [event] = await db
     .select({ id: events.id, venueId: events.venueId })
     .from(events)
@@ -42,7 +71,23 @@ export async function ensureEventOwnedByMockOwner(eventId: number) {
     throw new Error("Event not found.");
   }
 
-  assertMockOwnerVenueId(event.venueId);
+  await assertCurrentOwnerVenueId(event.venueId);
 
   return event;
+}
+
+export async function ensureCameraOwnedByCurrentOwner(cameraId: number) {
+  const [camera] = await db
+    .select({ id: venueCameras.id, venueId: venueCameras.venueId, isPrimary: venueCameras.isPrimary })
+    .from(venueCameras)
+    .where(eq(venueCameras.id, cameraId))
+    .limit(1);
+
+  if (!camera) {
+    throw new Error("Camera not found.");
+  }
+
+  await assertCurrentOwnerVenueId(camera.venueId);
+
+  return camera;
 }

@@ -20,7 +20,7 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
     <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
       <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Venue Profile</p>
       <h2 className="mt-3 text-2xl font-semibold text-white">Edit Venue Details</h2>
-      <p className="mt-2 text-sm text-zinc-300">Update consumer-facing venue fields for your mock-owner venue.</p>
+      <p className="mt-2 text-sm text-zinc-300">Update consumer-facing venue fields for your assigned venue.</p>
 
       {params.success ? (
         <div className="mt-5 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -101,6 +101,19 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
         </div>
 
         <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-description" className="text-sm font-medium text-zinc-200">
+            Description
+          </label>
+          <textarea
+            id="owner-venue-description"
+            name="description"
+            rows={3}
+            defaultValue={venue.description ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
           <label htmlFor="owner-venue-tagline" className="text-sm font-medium text-zinc-200">
             Tagline
           </label>
@@ -136,14 +149,57 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
           />
         </div>
 
-        <div>
-          <label htmlFor="owner-venue-genre" className="text-sm font-medium text-zinc-200">
-            Genre
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-genres" className="text-sm font-medium text-zinc-200">
+            Music genres
           </label>
           <input
-            id="owner-venue-genre"
-            name="genre"
-            defaultValue={venue.genres?.[0] ?? ""}
+            id="owner-venue-genres"
+            name="genres"
+            defaultValue={venue.genres?.join(", ") ?? ""}
+            placeholder="House, Techno, Open Format"
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="owner-venue-price-level" className="text-sm font-medium text-zinc-200">
+            Price level (1-4)
+          </label>
+          <input
+            id="owner-venue-price-level"
+            name="priceLevel"
+            type="number"
+            min="1"
+            max="4"
+            defaultValue={venue.priceLevel ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="owner-venue-age-requirement" className="text-sm font-medium text-zinc-200">
+            Age requirement
+          </label>
+          <input
+            id="owner-venue-age-requirement"
+            name="ageRequirement"
+            type="number"
+            min="0"
+            max="25"
+            defaultValue={venue.ageRequirement ?? ""}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="owner-venue-dress-code" className="text-sm font-medium text-zinc-200">
+            Dress code
+          </label>
+          <input
+            id="owner-venue-dress-code"
+            name="dressCode"
+            defaultValue={venue.dressCode ?? ""}
             className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"
           />
         </div>

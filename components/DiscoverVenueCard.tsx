@@ -19,7 +19,7 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
           : "bg-emerald-400";
 
   return (
-    <article className="group overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_24px_80px_rgba(0,0,0,0.36)]">
+    <article className="nightly-card nightly-card-interactive group overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 backdrop-blur-xl">
       <div className={`relative h-56 bg-gradient-to-br ${venue.imageClass}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.24),_transparent_50%)]" />
         {venue.isLive ? (
@@ -32,14 +32,14 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
           <button
             type="button"
             onClick={onToggleSave}
-            className="rounded-full border border-white/20 bg-black/35 px-3 py-2 text-sm text-white transition hover:border-cyan-400/40 hover:text-cyan-200"
+            className="nightly-btn-secondary rounded-full border border-white/20 bg-black/35 px-3 py-2 text-sm text-white hover:text-cyan-200"
             aria-label={isSaved ? `Remove ${venue.name} from saved` : `Save ${venue.name}`}
           >
             {isSaved ? "♥" : "♡"}
           </button>
           <button
             type="button"
-            className="rounded-full border border-white/20 bg-black/35 px-3 py-2 text-sm text-white transition hover:border-cyan-400/40 hover:text-cyan-200"
+            className="nightly-btn-secondary rounded-full border border-white/20 bg-black/35 px-3 py-2 text-sm text-white hover:text-cyan-200"
             aria-label={`Share ${venue.name}`}
           >
             ↗
@@ -105,13 +105,13 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
             href={`/venues/${venue.slug}`}
-            className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-center text-sm font-medium text-zinc-100 transition hover:border-cyan-400/40 hover:bg-white/10"
+            className="nightly-btn-secondary flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-center text-sm font-medium text-zinc-100 hover:bg-white/10"
           >
             View Details
           </Link>
           <button
             type="button"
-            className="flex-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-center text-sm font-medium text-white transition hover:opacity-90"
+            className="nightly-btn-primary flex-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-center text-sm font-medium text-white hover:opacity-90"
           >
             Share
           </button>

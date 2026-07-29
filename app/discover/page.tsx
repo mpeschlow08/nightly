@@ -5,6 +5,7 @@ import { useEffect, useMemo,useState } from "react";
 
 
 import DiscoverVenueCard from "@/components/DiscoverVenueCard";
+import EmptyStateCard from "@/components/EmptyStateCard";
 import { genres } from "@/data/nightly";
 
 type SortOption = "recommended" | "closest" | "highest-vibe" | "lowest-cover";
@@ -340,19 +341,30 @@ useEffect(() => {
               ))}
             </div>
           ) : (
-            <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-              <p className="text-2xl font-semibold text-white">No venues matched that combo yet.</p>
-              <p className="mt-3 text-base leading-7 text-zinc-400">
-                Try widening the filters or resetting them to bring the city’s best rooms back into view.
-              </p>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="mt-6 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
-              >
-                Reset Filters
-              </button>
-            </div>
+            <EmptyStateCard
+              className="mt-8"
+              icon="venues"
+              eyebrow="No Venues"
+              title="No venues match this combo yet"
+              description="Your filters are currently too specific. Open the search and reset controls to bring top spots back into view."
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
+                  >
+                    Reset Filters
+                  </button>
+                  <Link
+                    href="/events"
+                    className="rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm text-zinc-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+                  >
+                    Explore Events
+                  </Link>
+                </>
+              }
+            />
           )}
         </main>
       </div>

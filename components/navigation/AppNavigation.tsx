@@ -63,8 +63,9 @@ const roleItems: Record<Exclude<AppRole, null>, NavItem[]> = {
     { label: "Venue Profile", href: "/owner/venue" },
     { label: "Events", href: "/owner/events" },
     { label: "Gallery", href: "/owner/images" },
+    { label: "Cameras", href: "/owner/cameras" },
     { label: "Analytics", comingSoon: true },
-    { label: "Settings", href: "/profile" },
+    { label: "Settings", href: "/owner/settings" },
     { label: "Switch Account Type", href: "/select-role?changeRole=1" },
     { label: "Consumer Home", href: "/home" },
   ],
@@ -129,6 +130,8 @@ function getPageTitle(pathname: string) {
   if (pathname === "/owner/venue") return "Venue Profile";
   if (pathname === "/owner/events") return "Owner Events";
   if (pathname === "/owner/images") return "Owner Gallery";
+  if (pathname === "/owner/cameras") return "Owner Cameras";
+  if (pathname === "/owner/settings") return "Owner Settings";
   if (pathname === "/owner/hours") return "Business Hours";
   if (pathname === "/admin") return "Admin Dashboard";
   if (pathname === "/admin/analytics") return "Admin Analytics";
@@ -166,6 +169,13 @@ function getUsefulBreadcrumbs(pathname: string): Breadcrumb[] {
     ];
   }
 
+  if (pathname === "/owner/cameras") {
+    return [
+      { label: "Owner Dashboard", href: "/owner/dashboard" },
+      { label: "Cameras" },
+    ];
+  }
+
   if (pathname === "/owner/venue") {
     return [
       { label: "Owner Dashboard", href: "/owner/dashboard" },
@@ -177,6 +187,13 @@ function getUsefulBreadcrumbs(pathname: string): Breadcrumb[] {
     return [
       { label: "Owner Dashboard", href: "/owner/dashboard" },
       { label: "Business Hours" },
+    ];
+  }
+
+  if (pathname === "/owner/settings") {
+    return [
+      { label: "Owner Dashboard", href: "/owner/dashboard" },
+      { label: "Settings" },
     ];
   }
 
@@ -204,7 +221,7 @@ function BackButton({ onBack }: BackButtonProps) {
     <button
       type="button"
       onClick={onBack}
-      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+      className="nightly-btn-secondary inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100"
     >
       <span aria-hidden="true">←</span>
       Back
@@ -265,7 +282,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
   };
 
   if (shouldHide) {
-    return <>{children}</>;
+    return <div className="nightly-route-transition">{children}</div>;
   }
 
   return (
@@ -324,7 +341,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen((value) => !value)}
-                    className="inline-flex items-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/10 lg:hidden"
+                    className="nightly-btn-secondary inline-flex items-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100 lg:hidden"
                     aria-expanded={mobileMenuOpen}
                     aria-label="Toggle mobile navigation menu"
                   >
@@ -360,7 +377,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
               <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  className="rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+                  className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
                   aria-label="Notifications placeholder"
                   title="Notifications (placeholder)"
                 >
@@ -368,7 +385,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
                 </button>
                 <Link
                   href="/profile"
-                  className="rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+                  className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
                   aria-label="Settings"
                   title="Settings"
                 >
@@ -381,7 +398,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
                 ) : (
                   <Link
                     href="/sign-in"
-                    className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10"
+                    className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-200"
                   >
                     Sign in
                   </Link>
@@ -425,7 +442,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
             </div>
           ) : null}
 
-          <main className="min-h-0 flex-1 pb-24 lg:pb-6">{children}</main>
+          <main className="nightly-route-transition min-h-0 flex-1 pb-24 lg:pb-6">{children}</main>
 
           <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#04070b]/90 px-2 py-2 backdrop-blur-xl lg:hidden">
             <div className="mx-auto grid max-w-3xl grid-cols-4 gap-2 text-xs">

@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 
-import { assertMockOwnerVenueId } from "@/app/owner/lib/ownership";
+import { assertCurrentOwnerVenueId } from "@/app/owner/lib/ownership";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const MAX_GALLERY_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const { venueId, uploadType } = parseClientPayload(clientPayload);
-        assertMockOwnerVenueId(venueId);
+        await assertCurrentOwnerVenueId(venueId);
 
         const pathPrefix = expectedPathPrefix(venueId, uploadType);
 
