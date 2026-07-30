@@ -56,6 +56,7 @@ export default function ProfilePage() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
             <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={user.imageUrl} alt={user.username ?? "User"} className="h-16 w-16 rounded-full border border-cyan-400/30 object-cover" />
               <div>
                 <p className="text-lg font-semibold text-white">{user.username ?? user.firstName ?? "Night Owl"}</p>

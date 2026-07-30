@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 
 import EventImage from "@/components/media/EventImage";
+import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 
 type EventDiscoveryCardProps = {
   href: string;
@@ -12,6 +15,7 @@ type EventDiscoveryCardProps = {
   ticketStatus?: string;
   imageUrl: string;
   isLive: boolean;
+  reason?: string;
   animationDelayMs?: number;
 };
 
@@ -25,6 +29,7 @@ export default function EventDiscoveryCard({
   ticketStatus,
   imageUrl,
   isLive,
+  reason,
   animationDelayMs = 0,
 }: EventDiscoveryCardProps) {
   return (
@@ -45,13 +50,25 @@ export default function EventDiscoveryCard({
 
       <div className="space-y-2.5 p-3.5">
         <h3 className="line-clamp-1 text-[1.02rem] font-semibold tracking-tight text-white">
-          <Link href={href}>{name}</Link>
+          <Link
+            href={href}
+            onClick={() => {
+              void trackDiscoveryInteraction({
+                event: "recommendation_click",
+                recommendationType: "event",
+                itemId: href,
+              });
+            }}
+          >
+            {name}
+          </Link>
         </h3>
         <p className="line-clamp-1 text-xs text-zinc-400">{venueName} • {neighborhood}</p>
         <div className="flex items-center justify-between text-xs text-zinc-300">
           <span>{startTime}</span>
           <span>{ticketStatus ?? (typeof cover === "number" ? `$${cover}` : "Tickets")}</span>
         </div>
+        {reason ? <p className="line-clamp-1 text-[11px] text-cyan-200/90">{reason}</p> : null}
       </div>
     </article>
   );

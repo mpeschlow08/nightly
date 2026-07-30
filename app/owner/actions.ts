@@ -116,54 +116,6 @@ function asDateTimeLocal(value: FormDataEntryValue | null, label: string) {
   return parsed;
 }
 
-function asDateInput(value: FormDataEntryValue | null, label: string) {
-  const raw = typeof value === "string" ? value.trim() : "";
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    throw new Error(`${label} must be a valid date.`);
-  }
-
-  return raw;
-}
-
-function asRequiredTimeInput(value: FormDataEntryValue | null, label: string) {
-  const raw = typeof value === "string" ? value.trim() : "";
-
-  if (!raw) {
-    throw new Error(`${label} is required.`);
-  }
-
-  if (!/^\d{2}:\d{2}$/.test(raw)) {
-    throw new Error(`${label} must be a valid time.`);
-  }
-
-  return raw;
-}
-
-function asOptionalTimeInputEvent(value: FormDataEntryValue | null, label: string) {
-  const raw = typeof value === "string" ? value.trim() : "";
-
-  if (!raw) {
-    return null;
-  }
-
-  if (!/^\d{2}:\d{2}$/.test(raw)) {
-    throw new Error(`${label} must be a valid time.`);
-  }
-
-  return raw;
-}
-
-function composeDateTime(dateInput: string, timeInput: string, label: string) {
-  const composed = new Date(`${dateInput}T${timeInput}`);
-
-  if (Number.isNaN(composed.getTime())) {
-    throw new Error(`${label} is invalid.`);
-  }
-
-  return composed;
-}
-
 function asOptionalDateTimeLocal(value: FormDataEntryValue | null, label: string) {
   const raw = typeof value === "string" ? value.trim() : "";
 
@@ -268,6 +220,23 @@ function normalizeGenre(value: FormDataEntryValue | null) {
     .split(",")
     .map((genre) => genre.trim())
     .filter((genre) => genre.length > 0);
+}
+
+function moderationRequiredForEvents() {
+  return process.env.EVENT_APPROVAL_REQUIRED === "true";
+}
+
+function normalizeEventType(
+  value: FormDataEntryValue | null
+): "event" | "special" | "guest_list" | "reservation" {
+  const text = asNonEmptyString(value, "Event type").toLowerCase();
+  const allowed = new Set(["event", "special", "guest_list", "reservation"]);
+
+  if (!allowed.has(text)) {
+    throw new Error("Event type must be event, special, guest_list, or reservation.");
+  }
+
+  return text as "event" | "special" | "guest_list" | "reservation";
 }
 
 function normalizeHttpUrl(value: FormDataEntryValue | null) {
@@ -984,11 +953,19 @@ export async function createOwnerEventAction(formData: FormData) {
     const endsAt = asOptionalDateTimeLocal(formData.get("endsAt"), "End date/time");
     const coverImageUrl = asOptionalHttpUrl(formData.get("coverImageUrl"), "Cover image URL");
     const ticketUrl = asOptionalHttpUrl(formData.get("ticketUrl"), "Ticket URL");
+    const guestListUrl = asOptionalHttpUrl(formData.get("guestListUrl"), "Guest list URL");
+    const reservationUrl = asOptionalHttpUrl(formData.get("reservationUrl"), "Reservation URL");
     const coverCents = asCurrencyCents(formData.get("priceDollars"), "Price");
     const ageRequirement = asOptionalBoundedInt(formData.get("ageRequirement"), "Age requirement", 0, 25);
     const genre = asOptionalString(formData.get("genre"));
     const dressCode = asOptionalString(formData.get("dressCode"));
-    const isPublished = asBoolean(formData.get("isPublished"));
+    const eventType = normalizeEventType(formData.get("eventType"));
+    const recurrenceRule = asOptionalString(formData.get("recurrenceRule"));
+    const specialDetails = asOptionalString(formData.get("specialDetails"));
+    const wantsPublished = asBoolean(formData.get("isPublished"));
+    const approvalStatus = moderationRequiredForEvents() ? "pending" : "approved";
+    const isPublished = moderationRequiredForEvents() ? false : wantsPublished;
+    const publicationStatus = isPublished ? "published" : moderationRequiredForEvents() ? "pending_review" : "draft";
 
     if (endsAt && endsAt <= startsAt) {
       throw new Error("End time must be later than start time.");
@@ -1005,13 +982,20 @@ export async function createOwnerEventAction(formData: FormData) {
       endsAt,
       coverImageUrl,
       ticketUrl,
+      guestListUrl,
+      reservationUrl,
+      eventType,
+      recurrenceRule,
+      specialDetails,
       coverCents,
       ageRequirement,
       genre,
       dressCode,
+      approvalStatus,
       isFeatured: false,
       is21Plus: (ageRequirement ?? 0) >= 21,
       isPublished,
+      publicationStatus,
     });
 
     revalidateOwnerAndVenue(venueId);
@@ -1042,11 +1026,19 @@ export async function updateOwnerEventAction(formData: FormData) {
     const endsAt = asOptionalDateTimeLocal(formData.get("endsAt"), "End date/time");
     const coverImageUrl = asOptionalHttpUrl(formData.get("coverImageUrl"), "Cover image URL");
     const ticketUrl = asOptionalHttpUrl(formData.get("ticketUrl"), "Ticket URL");
+    const guestListUrl = asOptionalHttpUrl(formData.get("guestListUrl"), "Guest list URL");
+    const reservationUrl = asOptionalHttpUrl(formData.get("reservationUrl"), "Reservation URL");
     const coverCents = asCurrencyCents(formData.get("priceDollars"), "Price");
     const ageRequirement = asOptionalBoundedInt(formData.get("ageRequirement"), "Age requirement", 0, 25);
     const genre = asOptionalString(formData.get("genre"));
     const dressCode = asOptionalString(formData.get("dressCode"));
-    const isPublished = asBoolean(formData.get("isPublished"));
+    const eventType = normalizeEventType(formData.get("eventType"));
+    const recurrenceRule = asOptionalString(formData.get("recurrenceRule"));
+    const specialDetails = asOptionalString(formData.get("specialDetails"));
+    const wantsPublished = asBoolean(formData.get("isPublished"));
+    const approvalStatus = moderationRequiredForEvents() ? "pending" : "approved";
+    const isPublished = moderationRequiredForEvents() ? false : wantsPublished;
+    const publicationStatus = isPublished ? "published" : moderationRequiredForEvents() ? "pending_review" : "draft";
 
     if (endsAt && endsAt <= startsAt) {
       throw new Error("End time must be later than start time.");
@@ -1064,13 +1056,20 @@ export async function updateOwnerEventAction(formData: FormData) {
         endsAt,
         coverImageUrl,
         ticketUrl,
+        guestListUrl,
+        reservationUrl,
+        eventType,
+        recurrenceRule,
+        specialDetails,
         coverCents,
         ageRequirement,
         genre,
         dressCode,
+        approvalStatus,
         isFeatured: false,
         is21Plus: (ageRequirement ?? 0) >= 21,
         isPublished,
+        publicationStatus,
       })
       .where(eq(events.id, eventId));
 

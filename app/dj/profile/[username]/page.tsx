@@ -142,6 +142,7 @@ export default async function DjPublicProfilePage({ params }: DjPublicProfilePag
                   <p className="mt-2 text-sm leading-6 text-zinc-300">{featuredMix.description}</p>
                 ) : null}
                 {featuredMix.coverImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={featuredMix.coverImageUrl}
                     alt={`${featuredMix.title} cover art`}

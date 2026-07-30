@@ -10,7 +10,7 @@ export type UserRole = SelectableUserRole | "admin";
 const destinationByRole: Record<UserRole, string> = {
   consumer: "/home",
   dj: "/dj/onboarding",
-  owner: "/owner/dashboard",
+  owner: "/owner/claim",
   admin: "/admin/analytics",
 };
 

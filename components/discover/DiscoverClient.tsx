@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import ExploreDjCard from "@/components/explore/ExploreDjCard";
 import ExploreFilterChips from "@/components/explore/ExploreFilterChips";
@@ -12,8 +13,10 @@ import NightlyImage from "@/components/media/NightlyImage";
 import EventDiscoveryCard from "@/components/home/EventDiscoveryCard";
 import VenueDiscoveryCard from "@/components/home/VenueDiscoveryCard";
 import type { ExploreDataPayload } from "@/lib/consumer/types";
+import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 
 const QUICK_FILTERS = ["Live Now", "Trending", "No Cover", "Hip-Hop", "House", "Afrobeats", "Downtown"];
+const SORT_OPTIONS = ["recommended", "trending", "distance", "rating", "starting-soon"] as const;
 
 function normalize(value: string) {
   return value.toLowerCase().trim();
@@ -24,9 +27,56 @@ type DiscoverClientProps = {
 };
 
 export default function DiscoverClient({ initialData }: DiscoverClientProps) {
-  const [query, setQuery] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<string[]>(["Live Now"]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]>(
+    (searchParams.get("sort") as (typeof SORT_OPTIONS)[number]) ?? "recommended"
+  );
+  const [selectedFilters, setSelectedFilters] = useState<string[]>(
+    searchParams.get("filters")?.split(",").filter(Boolean) ?? ["Live Now"]
+  );
   const [selectedMapVenueId, setSelectedMapVenueId] = useState<number | null>(initialData.venues[0]?.id ?? null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (query.trim()) {
+      params.set("q", query.trim());
+    } else {
+      params.delete("q");
+    }
+
+    if (selectedFilters.length > 0) {
+      params.set("filters", selectedFilters.join(","));
+    } else {
+      params.delete("filters");
+    }
+
+    params.set("sort", sortBy);
+
+    const next = params.toString();
+    const current = searchParams.toString();
+    if (next !== current) {
+      router.replace(`/discover?${next}`);
+    }
+  }, [query, selectedFilters, sortBy, router, searchParams]);
+
+  useEffect(() => {
+    void trackDiscoveryInteraction({
+      event: "filter_applied",
+      recommendationType: "discover",
+      explanationCategory: sortBy,
+      activeFilters: selectedFilters,
+    });
+  }, [selectedFilters, sortBy]);
+
+  useEffect(() => {
+    void trackDiscoveryInteraction({
+      event: "city_pulse_opened",
+      recommendationType: "discover",
+    });
+  }, []);
 
   const toggleFilter = (chip: string) => {
     setSelectedFilters((current) =>
@@ -69,6 +119,25 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
     });
   }, [initialData.venues, queryValue, selectedFilters]);
 
+  const sortedVenues = useMemo(() => {
+    return [...filteredVenues].sort((a, b) => {
+      if (sortBy === "distance") {
+        const parse = (value: string | null) => Number.parseFloat(value?.replace(/[^\d.]/g, "") || "999");
+        return parse(a.distanceLabel) - parse(b.distanceLabel);
+      }
+
+      if (sortBy === "trending") {
+        return Number(b.liveLabel === "TRENDING") - Number(a.liveLabel === "TRENDING") || Number(b.isLive) - Number(a.isLive);
+      }
+
+      if (sortBy === "rating") {
+        return Number(b.recommendationReasonCode === "top-rated") - Number(a.recommendationReasonCode === "top-rated");
+      }
+
+      return Number(b.isLive) - Number(a.isLive);
+    });
+  }, [filteredVenues, sortBy]);
+
   const filteredEvents = useMemo(() => {
     const chips = selectedFilters.map(normalize);
 
@@ -100,6 +169,24 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
       return matchesQuery && matchesChips;
     });
   }, [initialData.events, queryValue, selectedFilters]);
+
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      if (sortBy === "distance") {
+        return (a.distanceMiles ?? 999) - (b.distanceMiles ?? 999);
+      }
+
+      if (sortBy === "starting-soon") {
+        return a.startTimeLabel.localeCompare(b.startTimeLabel);
+      }
+
+      if (sortBy === "trending") {
+        return Number(b.recommendationReasonCode === "trending") - Number(a.recommendationReasonCode === "trending");
+      }
+
+      return Number(b.isLive) - Number(a.isLive);
+    });
+  }, [filteredEvents, sortBy]);
 
   const filteredDjs = useMemo(() => {
     const chips = selectedFilters.map(normalize);
@@ -140,19 +227,21 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
   );
 
   const recentlyViewed = useMemo(
-    () => (filteredVenues.length > 0 ? filteredVenues.slice(0, 6) : initialData.venues.slice(0, 6)),
-    [filteredVenues, initialData.venues]
+    () => (sortedVenues.length > 0 ? sortedVenues.slice(0, 6) : initialData.venues.slice(0, 6)),
+    [sortedVenues, initialData.venues]
   );
 
   const trendingVenues = useMemo(
-    () => filteredVenues.filter((venue) => venue.liveLabel === "TRENDING"),
-    [filteredVenues]
+    () => sortedVenues.filter((venue) => venue.liveLabel === "TRENDING"),
+    [sortedVenues]
   );
 
   const mapPreviewVenues = useMemo(
-    () => (filteredVenues.length > 0 ? filteredVenues.slice(0, 6) : initialData.venues.slice(0, 6)),
-    [filteredVenues, initialData.venues]
+    () => (sortedVenues.length > 0 ? sortedVenues.slice(0, 6) : initialData.venues.slice(0, 6)),
+    [sortedVenues, initialData.venues]
   );
+
+  const noResults = sortedVenues.length === 0 && sortedEvents.length === 0;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#04070b] text-zinc-100 antialiased">
@@ -177,12 +266,54 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
               onClear={() => setQuery("")}
               onOpenFilters={() => setSelectedFilters((current) => (current.length > 0 ? [] : ["Live Now"]))}
             />
+            <div className="mx-auto mt-2 flex gap-2 px-4 sm:px-5 lg:px-6">
+              <label className="text-xs text-zinc-400" htmlFor="discover-sort">Sort</label>
+              <select
+                id="discover-sort"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-zinc-200"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option} value={option} className="bg-[#060a14]">
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
             <ExploreFilterChips
               chips={QUICK_FILTERS}
               selected={selectedFilters}
               onToggle={toggleFilter}
             />
           </section>
+
+          <section className="mx-auto mt-4 px-4 sm:px-5 lg:px-6">
+            <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200/80">AI City Pulse</p>
+              <h2 className="mt-1 text-base font-semibold text-white">{initialData.cityPulse.headline}</h2>
+              <p className="mt-1 text-sm text-zinc-300">{initialData.cityPulse.summary}</p>
+            </div>
+          </section>
+
+          {noResults ? (
+            <section className="mx-auto mt-5 px-4 sm:px-5 lg:px-6">
+              <div className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-zinc-200">No results match these filters.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setSelectedFilters([]);
+                    setSortBy("recommended");
+                  }}
+                  className="mt-3 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-zinc-200"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           <ExploreMiniMapPreview
             venues={mapPreviewVenues}
@@ -193,7 +324,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
           <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
             <ExploreSectionHeader title="Trending Venues" href="/discover" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
-              {(trendingVenues.length > 0 ? trendingVenues : initialData.venues.slice(0, 6)).map((venue, index) => (
+              {(trendingVenues.length > 0 ? trendingVenues : sortedVenues.slice(0, 6)).map((venue, index) => (
                 <VenueDiscoveryCard key={venue.id} venue={venue} animationDelayMs={index * 45} />
               ))}
             </div>
@@ -202,7 +333,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
           <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
             <ExploreSectionHeader title="Events Near You" href="/events" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
-              {(filteredEvents.length > 0 ? filteredEvents : initialData.events.slice(0, 5)).map((event, index) => (
+              {(sortedEvents.length > 0 ? sortedEvents : initialData.events.slice(0, 5)).map((event, index) => (
                 <EventDiscoveryCard
                   key={event.id}
                   href={event.href}
@@ -213,11 +344,23 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
                   ticketStatus={event.ticketStatus}
                   imageUrl={event.imageUrl}
                   isLive={event.isLive}
+                  reason={event.recommendationReason}
                   animationDelayMs={index * 45}
                 />
               ))}
             </div>
           </section>
+
+          {initialData.friendsInterestedVenues.length > 0 ? (
+            <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+              <ExploreSectionHeader title="Friends Are Interested" href="/crews" />
+              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
+                {initialData.friendsInterestedVenues.map((venue, index) => (
+                  <VenueDiscoveryCard key={`friend-venue-${venue.id}`} venue={venue} animationDelayMs={index * 45} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
             <ExploreSectionHeader title="Featured DJs" href="/events" />

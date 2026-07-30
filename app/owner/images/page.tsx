@@ -99,6 +99,7 @@ export default async function OwnerImagesPage({ searchParams }: OwnerImagesPageP
           {images.map((image, index) => (
             <article key={image.id} className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:grid-cols-[100px_1fr_auto] lg:items-center">
               <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={image.imageUrl}
                   alt={`Venue image ${index + 1}`}

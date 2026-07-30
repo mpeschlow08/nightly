@@ -1,4 +1,6 @@
-const NIGHTLIFE_CUTOFF_HOUR = 6;
+import { DISCOVERY_DEFAULTS } from "@/lib/discovery/constants";
+
+const NIGHTLIFE_CUTOFF_HOUR = DISCOVERY_DEFAULTS.nightlifeCutoffHour;
 
 function utcPartsForZone(date: Date, timeZone: string) {
   const formatter = new Intl.DateTimeFormat("en-US", {

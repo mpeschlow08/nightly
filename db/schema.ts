@@ -14,6 +14,23 @@ import { sql } from "drizzle-orm";
 
 export const userRoleEnum = pgEnum("user_role", ["consumer", "dj", "owner", "admin"]);
 export const venueMemberRoleEnum = pgEnum("venue_member_role", ["owner", "manager"]);
+export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected", "claimed"]);
+export const moderationStatusEnum = pgEnum("moderation_status", ["pending", "approved", "rejected"]);
+export const eventTypeEnum = pgEnum("event_type", [
+  "event",
+  "special",
+  "guest_list",
+  "reservation",
+]);
+export const eventLifecycleStatusEnum = pgEnum("event_lifecycle_status", [
+  "draft",
+  "scheduled",
+  "published",
+  "live",
+  "completed",
+  "cancelled",
+  "archived",
+]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -121,6 +138,10 @@ export const venues = pgTable(
     parkingInformation: text("parking_information"),
     valetAvailable: boolean("valet_available"),
     coverChargeInformation: text("cover_charge_information"),
+    vipAvailable: boolean("vip_available"),
+    bottleServiceAvailable: boolean("bottle_service_available"),
+    socialLinksJson: text("social_links_json"),
+    contactEmail: text("contact_email"),
     averageRating: real("average_rating"),
     reviewCount: integer("review_count"),
     publicationStatus: text("publication_status").notNull().default("published"),
@@ -202,6 +223,7 @@ export const events = pgTable(
       .references(() => venues.id, { onDelete: "cascade" }),
     slug: text("slug"),
     title: text("title").notNull(),
+    subtitle: text("subtitle"),
     description: text("description"),
     eventDate: timestamp("event_date").notNull(),
     startTime: text("start_time").notNull(),
@@ -210,19 +232,50 @@ export const events = pgTable(
     endsAt: timestamp("ends_at"),
     timezone: text("timezone").default("America/New_York"),
     coverImageUrl: text("cover_image_url"),
+    galleryImagesJson: text("gallery_images_json"),
+    flyerImageUrlsJson: text("flyer_image_urls_json"),
+    promoVideoUrlsJson: text("promo_video_urls_json"),
+    importedVenueImageUrlsJson: text("imported_venue_image_urls_json"),
+    ownerUploadedImageUrlsJson: text("owner_uploaded_image_urls_json"),
     ticketUrl: text("ticket_url"),
     guestListUrl: text("guest_list_url"),
+    reservationUrl: text("reservation_url"),
+    tableReservationUrl: text("table_reservation_url"),
+    vipReservationUrl: text("vip_reservation_url"),
+    bottleServiceUrl: text("bottle_service_url"),
+    rsvpUrl: text("rsvp_url"),
+    eventType: eventTypeEnum("event_type").notNull().default("event"),
+    recurrenceRule: text("recurrence_rule"),
+    recurrenceType: text("recurrence_type"),
+    recurrenceInterval: integer("recurrence_interval"),
+    recurrenceWeekdaysJson: text("recurrence_weekdays_json"),
+    recurrenceDayOfMonth: integer("recurrence_day_of_month"),
+    recurrenceEndsAt: timestamp("recurrence_ends_at"),
+    recurrenceExceptionDatesJson: text("recurrence_exception_dates_json"),
+    recurrenceHolidayOverridesJson: text("recurrence_holiday_overrides_json"),
+    specialDetails: text("special_details"),
     ticketStatus: text("ticket_status").default("on_sale"),
     coverCents: integer("cover_cents").notNull().default(0),
     ageRequirement: integer("age_requirement"),
     genre: text("genre"),
     genresJson: text("genres_json"),
     dressCode: text("dress_code"),
+    capacity: integer("capacity"),
+    doorsOpenAt: timestamp("doors_open_at"),
     isFeatured: boolean("is_featured").notNull().default(false),
     featuredStatus: text("featured_status").notNull().default("none"),
     is21Plus: boolean("is_21_plus").notNull().default(false),
+    visibility: text("visibility").notNull().default("public"),
+    isRecurring: boolean("is_recurring").notNull().default(false),
+    lifecycleStatus: eventLifecycleStatusEnum("lifecycle_status").notNull().default("draft"),
+    scheduledFor: timestamp("scheduled_for"),
+    publishedAt: timestamp("published_at"),
+    completedAt: timestamp("completed_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    archivedAt: timestamp("archived_at"),
     isPublished: boolean("is_published").notNull().default(false),
     publicationStatus: text("publication_status").notNull().default("draft"),
+    approvalStatus: moderationStatusEnum("approval_status").notNull().default("approved"),
     isCanceled: boolean("is_canceled").notNull().default(false),
     isArchived: boolean("is_archived").notNull().default(false),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -233,6 +286,238 @@ export const events = pgTable(
     venueIdIdx: index("events_venue_id_idx").on(table.venueId),
     startsAtIdx: index("events_starts_at_idx").on(table.startsAt),
     publicationStatusIdx: index("events_publication_status_idx").on(table.publicationStatus),
+    lifecycleStatusIdx: index("events_lifecycle_status_idx").on(table.lifecycleStatus),
+  })
+);
+
+export const eventLineup = pgTable(
+  "event_lineup",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    djProfileId: integer("dj_profile_id").references(() => djProfiles.id, { onDelete: "set null" }),
+    guestDjName: text("guest_dj_name"),
+    performanceStartsAt: timestamp("performance_starts_at"),
+    performanceEndsAt: timestamp("performance_ends_at"),
+    isFeaturedDj: boolean("is_featured_dj").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    eventIdIdx: index("event_lineup_event_id_idx").on(table.eventId),
+    djProfileIdIdx: index("event_lineup_dj_profile_id_idx").on(table.djProfileId),
+  })
+);
+
+export const eventRecurrenceInstances = pgTable(
+  "event_recurrence_instances",
+  {
+    id: serial("id").primaryKey(),
+    sourceEventId: integer("source_event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    instanceEventId: integer("instance_event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    occurrenceDate: timestamp("occurrence_date").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    sourceEventIdx: index("event_recurrence_instances_source_event_id_idx").on(table.sourceEventId),
+    instanceEventIdx: index("event_recurrence_instances_instance_event_id_idx").on(table.instanceEventId),
+    sourceOccurrenceUnique: unique("event_recurrence_instances_source_occurrence_unique").on(
+      table.sourceEventId,
+      table.occurrenceDate
+    ),
+  })
+);
+
+export const eventModerationFlags = pgTable(
+  "event_moderation_flags",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    flaggedByClerkUserId: text("flagged_by_clerk_user_id").notNull(),
+    reason: text("reason").notNull(),
+    notes: text("notes"),
+    status: text("status").notNull().default("open"),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    eventIdIdx: index("event_moderation_flags_event_id_idx").on(table.eventId),
+    statusIdx: index("event_moderation_flags_status_idx").on(table.status),
+  })
+);
+
+export const eventRevisionRequests = pgTable(
+  "event_revision_requests",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    requestedByClerkUserId: text("requested_by_clerk_user_id").notNull(),
+    notes: text("notes").notNull(),
+    status: text("status").notNull().default("open"),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    eventIdIdx: index("event_revision_requests_event_id_idx").on(table.eventId),
+    statusIdx: index("event_revision_requests_status_idx").on(table.status),
+  })
+);
+
+export const eventAnalyticsDaily = pgTable(
+  "event_analytics_daily",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    metricDate: timestamp("metric_date").notNull(),
+    trafficSource: text("traffic_source").notNull().default("direct"),
+    views: integer("views").notNull().default(0),
+    favorites: integer("favorites").notNull().default(0),
+    shares: integer("shares").notNull().default(0),
+    guestListRequests: integer("guest_list_requests").notNull().default(0),
+    reservationRequests: integer("reservation_requests").notNull().default(0),
+    ticketClicks: integer("ticket_clicks").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    eventDateIdx: index("event_analytics_daily_event_date_idx").on(table.eventId, table.metricDate),
+    sourceIdx: index("event_analytics_daily_source_idx").on(table.trafficSource),
+    eventDateUnique: unique("event_analytics_daily_event_source_date_unique").on(
+      table.eventId,
+      table.trafficSource,
+      table.metricDate
+    ),
+  })
+);
+
+export const eventNotificationOutbox = pgTable(
+  "event_notification_outbox",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    notificationType: text("notification_type").notNull(),
+    payloadJson: text("payload_json").notNull(),
+    status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    scheduledAt: timestamp("scheduled_at").defaultNow().notNull(),
+    sentAt: timestamp("sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    eventIdIdx: index("event_notification_outbox_event_id_idx").on(table.eventId),
+    statusIdx: index("event_notification_outbox_status_idx").on(table.status),
+  })
+);
+
+export const venueClaimRequests = pgTable(
+  "venue_claim_requests",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    claimantClerkUserId: text("claimant_clerk_user_id").notNull(),
+    claimantRole: text("claimant_role").notNull().default("owner"),
+    businessEmail: text("business_email").notNull(),
+    businessPhone: text("business_phone").notNull(),
+    websiteUrl: text("website_url"),
+    notes: text("notes"),
+    venueName: text("venue_name").notNull(),
+    venueAddress: text("venue_address").notNull(),
+    venueCategory: text("venue_category"),
+    googlePlaceId: text("google_place_id"),
+    status: claimStatusEnum("status").notNull().default("pending"),
+    adminNotes: text("admin_notes"),
+    reviewedByClerkUserId: text("reviewed_by_clerk_user_id"),
+    reviewedAt: timestamp("reviewed_at"),
+    claimedAt: timestamp("claimed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdIdx: index("venue_claim_requests_venue_id_idx").on(table.venueId),
+    claimantIdx: index("venue_claim_requests_claimant_idx").on(table.claimantClerkUserId),
+    statusIdx: index("venue_claim_requests_status_idx").on(table.status),
+    googlePlaceIdIdx: index("venue_claim_requests_google_place_id_idx").on(table.googlePlaceId),
+  })
+);
+
+export const venueProfileChangeRequests = pgTable(
+  "venue_profile_change_requests",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    submittedByClerkUserId: text("submitted_by_clerk_user_id").notNull(),
+    previousValuesJson: text("previous_values_json").notNull(),
+    proposedValuesJson: text("proposed_values_json").notNull(),
+    status: moderationStatusEnum("status").notNull().default("pending"),
+    reviewNotes: text("review_notes"),
+    reviewedByClerkUserId: text("reviewed_by_clerk_user_id"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdIdx: index("venue_profile_change_requests_venue_id_idx").on(table.venueId),
+    statusIdx: index("venue_profile_change_requests_status_idx").on(table.status),
+    submittedByIdx: index("venue_profile_change_requests_submitted_by_idx").on(table.submittedByClerkUserId),
+  })
+);
+
+export const venuePublishHistory = pgTable(
+  "venue_publish_history",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    actorClerkUserId: text("actor_clerk_user_id").notNull(),
+    action: text("action").notNull(),
+    previousStatus: text("previous_status"),
+    nextStatus: text("next_status"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdIdx: index("venue_publish_history_venue_id_idx").on(table.venueId),
+    actionIdx: index("venue_publish_history_action_idx").on(table.action),
+  })
+);
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: serial("id").primaryKey(),
+    actorClerkUserId: text("actor_clerk_user_id").notNull(),
+    actorRole: text("actor_role"),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    action: text("action").notNull(),
+    previousValuesJson: text("previous_values_json"),
+    nextValuesJson: text("next_values_json"),
+    metadataJson: text("metadata_json"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    entityIdx: index("audit_logs_entity_idx").on(table.entityType, table.entityId),
+    actorIdx: index("audit_logs_actor_idx").on(table.actorClerkUserId),
+    actionIdx: index("audit_logs_action_idx").on(table.action),
   })
 );
 

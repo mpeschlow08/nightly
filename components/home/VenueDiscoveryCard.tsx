@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import VenueImage from "@/components/media/VenueImage";
 import type { ConsumerVenueCard } from "@/lib/consumer/types";
+import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 
 type VenueDiscoveryCardProps = {
   venue: ConsumerVenueCard;
@@ -41,7 +42,16 @@ export default function VenueDiscoveryCard({
 
         <button
           type="button"
-          onClick={() => setIsFavorite((value) => !value)}
+          onClick={() => {
+            const next = !isFavorite;
+            setIsFavorite(next);
+            void trackDiscoveryInteraction({
+              event: next ? "recommendation_save" : "recommendation_dismiss",
+              recommendationType: "venue",
+              itemId: venue.id,
+              explanationCategory: venue.recommendationReasonCode,
+            });
+          }}
           aria-label={isFavorite ? `Unfavorite ${venue.name}` : `Favorite ${venue.name}`}
           className="nightly-btn-secondary absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/45 text-sm text-white backdrop-blur"
         >
@@ -52,7 +62,18 @@ export default function VenueDiscoveryCard({
       <div className="space-y-2.5 p-3.5">
         <div>
           <h3 className="line-clamp-1 text-[1.02rem] font-semibold tracking-tight text-white">
-            <Link href={venue.href} className="focus-visible:outline-none">
+            <Link
+              href={venue.href}
+              className="focus-visible:outline-none"
+              onClick={() => {
+                void trackDiscoveryInteraction({
+                  event: "recommendation_click",
+                  recommendationType: "venue",
+                  itemId: venue.id,
+                  explanationCategory: venue.recommendationReasonCode,
+                });
+              }}
+            >
               {venue.name}
             </Link>
           </h3>
@@ -65,6 +86,10 @@ export default function VenueDiscoveryCard({
             </span>
             <span className="text-xs text-zinc-300">{venue.distanceLabel ?? venue.neighborhood}</span>
         </div>
+
+        {venue.recommendationReason ? (
+          <p className="line-clamp-1 text-[11px] text-cyan-200/90">{venue.recommendationReason}</p>
+        ) : null}
 
         {venue.crowdLevel ? (
           <div className="flex items-center gap-2 text-xs text-zinc-300">

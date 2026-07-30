@@ -1,21 +1,25 @@
 import { unstable_cache } from "next/cache";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { resolveVenueImages } from "@/app/lib/venue-images";
 import { db } from "@/db";
-import { djProfiles, events, venueCameras, venueImages, venues } from "@/db/schema";
+import { djProfiles, eventAnalyticsDaily, events, venueCameras, venueImages, venues } from "@/db/schema";
 import { formatDistanceMiles, distanceMilesBetween } from "@/lib/consumer/distance";
 import {
-  buildCategoryInsights,
-  buildCityPulseSummary,
-  buildNeighborhoodInsights,
-  rankDiscoveryEvents,
-  rankLiveVenues,
-  rankPopularNearbyVenues,
-  rankRecommendedVenues,
-  rankTrendingVenues,
-  rankVenueSearchResults,
-} from "@/lib/consumer/discovery-engine";
+  buildHomeSections,
+  buildDiscoveryDebugSnapshot,
+  createDiscoveryProfile,
+  getNeighborhoodDiscovery,
+  getPersonalizedEventRecommendations,
+  getPersonalizedVenueRecommendations,
+  getTrendingEvents,
+  getTrendingVenues,
+  getFriendAwareRecommendations,
+  getCityPulse,
+} from "@/lib/discovery/service";
+import { venueSocialSignals, eventSocialSignals } from "@/lib/discovery/social-signals";
+import type { DiscoveryEventCandidate, DiscoveryProfile, DiscoveryVenueCandidate } from "@/lib/discovery/types";
 import {
   fixturesEnabled,
   getFixtureExploreData,
@@ -32,6 +36,7 @@ import type {
   ConsumerDJCard,
   ConsumerEventCard,
   ConsumerEventDetail,
+  ConsumerCityPulse,
   ConsumerVenueCard,
   ConsumerVenueDetail,
   ExploreDataPayload,
@@ -343,89 +348,279 @@ async function getPublicEventRows(now: Date) {
   return rows.filter((row) => isEventPublic(row.event, row.venue, now));
 }
 
-export const getHomeData = unstable_cache(
+function toConsumerCityPulse(pulse: ReturnType<typeof getCityPulse>): ConsumerCityPulse {
+  return {
+    headline: pulse.headline,
+    summary: pulse.summary,
+    facts: pulse.facts,
+    generatedAtIso: pulse.generatedAt.toISOString(),
+    freshness: pulse.freshness,
+    actionTargets: pulse.actionTargets ?? [],
+  };
+}
+
+async function getEventPopularitySignals(eventIds: number[]) {
+  if (eventIds.length === 0) {
+    return new Map<number, { views: number; saves: number; shares: number }>();
+  }
+
+  const rows = await db
+    .select({
+      eventId: eventAnalyticsDaily.eventId,
+      views: sql<number>`sum(${eventAnalyticsDaily.views})::int`,
+      favorites: sql<number>`sum(${eventAnalyticsDaily.favorites})::int`,
+      shares: sql<number>`sum(${eventAnalyticsDaily.shares})::int`,
+    })
+    .from(eventAnalyticsDaily)
+    .where(inArray(eventAnalyticsDaily.eventId, eventIds))
+    .groupBy(eventAnalyticsDaily.eventId);
+
+  const result = new Map<number, { views: number; saves: number; shares: number }>();
+  for (const row of rows) {
+    result.set(row.eventId, {
+      views: row.views ?? 0,
+      saves: row.favorites ?? 0,
+      shares: row.shares ?? 0,
+    });
+  }
+
+  return result;
+}
+
+type DiscoveryDataset = {
+  venueCandidates: DiscoveryVenueCandidate[];
+  eventCandidates: DiscoveryEventCandidate[];
+  venueCards: ConsumerVenueCard[];
+  eventCards: ConsumerEventCard[];
+};
+
+async function buildDiscoveryDataset(now: Date): Promise<DiscoveryDataset> {
+  const venueRows = await getPublicVenueRows();
+  const venueIds = venueRows.map((venue) => venue.id);
+
+  const [imageMap, liveFlags, eventRows] = await Promise.all([
+    getVenueImageRows(venueIds),
+    getLiveFlags(venueIds, now),
+    getPublicEventRows(now),
+  ]);
+
+  const venueCards = venueRows.map((venue) =>
+    toVenueCardModel({
+      venue,
+      imageRows: imageMap.get(venue.id) ?? [],
+      hasCameraLive: liveFlags.cameraLive.has(venue.id),
+      hasLiveEvent: liveFlags.eventLive.has(venue.id),
+    })
+  );
+
+  const eventsForCards = eventRows.map((row) => toEventCardModel(row.event, row.venue, now));
+  const eventSignalMap = await getEventPopularitySignals(eventsForCards.map((event) => event.id));
+  const venueCardById = new Map(venueCards.map((venue) => [venue.id, venue]));
+
+  const venueCandidatesBase: DiscoveryVenueCandidate[] = venueRows.map((venue) => {
+    const venueCard = venueCardById.get(venue.id)!;
+    const hasEventTonight = eventRows.some((eventRow) => eventRow.event.venueId === venue.id && isInTonightWindow(
+      eventRow.event.startsAt,
+      eventRow.event.endsAt,
+      now,
+      venueTimezone(eventRow.event.timezone ?? eventRow.venue.timezone)
+    ));
+
+    return {
+      venue: venueCard,
+      categories: parseStringArrayJson(venue.venueCategoriesJson),
+      priceLevel: venue.priceLevel ?? null,
+      ageRequirement: venue.ageRequirement ?? null,
+      averageRating: venue.averageRating ?? null,
+      reviewCount: venue.reviewCount ?? null,
+      isPublished: venue.publicationStatus === "published" || venue.publicationStatus === "approved",
+      isVerified: venue.verificationStatus === "verified",
+      isArchived: Boolean(venue.archivedAt),
+      isSuspended: Boolean(venue.suspendedAt),
+      isOpenNow: Boolean(venue.isOpenNow),
+      hasLivePreview: Boolean(venue.livePreviewAvailable),
+      hasEventTonight,
+      updatedAt: venue.updatedAt ?? null,
+      social: { interestedFriends: 0, activeFriends: 0 },
+    };
+  });
+
+  const profileForSocial = createDiscoveryProfile({ clerkUserId: null });
+  const venueSocialMap = venueSocialSignals(venueCandidatesBase, profileForSocial);
+  const venueCandidates = venueCandidatesBase.map((candidate) => ({
+    ...candidate,
+    social: venueSocialMap.get(candidate.venue.id) ?? { interestedFriends: 0, activeFriends: 0 },
+  }));
+
+  const eventCandidatesBase: DiscoveryEventCandidate[] = eventRows.map((row) => {
+    const eventCard = eventsForCards.find((event) => event.id === row.event.id)!;
+    const venueCard = venueCardById.get(row.venue.id)!;
+    const popularity = eventSignalMap.get(row.event.id) ?? { views: 0, saves: 0, shares: 0 };
+
+    return {
+      event: eventCard,
+      venue: venueCard,
+      eventType: row.event.eventType,
+      startsAt: row.event.startsAt,
+      endsAt: row.event.endsAt,
+      timezone: venueTimezone(row.event.timezone ?? row.venue.timezone),
+      publicationStatus: row.event.publicationStatus,
+      lifecycleStatus: row.event.lifecycleStatus,
+      approvalStatus: row.event.approvalStatus,
+      isCancelled: row.event.isCanceled,
+      isArchived: row.event.isArchived,
+      isFeatured: row.event.isFeatured,
+      coverCents: row.event.coverCents,
+      views: popularity.views,
+      saves: popularity.saves,
+      shares: popularity.shares,
+      social: { interestedFriends: 0, attendingFriends: 0 },
+    };
+  });
+
+  const eventSocialMap = eventSocialSignals(eventCandidatesBase, profileForSocial);
+  const eventCandidates = eventCandidatesBase.map((candidate) => ({
+    ...candidate,
+    social: eventSocialMap.get(candidate.event.id) ?? { interestedFriends: 0, attendingFriends: 0 },
+  }));
+
+  return {
+    venueCandidates,
+    eventCandidates,
+    venueCards,
+    eventCards: eventsForCards,
+  };
+}
+
+async function resolveViewerProfile(baseDataset: DiscoveryDataset): Promise<{ profile: DiscoveryProfile; cacheScope: "public" | "user" }> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { profile: createDiscoveryProfile({ clerkUserId: null }), cacheScope: "public" };
+  }
+
+  const viewer = await currentUser();
+  const metadata = (viewer?.unsafeMetadata ?? {}) as Record<string, unknown>;
+  const profile = createDiscoveryProfile({
+    clerkUserId: userId,
+    metadata,
+    discoveredGenres: baseDataset.eventCards.slice(0, 6).flatMap((event) => event.genres),
+    discoveredNeighborhoods: baseDataset.venueCards.slice(0, 6).map((venue) => venue.neighborhood),
+  });
+
+  return { profile, cacheScope: "user" };
+}
+
+async function buildHomeDataForProfile(profile: DiscoveryProfile, now: Date, dataset: DiscoveryDataset): Promise<HomeDataPayload> {
+  const sections = buildHomeSections({
+    venues: dataset.venueCandidates,
+    events: dataset.eventCandidates,
+    profile,
+    now,
+  });
+
+  const trending = getTrendingVenues(dataset.venueCandidates, profile, now, 8);
+  const recommended = getPersonalizedVenueRecommendations({
+    venues: dataset.venueCandidates,
+    profile,
+    now,
+    limit: 8,
+  });
+  const popularNearby = getPersonalizedVenueRecommendations({
+    venues: dataset.venueCandidates,
+    profile,
+    now,
+    filters: { sort: "distance" },
+    limit: 8,
+  });
+  const eventsTonight = getTrendingEvents(dataset.eventCandidates, profile, now, 8);
+
+  const cityPulseSummary = sections.cityPulse.summary;
+
+  return {
+    heroSummary: {
+      greeting: "Good evening, Atlanta",
+      title: "Atlanta is buzzing tonight.",
+      subtitle: cityPulseSummary,
+    },
+    cityPulse: toConsumerCityPulse(sections.cityPulse),
+    tonightTopPicks: sections.topPicks,
+    eventsStartingSoon: sections.startingSoon,
+    vibeForYou: sections.topPicks,
+    trendingNeighborhoods: sections.neighborhoods.map((item) => ({
+      id: slugify(item.name),
+      name: item.name,
+      summary: `${item.venueCount} venues • ${item.liveVenueCount} live`,
+      imageUrl: dataset.venueCards.find((venue) => venue.neighborhood === item.name)?.heroImageUrl ?? "/assets/nightly-fallback-image.svg",
+      href: `/discover?neighborhood=${encodeURIComponent(item.name)}`,
+    })),
+    friendsInterestedVenues: sections.friendVenuePicks,
+    friendsInterestedEvents: sections.friendEventPicks,
+    liveTonight: sections.liveRightNow,
+    trending: trending.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    eventsTonight: eventsTonight.map((item) => ({ ...item.event, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    popularNearby: popularNearby.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    recommended: recommended.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+  };
+}
+
+const getPublicHomeDataCached = unstable_cache(
   async (): Promise<HomeDataPayload> => {
     const now = new Date();
-    const venueRows = await getPublicVenueRows();
-
-    if (venueRows.length === 0 && fixturesEnabled()) {
+    const dataset = await buildDiscoveryDataset(now);
+    if (dataset.venueCards.length === 0 && fixturesEnabled()) {
       return getFixtureHomeData();
     }
 
-    const venueIds = venueRows.map((venue) => venue.id);
-    const [imageMap, liveFlags, eventRows] = await Promise.all([
-      getVenueImageRows(venueIds),
-      getLiveFlags(venueIds, now),
-      getPublicEventRows(now),
-    ]);
-
-    const venuesForCards = venueRows.map((venue) =>
-      toVenueCardModel({
-        venue,
-        imageRows: imageMap.get(venue.id) ?? [],
-        hasCameraLive: liveFlags.cameraLive.has(venue.id),
-        hasLiveEvent: liveFlags.eventLive.has(venue.id),
-      })
-    );
-
-    const eventsForCards = eventRows.map((row) => toEventCardModel(row.event, row.venue, now));
-    const eventsTonight = eventsForCards.filter((event) => event.dateLabel.toLowerCase().includes("tonight"));
-    const preferredGenres = Array.from(new Set(eventsTonight.flatMap((event) => event.genres)));
-
-    const trending = rankTrendingVenues(venuesForCards, 8);
-    const liveTonight = rankLiveVenues(venuesForCards, 8);
-    const recommended = rankRecommendedVenues(venuesForCards, { preferredGenres }, 8);
-    const popularNearby = rankPopularNearbyVenues(venuesForCards, 8);
-    const rankedEventsTonight = rankDiscoveryEvents(eventsTonight, 8);
-    const cityPulse = buildCityPulseSummary({ venues: venuesForCards, events: eventsForCards, now });
-
-    return {
-      heroSummary: {
-        greeting: "Good evening, Atlanta",
-        title: "Atlanta is buzzing tonight.",
-        subtitle: cityPulse,
-      },
-      liveTonight,
-      trending,
-      eventsTonight: rankedEventsTonight,
-      popularNearby,
-      recommended,
-    };
+    const profile = createDiscoveryProfile({ clerkUserId: null });
+    return buildHomeDataForProfile(profile, now, dataset);
   },
   ["consumer-home-data"],
-  { revalidate: 60, tags: ["consumer:home", "consumer:venues", "consumer:events"] }
+  { revalidate: 45, tags: ["consumer:home", "consumer:venues", "consumer:events"] }
 );
 
-export const getExploreData = unstable_cache(
+export async function getHomeData(): Promise<HomeDataPayload> {
+  const now = new Date();
+  const dataset = await buildDiscoveryDataset(now);
+  if (dataset.venueCards.length === 0 && fixturesEnabled()) {
+    return getFixtureHomeData();
+  }
+
+  const viewer = await resolveViewerProfile(dataset);
+  if (viewer.cacheScope === "public") {
+    return getPublicHomeDataCached();
+  }
+
+  return buildHomeDataForProfile(viewer.profile, now, dataset);
+}
+
+const getPublicExploreDataCached = unstable_cache(
   async (): Promise<ExploreDataPayload> => {
     const now = new Date();
-    const venueRows = await getPublicVenueRows();
+    const dataset = await buildDiscoveryDataset(now);
 
-    if (venueRows.length === 0 && fixturesEnabled()) {
-      return getFixtureExploreData();
+    if (dataset.venueCards.length === 0 && fixturesEnabled()) {
+      return {
+        ...getFixtureExploreData(),
+        cityPulse: {
+          headline: "No public data yet",
+          summary: "Add published venues and events to power City Pulse.",
+          facts: [],
+          generatedAtIso: now.toISOString(),
+          freshness: "pending data",
+          actionTargets: [],
+        },
+        friendsInterestedVenues: [],
+        friendsInterestedEvents: [],
+      };
     }
 
-    const venueIds = venueRows.map((venue) => venue.id);
-    const [imageMap, liveFlags, eventRows, djs] = await Promise.all([
-      getVenueImageRows(venueIds),
-      getLiveFlags(venueIds, now),
-      getPublicEventRows(now),
-      db.select().from(djProfiles).orderBy(desc(djProfiles.createdAt)).limit(40),
-    ]);
+    const profile = createDiscoveryProfile({ clerkUserId: null });
+    const rankedVenues = getPersonalizedVenueRecommendations({ venues: dataset.venueCandidates, profile, now, limit: 50 });
+    const rankedEvents = getPersonalizedEventRecommendations({ events: dataset.eventCandidates, profile, now, limit: 50 });
+    const neighborhoods = getNeighborhoodDiscovery(dataset.venueCandidates, dataset.eventCandidates, profile, 10);
+    const cityPulse = toConsumerCityPulse(getCityPulse(dataset.venueCandidates, dataset.eventCandidates, now));
 
-    const venuesForCards = venueRows.map((venue) =>
-      toVenueCardModel({
-        venue,
-        imageRows: imageMap.get(venue.id) ?? [],
-        hasCameraLive: liveFlags.cameraLive.has(venue.id),
-        hasLiveEvent: liveFlags.eventLive.has(venue.id),
-      })
-    );
-
-    const eventsForCards = eventRows.map((row) => toEventCardModel(row.event, row.venue, now));
-    const rankedVenues = rankTrendingVenues(venuesForCards, 50);
-    const rankedEvents = rankDiscoveryEvents(eventsForCards, 50);
-
+    const djs = await db.select().from(djProfiles).orderBy(desc(djProfiles.createdAt)).limit(40);
     const djCards: ConsumerDJCard[] = djs.map((dj) => ({
       id: dj.id,
       name: dj.stageName,
@@ -433,42 +628,64 @@ export const getExploreData = unstable_cache(
       genres: dj.genres,
       imageUrl: dj.profileImageUrl,
       performingAt: dj.residentVenueName,
-      isPerformingTonight: Boolean(
-        rankedEvents.find((event) => event.venueName === (dj.residentVenueName ?? "") && event.isLive)
-      ),
+      isPerformingTonight: Boolean(rankedEvents.find((event) => event.event.venueName === (dj.residentVenueName ?? "") && event.event.isLive)),
     }));
 
-    const neighborhoods = buildNeighborhoodInsights(rankedVenues, rankedEvents, 10).map((insight) => ({
-      id: slugify(insight.name),
-      name: insight.name,
-      summary: `${insight.venueCount} venues • ${insight.liveVenueCount} live`,
-      imageUrl:
-        rankedVenues.find((venue) => venue.neighborhood === insight.name)?.heroImageUrl ??
-        "/assets/nightly-fallback-image.svg",
-      href: `/discover?neighborhood=${encodeURIComponent(insight.name)}`,
+    const categories = Array.from(new Set(rankedVenues.flatMap((row) => row.venue.genres))).slice(0, 12).map((name) => ({
+      id: slugify(name),
+      name,
+      subtitle: `${rankedVenues.filter((row) => row.venue.genres.includes(name)).length} venues`,
+      imageUrl: rankedVenues.find((row) => row.venue.genres.includes(name))?.venue.heroImageUrl ?? "/assets/nightly-fallback-image.svg",
+      href: `/discover?genre=${encodeURIComponent(name)}`,
     }));
 
-    const categories = buildCategoryInsights(rankedVenues, 12).map((insight) => ({
-      id: slugify(insight.name),
-      name: insight.name,
-      subtitle: `${insight.venueCount} venues`,
-      imageUrl:
-        rankedVenues.find((venue) => venue.genres.includes(insight.name))?.heroImageUrl ??
-        "/assets/nightly-fallback-image.svg",
-      href: `/discover?genre=${encodeURIComponent(insight.name)}`,
-    }));
+    const friendAware = getFriendAwareRecommendations({ venues: dataset.venueCandidates, events: dataset.eventCandidates, profile, now, limit: 8 });
 
     return {
-      venues: rankedVenues,
-      events: rankedEvents,
+      venues: rankedVenues.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+      events: rankedEvents.map((item) => ({ ...item.event, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
       djs: djCards,
-      neighborhoods,
+      neighborhoods: neighborhoods.map((insight) => ({
+        id: slugify(insight.name),
+        name: insight.name,
+        summary: `${insight.venueCount} venues • ${insight.liveVenueCount} live`,
+        imageUrl: rankedVenues.find((venue) => venue.venue.neighborhood === insight.name)?.venue.heroImageUrl ?? "/assets/nightly-fallback-image.svg",
+        href: `/discover?neighborhood=${encodeURIComponent(insight.name)}`,
+      })),
       categories,
+      cityPulse,
+      friendsInterestedVenues: friendAware.venues.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+      friendsInterestedEvents: friendAware.events.map((item) => ({ ...item.event, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
     };
   },
   ["consumer-explore-data"],
-  { revalidate: 60, tags: ["consumer:explore", "consumer:venues", "consumer:events", "consumer:djs"] }
+  { revalidate: 45, tags: ["consumer:explore", "consumer:venues", "consumer:events", "consumer:djs"] }
 );
+
+export async function getExploreData(): Promise<ExploreDataPayload> {
+  const dataset = await buildDiscoveryDataset(new Date());
+  const viewer = await resolveViewerProfile(dataset);
+
+  if (viewer.cacheScope === "public") {
+    return getPublicExploreDataCached();
+  }
+
+  const now = new Date();
+  const profile = viewer.profile;
+  const base = await getPublicExploreDataCached();
+  const rankedVenues = getPersonalizedVenueRecommendations({ venues: dataset.venueCandidates, profile, now, limit: 50 });
+  const rankedEvents = getPersonalizedEventRecommendations({ events: dataset.eventCandidates, profile, now, limit: 50 });
+  const friendAware = getFriendAwareRecommendations({ venues: dataset.venueCandidates, events: dataset.eventCandidates, profile, now, limit: 8 });
+
+  return {
+    ...base,
+    venues: rankedVenues.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    events: rankedEvents.map((item) => ({ ...item.event, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    friendsInterestedVenues: friendAware.venues.map((item) => ({ ...item.venue, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    friendsInterestedEvents: friendAware.events.map((item) => ({ ...item.event, recommendationReason: item.reason, recommendationReasonCode: item.reasonCode, recommendationBadges: item.badges })),
+    cityPulse: toConsumerCityPulse(getCityPulse(dataset.venueCandidates, dataset.eventCandidates, now)),
+  };
+}
 
 export async function searchVenues(query: string) {
   const term = query.trim();
@@ -504,7 +721,23 @@ export async function searchVenues(query: string) {
     })
   );
 
-  return rankVenueSearchResults(term, cards, 20);
+  const search = term.toLowerCase();
+  const terms = search.split(/\s+/).filter(Boolean);
+
+  return [...cards]
+    .sort((a, b) => {
+      const score = (venue: ConsumerVenueCard) => {
+        const haystack = [venue.name, venue.neighborhood, venue.genre, ...venue.genres].join(" ").toLowerCase();
+        const exact = venue.name.toLowerCase().startsWith(search) ? 1.2 : 0;
+        const full = haystack.includes(search) ? 1 : 0;
+        const partial = terms.reduce((count, token) => count + Number(haystack.includes(token)), 0) * 0.2;
+        const liveBoost = venue.isLive ? 0.25 : 0;
+        return exact + full + partial + liveBoost;
+      };
+
+      return score(b) - score(a) || a.id - b.id;
+    })
+    .slice(0, 20);
 }
 
 export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDetail | null> {
@@ -698,38 +931,31 @@ export async function getFeaturedDJsForVenue(venueName: string, limit = 8) {
 export const getLiveData = unstable_cache(
   async (): Promise<LiveDataPayload> => {
     const now = new Date();
-    const venueRows = await getPublicVenueRows();
+    const dataset = await buildDiscoveryDataset(now);
 
-    if (venueRows.length === 0 && fixturesEnabled()) {
+    if (dataset.venueCards.length === 0 && fixturesEnabled()) {
       return getFixtureLiveData();
     }
+    const profile = createDiscoveryProfile({ clerkUserId: null });
+    const rankedVenueRows = getPersonalizedVenueRecommendations({
+      venues: dataset.venueCandidates,
+      profile,
+      now,
+      filters: { liveNow: true },
+      limit: 12,
+    });
+    const rankedEventRows = getPersonalizedEventRecommendations({
+      events: dataset.eventCandidates,
+      profile,
+      now,
+      filters: { liveNow: true },
+      limit: 12,
+    });
 
-    const venueIds = venueRows.map((venue) => venue.id);
-    const [imageMap, liveFlags, eventRows, djRows] = await Promise.all([
-      getVenueImageRows(venueIds),
-      getLiveFlags(venueIds, now),
-      getPublicEventRows(now),
-      db.select().from(djProfiles).orderBy(desc(djProfiles.createdAt)).limit(20),
-    ]);
+    const venueCards = rankedVenueRows.map((item) => item.venue);
+    const liveEvents = rankedEventRows.map((item) => item.event);
 
-    const venueCards = rankLiveVenues(
-      venueRows.map((venue) =>
-        toVenueCardModel({
-          venue,
-          imageRows: imageMap.get(venue.id) ?? [],
-          hasCameraLive: liveFlags.cameraLive.has(venue.id),
-          hasLiveEvent: liveFlags.eventLive.has(venue.id),
-        })
-      ),
-      12
-    );
-
-    const liveEvents = rankDiscoveryEvents(
-      eventRows
-        .map((row) => toEventCardModel(row.event, row.venue, now))
-        .filter((event) => event.isLive),
-      12
-    );
+    const djRows = await db.select().from(djProfiles).orderBy(desc(djProfiles.createdAt)).limit(20);
 
     const liveDjs = djRows
       .map((dj) => ({
@@ -743,7 +969,7 @@ export const getLiveData = unstable_cache(
       }))
       .slice(0, 12);
 
-    const summary = buildCityPulseSummary({ venues: venueCards, events: liveEvents, now });
+    const summary = getCityPulse(dataset.venueCandidates, dataset.eventCandidates, now).summary;
 
     return {
       summary,
@@ -778,4 +1004,18 @@ export async function getPublishedEventCount() {
     .where(eq(events.publicationStatus, "published"));
 
   return result?.count ?? 0;
+}
+
+export async function getAdminDiscoveryDebugSnapshot() {
+  const now = new Date();
+  const dataset = await buildDiscoveryDataset(now);
+  const viewer = await resolveViewerProfile(dataset);
+
+  return buildDiscoveryDebugSnapshot({
+    venueCandidates: dataset.venueCandidates,
+    eventCandidates: dataset.eventCandidates,
+    profile: viewer.profile,
+    now,
+    cacheScope: viewer.cacheScope,
+  });
 }

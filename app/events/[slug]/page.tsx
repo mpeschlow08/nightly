@@ -7,6 +7,7 @@ import EventSectionHeading from "@/components/event/detail/EventSectionHeading";
 import RelatedEventCard from "@/components/event/detail/RelatedEventCard";
 import HeroImage from "@/components/media/HeroImage";
 import VenueImage from "@/components/media/VenueImage";
+import { activeTonight, getFriendById } from "@/data/link-up";
 import {
   getEventBySlug,
   getUpcomingEvents,
@@ -27,6 +28,19 @@ function fallbackLineup(eventTitle: string) {
     { name: "Guest Set", time: "12:30 AM" },
     { name: "Late Night Closer", time: "2:00 AM" },
   ];
+}
+
+function friendPulseForVenue(venueName: string) {
+  const normalized = venueName.toLowerCase().trim();
+  const attending = activeTonight
+    .filter((item) => item.venue.toLowerCase().trim() === normalized)
+    .map((item) => getFriendById(item.friendId)?.displayName)
+    .filter((item): item is string => Boolean(item));
+
+  return {
+    attending,
+    interested: attending.length > 0 ? attending.slice(0, 2) : [],
+  };
 }
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
@@ -52,10 +66,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const galleryImages = [event.artworkImageUrl, venuePreview?.heroImageUrl, venuePreview?.thumbnailImageUrl]
     .filter((item): item is string => Boolean(item));
 
-  const friendPulse = {
-    interested: ["Kai", "Jordan", "Riley"],
-    attending: ["Morgan", "Taylor"],
-  };
+  const friendPulse = friendPulseForVenue(event.venueName);
 
   const guestListStatus = event.guestListUrl ? "Guest list available" : "Guest list not available";
 
@@ -178,7 +189,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                   ) : null}
                 </div>
                 {venuePreview ? (
-                  <Link href={`/venues/${venuePreview.slug}`} className="nightly-btn-secondary inline-flex min-h-9 items-center rounded-full border border-violet-300/35 bg-violet-500/15 px-3 text-xs font-medium text-violet-100">
+                  <Link href={`/venues/${venuePreview.slug ?? venuePreview.id}`} className="nightly-btn-secondary inline-flex min-h-9 items-center rounded-full border border-violet-300/35 bg-violet-500/15 px-3 text-xs font-medium text-violet-100">
                     View Venue
                   </Link>
                 ) : null}
@@ -191,11 +202,11 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <div className="grid gap-2 sm:grid-cols-2">
               <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Interested</p>
-                <p className="mt-1 text-sm text-zinc-200">{friendPulse.interested.join(" • ")}</p>
+                <p className="mt-1 text-sm text-zinc-200">{friendPulse.interested.length > 0 ? friendPulse.interested.join(" • ") : "No friend activity yet"}</p>
               </article>
               <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Attending</p>
-                <p className="mt-1 text-sm text-zinc-200">{friendPulse.attending.join(" • ")}</p>
+                <p className="mt-1 text-sm text-zinc-200">{friendPulse.attending.length > 0 ? friendPulse.attending.join(" • ") : "No friend activity yet"}</p>
               </article>
             </div>
             <button type="button" className="nightly-btn-secondary mt-3 min-h-10 rounded-full border border-violet-300/35 bg-violet-500/15 px-4 text-sm font-medium text-violet-100">

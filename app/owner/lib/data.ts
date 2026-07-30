@@ -19,6 +19,11 @@ export type OwnerEventRecord = {
   endsAt: Date | null;
   coverImageUrl: string | null;
   ticketUrl: string | null;
+  guestListUrl: string | null;
+  reservationUrl: string | null;
+  eventType: "event" | "special" | "guest_list" | "reservation";
+  recurrenceRule: string | null;
+  specialDetails: string | null;
   coverCents: number;
   ageRequirement: number | null;
   genre: string | null;
@@ -26,6 +31,8 @@ export type OwnerEventRecord = {
   isFeatured: boolean;
   is21Plus: boolean;
   isPublished: boolean;
+  approvalStatus: "pending" | "approved" | "rejected";
+  publicationStatus: string;
   createdAt: Date;
 };
 

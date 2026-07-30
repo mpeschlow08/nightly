@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import {
   getOwnerCameras,
@@ -9,6 +9,7 @@ import {
   getOwnerVenue,
   getOwnerVenueImages,
 } from "./lib/data";
+import { getCurrentOwnerVenueOptional } from "./lib/ownership";
 
 function toCompletionItems(venue: NonNullable<Awaited<ReturnType<typeof getOwnerVenue>>["venue"]>) {
   return [
@@ -23,6 +24,12 @@ function toCompletionItems(venue: NonNullable<Awaited<ReturnType<typeof getOwner
 }
 
 export default async function OwnerDashboardPage() {
+  const membership = await getCurrentOwnerVenueOptional();
+
+  if (!membership) {
+    redirect("/owner/claim");
+  }
+
   const [{ venue }, images, upcomingEventCount, ownerEvents, cameras, recentActivity] = await Promise.all([
     getOwnerVenue(),
     getOwnerVenueImages(),
@@ -84,7 +91,7 @@ export default async function OwnerDashboardPage() {
         </article>
       </div>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-6">
+      <div className="mt-6 grid gap-3 md:grid-cols-4 xl:grid-cols-8">
         <Link href="/owner/venue" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
           <p className="text-sm font-semibold text-white">Venue Details</p>
           <p className="mt-2 text-sm text-zinc-300">Update venue profile fields and live status.</p>
@@ -108,6 +115,14 @@ export default async function OwnerDashboardPage() {
         <Link href="/owner/settings" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
           <p className="text-sm font-semibold text-white">Settings</p>
           <p className="mt-2 text-sm text-zinc-300">Membership details and upcoming management tools.</p>
+        </Link>
+        <Link href="/owner/profile-completion" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
+          <p className="text-sm font-semibold text-white">Profile Completion</p>
+          <p className="mt-2 text-sm text-zinc-300">Submit profile updates for admin moderation.</p>
+        </Link>
+        <Link href="/owner/publishing" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
+          <p className="text-sm font-semibold text-white">Publishing</p>
+          <p className="mt-2 text-sm text-zinc-300">Publish and unpublish with cache invalidation history.</p>
         </Link>
       </div>
 

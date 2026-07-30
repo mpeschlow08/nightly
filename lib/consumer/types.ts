@@ -24,6 +24,9 @@ export type ConsumerVenueCard = {
   logoImageUrl: string | null;
   galleryImageUrls: string[];
   imageSource: string;
+  recommendationReason?: string;
+  recommendationReasonCode?: string;
+  recommendationBadges?: string[];
 };
 
 export type ConsumerEventCard = {
@@ -49,6 +52,18 @@ export type ConsumerEventCard = {
   isLive: boolean;
   imageUrl: string;
   distanceMiles: number | null;
+  recommendationReason?: string;
+  recommendationReasonCode?: string;
+  recommendationBadges?: string[];
+};
+
+export type ConsumerCityPulse = {
+  headline: string;
+  summary: string;
+  facts: Array<{ label: string; value: string }>;
+  generatedAtIso: string;
+  freshness: string;
+  actionTargets: Array<{ label: string; href: string }>;
 };
 
 export type ConsumerVenueDetail = {
@@ -128,6 +143,9 @@ export type ExploreDataPayload = {
   djs: ConsumerDJCard[];
   neighborhoods: Array<{ id: string; name: string; summary: string; imageUrl: string; href: string }>;
   categories: Array<{ id: string; name: string; subtitle: string; imageUrl: string; href: string }>;
+  cityPulse: ConsumerCityPulse;
+  friendsInterestedVenues: ConsumerVenueCard[];
+  friendsInterestedEvents: ConsumerEventCard[];
 };
 
 export type HomeDataPayload = {
@@ -136,6 +154,13 @@ export type HomeDataPayload = {
     title: string;
     subtitle: string;
   };
+  cityPulse: ConsumerCityPulse;
+  tonightTopPicks: ConsumerVenueCard[];
+  eventsStartingSoon: ConsumerEventCard[];
+  vibeForYou: ConsumerVenueCard[];
+  trendingNeighborhoods: Array<{ id: string; name: string; summary: string; imageUrl: string; href: string }>;
+  friendsInterestedVenues: ConsumerVenueCard[];
+  friendsInterestedEvents: ConsumerEventCard[];
   liveTonight: ConsumerVenueCard[];
   trending: ConsumerVenueCard[];
   eventsTonight: ConsumerEventCard[];

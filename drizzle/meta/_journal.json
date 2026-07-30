@@ -85,6 +85,20 @@
       "when": 1785690000000,
       "tag": "0011_consumer_data_layer",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788354000000,
+      "tag": "0012_venue_claim_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788440400000,
+      "tag": "0013_event_management_system",
+      "breakpoints": true
     }
   ]
 }

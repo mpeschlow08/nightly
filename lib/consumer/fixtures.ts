@@ -82,6 +82,23 @@ export function fixturesEnabled() {
 export function getFixtureHomeData(): HomeDataPayload {
   const venues = homeVenueShowcase.map(toVenueCardFixture);
   const events = nightlyEvents.map(toEventCardFixture);
+  const eventsTonight = events.filter((event) => event.dateLabel === "Tonight").slice(0, 6);
+  const liveTonight = venues.filter((venue) => venue.isLive).slice(0, 6);
+
+  const cityPulse = {
+    headline: "Demo city pulse is active",
+    summary: "Midtown is filling up quickly while Buckhead is just getting started.",
+    facts: [
+      { label: "Published events tonight", value: String(eventsTonight.length) },
+      { label: "Live venues", value: String(liveTonight.length) },
+    ],
+    generatedAtIso: new Date().toISOString(),
+    freshness: "fixture data",
+    actionTargets: [
+      { label: "See events", href: "/events" },
+      { label: "Explore", href: "/discover" },
+    ],
+  };
 
   return {
     heroSummary: {
@@ -89,9 +106,22 @@ export function getFixtureHomeData(): HomeDataPayload {
       title: "Atlanta is buzzing tonight.",
       subtitle: "Midtown is filling up quickly while Buckhead is just getting started.",
     },
-    liveTonight: venues.filter((venue) => venue.isLive).slice(0, 6),
+    cityPulse,
+    tonightTopPicks: venues.slice(0, 6),
+    eventsStartingSoon: events.slice(0, 6),
+    vibeForYou: venues.slice(2, 8),
+    trendingNeighborhoods: exploreNeighborhoodCollections.slice(0, 6).map((item) => ({
+      id: String(item.id),
+      name: item.name,
+      summary: item.summary,
+      imageUrl: item.imageUrl,
+      href: item.href,
+    })),
+    friendsInterestedVenues: venues.slice(1, 5),
+    friendsInterestedEvents: events.slice(1, 5),
+    liveTonight,
     trending: venues.slice(0, 6),
-    eventsTonight: events.filter((event) => event.dateLabel === "Tonight").slice(0, 6),
+    eventsTonight,
     popularNearby: venues.slice(0, 6),
     recommended: venues.slice(2, 8),
   };
@@ -134,6 +164,22 @@ export function getFixtureExploreData(): ExploreDataPayload {
       imageUrl: item.imageUrl,
       href: item.href,
     })),
+    cityPulse: {
+      headline: "Demo city pulse is active",
+      summary: "Nightly fixtures are powering explore recommendations.",
+      facts: [
+        { label: "Published events tonight", value: "6" },
+        { label: "Live venues", value: "4" },
+      ],
+      generatedAtIso: new Date().toISOString(),
+      freshness: "fixture data",
+      actionTargets: [
+        { label: "See events", href: "/events" },
+        { label: "Open crews", href: "/crews" },
+      ],
+    },
+    friendsInterestedVenues: venueCards.slice(0, 4),
+    friendsInterestedEvents: nightlyEvents.map(toEventCardFixture).slice(0, 4),
   };
 }
 

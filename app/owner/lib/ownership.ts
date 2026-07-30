@@ -4,11 +4,18 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { events, venueCameras, venueImages, venueMembers, venues } from "@/db/schema";
 
-export async function getCurrentOwnerVenue() {
+type CurrentOwnerMembership = {
+  venueId: number;
+  role: "owner" | "manager";
+  venue: typeof venues.$inferSelect;
+  clerkUserId: string;
+};
+
+export async function getCurrentOwnerVenueOptional(): Promise<CurrentOwnerMembership | null> {
   const { userId: clerkUserId } = await auth();
 
   if (!clerkUserId) {
-    throw new Error("Unauthorized. Please sign in.");
+    return null;
   }
 
   const [membership] = await db
@@ -23,7 +30,7 @@ export async function getCurrentOwnerVenue() {
     .limit(1);
 
   if (!membership?.venue) {
-    throw new Error("Forbidden. You do not have venue access.");
+    return null;
   }
 
   return {
@@ -32,6 +39,16 @@ export async function getCurrentOwnerVenue() {
     venue: membership.venue,
     clerkUserId,
   };
+}
+
+export async function getCurrentOwnerVenue() {
+  const membership = await getCurrentOwnerVenueOptional();
+
+  if (!membership) {
+    throw new Error("Forbidden. You do not have venue access.");
+  }
+
+  return membership;
 }
 
 export async function assertCurrentOwnerVenueId(venueId: number) {
