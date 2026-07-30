@@ -1,31 +1,41 @@
 import Link from "next/link";
 
-import EventCard from "@/components/EventCard";
-import { nightlyEvents } from "@/data/events";
+import EventDiscoveryCard from "@/components/home/EventDiscoveryCard";
+import type { ConsumerEventCard } from "@/lib/consumer/types";
 
-export default function EventsTonightSection() {
-  const tonightEvents = nightlyEvents
-    .filter((event) => event.dateLabel === "Tonight")
-    .slice(0, 4);
+type Props = {
+  tonightEvents: ConsumerEventCard[];
+};
+
+export default function EventsTonightSection({ tonightEvents }: Props) {
 
   return (
-    <section id="events-tonight" className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Tonight</p>
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Events Tonight</h2>
-        </div>
+    <section id="events-tonight" className="mx-auto mt-7 max-w-3xl px-4 sm:px-5 lg:px-6">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="text-lg font-semibold text-white">Events Tonight</h2>
         <Link
           href="/events"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-cyan-400/50 hover:text-white"
+          className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300"
         >
-          View all events
+          See All
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {tonightEvents.map((event) => (
-          <EventCard key={event.id} event={event} />
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 [scrollbar-width:none]">
+        {tonightEvents.map((event, index) => (
+          <EventDiscoveryCard
+            key={event.id}
+            href={event.href}
+            name={event.name}
+            venueName={event.venueName}
+            neighborhood={event.neighborhood}
+            startTime={event.startTimeLabel}
+            cover={event.cover}
+            imageUrl={event.imageUrl}
+            ticketStatus={event.ticketStatus}
+            isLive={event.isLive}
+            animationDelayMs={index * 45}
+          />
         ))}
       </div>
     </section>

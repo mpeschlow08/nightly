@@ -71,6 +71,20 @@
       "when": 1785352935746,
       "tag": "0009_flowery_lake",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785600000000,
+      "tag": "0010_venue_image_refresh_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785690000000,
+      "tag": "0011_consumer_data_layer",
+      "breakpoints": true
     }
   ]
 }

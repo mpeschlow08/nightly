@@ -25,6 +25,11 @@ type Breadcrumb = {
   href?: string;
 };
 
+type BottomNavItem = {
+  label: string;
+  href: string;
+};
+
 const roleFallbackByHistory: Record<Exclude<AppRole, null>, string> = {
   consumer: "/home",
   dj: "/dj/dashboard",
@@ -199,6 +204,22 @@ function isConsumerHomePath(pathname: string) {
   return pathname === "/home";
 }
 
+function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
+  if (role === "consumer") {
+    return [
+      { label: "Home", href: "/home" },
+      { label: "Explore", href: "/discover" },
+      { label: "Link Up", href: "/crews" },
+      { label: "Profile", href: "/profile" },
+    ];
+  }
+
+  return roleItems[role]
+    .filter((item): item is NavItem & { href: string } => Boolean(item.href))
+    .slice(0, 4)
+    .map((item) => ({ label: item.label, href: item.href }));
+}
+
 function shouldShowBackButton(pathname: string) {
   return ![
     "/home",
@@ -236,8 +257,10 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
     hiddenPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   const activeRole: Exclude<AppRole, null> = role ?? "consumer";
-  const layoutRole: Exclude<AppRole, null> = isConsumerHomePath(pathname) ? "consumer" : activeRole;
+  const isConsumerHome = isConsumerHomePath(pathname);
+  const layoutRole: Exclude<AppRole, null> = isConsumerHome ? "consumer" : activeRole;
   const navItems = roleItems[layoutRole];
+  const bottomNavItems = getBottomNavItems(layoutRole);
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = useMemo(() => getUsefulBreadcrumbs(pathname), [pathname]);
   const editMode = searchParams.get("edit") === "1";
@@ -274,47 +297,49 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
   return (
     <div className="min-h-screen bg-[#04070b] text-zinc-100">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-white/10 bg-zinc-950/70 px-4 py-6 backdrop-blur-xl lg:block">
-          <NightlyLogoLink role={activeRole} width={120} height={34} imageClassName="h-9 w-auto" priority />
+        {!isConsumerHome ? (
+          <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-white/10 bg-zinc-950/70 px-4 py-6 backdrop-blur-xl lg:block">
+            <NightlyLogoLink role={activeRole} width={120} height={34} imageClassName="h-9 w-auto" priority />
 
-          <div className="mt-6 px-2">
-            <p className="text-xs uppercase tracking-[0.24em] text-cyan-200/80">{layoutRole} navigation</p>
-          </div>
+            <div className="mt-6 px-2">
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-200/80">{layoutRole} navigation</p>
+            </div>
 
-          <nav className="mt-3 space-y-1 px-1">
-            {navItems.map((item) => {
-              const active = item.href ? isCurrentPath(pathname, item.href) : false;
+            <nav className="mt-3 space-y-1 px-1">
+              {navItems.map((item) => {
+                const active = item.href ? isCurrentPath(pathname, item.href) : false;
 
-              if (item.comingSoon || !item.href) {
-                return (
-                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-zinc-400">
-                    <div className="flex items-center justify-between gap-3">
-                      <span>{item.label}</span>
-                      <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200">
-                        Coming Soon
-                      </span>
+                if (item.comingSoon || !item.href) {
+                  return (
+                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-zinc-400">
+                      <div className="flex items-center justify-between gap-3">
+                        <span>{item.label}</span>
+                        <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200">
+                          Coming Soon
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              }
+                  );
+                }
 
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`flex items-center justify-between rounded-2xl border px-3 py-2.5 text-sm transition ${
-                    active
-                      ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
-                      : "border-white/10 bg-white/[0.03] text-zinc-200 hover:border-cyan-300/30 hover:bg-cyan-500/10"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {active ? <span className="h-2 w-2 rounded-full bg-cyan-300" /> : null}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={`flex items-center justify-between rounded-2xl border px-3 py-2.5 text-sm transition ${
+                      active
+                        ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
+                        : "border-white/10 bg-white/[0.03] text-zinc-200 hover:border-cyan-300/30 hover:bg-cyan-500/10"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {active ? <span className="h-2 w-2 rounded-full bg-cyan-300" /> : null}
+                  </Link>
+                );
+              })}
+            </nav>
+          </aside>
+        ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader
@@ -326,6 +351,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
             onBack={onBack}
             showBackButton={showBackButton}
             isSignedIn={isSignedInUser}
+            alwaysShowLogo={isConsumerHome}
           />
 
           {mobileMenuOpen ? (
@@ -367,13 +393,13 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
 
           <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#04070b]/90 px-2 py-2 backdrop-blur-xl lg:hidden">
             <div className="mx-auto grid max-w-3xl grid-cols-4 gap-2 text-xs">
-              {navItems.filter((item) => item.href).slice(0, 4).map((item) => {
-                const active = item.href ? isCurrentPath(pathname, item.href) : false;
+              {bottomNavItems.map((item) => {
+                const active = isCurrentPath(pathname, item.href);
 
                 return (
                   <Link
                     key={item.label}
-                    href={item.href!}
+                    href={item.href}
                     className={`rounded-xl px-2 py-2 text-center transition ${
                       active ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-zinc-300 hover:bg-cyan-500/10"
                     }`}

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsx --test tests/**/*.test.ts",
+    "venues:refresh-images": "tsx scripts/refresh-venue-images.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.17",

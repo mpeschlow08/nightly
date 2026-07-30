@@ -1,5 +1,22 @@
 export type EventTicketStatus = "On sale" | "Limited" | "Almost sold out" | "Sold out";
 
+export const nightlyDefaultEventArtwork =
+  "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1800&q=80";
+
+const eventArtworkByVenueName: Record<string, string> = {
+  "Tongue & Groove": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1800&q=80",
+  "District Atlanta": "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1800&q=80",
+  "Believe Music Hall": "https://images.unsplash.com/photo-1574391884720-bbc7cacb4e85?auto=format&fit=crop&w=1800&q=80",
+  "Havana Club": "https://images.unsplash.com/photo-1496024840928-4c417adf211d?auto=format&fit=crop&w=1800&q=80",
+  "Johnny's Hideaway": "https://images.unsplash.com/photo-1571266028243-d220c9f72f47?auto=format&fit=crop&w=1800&q=80",
+  "Rooftop L.O.A.": "https://images.unsplash.com/photo-1505236858219-8359eb29e329?auto=format&fit=crop&w=1800&q=80",
+  "Eclipse di Luna": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1800&q=80",
+};
+
+export function getNightlyEventArtwork(event: Pick<NightlyEvent, "venueName">) {
+  return eventArtworkByVenueName[event.venueName] ?? nightlyDefaultEventArtwork;
+}
+
 export type NightlyEvent = {
   id: number;
   slug: string;

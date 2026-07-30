@@ -1,52 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 
-import DiscoverVenueCard from "@/components/DiscoverVenueCard";
-import { discoverVenues } from "@/data/nightly";
+import VenueDiscoveryCard from "@/components/home/VenueDiscoveryCard";
+import type { ConsumerVenueCard } from "@/lib/consumer/types";
 
-export default function TrendingVenuesSection() {
-  const trendingVenues = useMemo(
-    () =>
-      [...discoverVenues]
-        .sort((a, b) => b.vibeScore - a.vibeScore)
-        .slice(0, 3),
-    []
-  );
-  const [savedVenueIds, setSavedVenueIds] = useState<number[]>([]);
+type Props = {
+  trendingVenues?: ConsumerVenueCard[];
+};
 
-  const toggleSavedVenue = (venueId: number) => {
-    setSavedVenueIds((current) =>
-      current.includes(venueId)
-        ? current.filter((id) => id !== venueId)
-        : [...current, venueId]
-    );
-  };
+export default function TrendingVenuesSection({ trendingVenues }: Props) {
+  const venueCards = Array.isArray(trendingVenues) ? trendingVenues : [];
 
   return (
-    <section id="trending-venues" className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-violet-300/80">Momentum</p>
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Trending Venues</h2>
-        </div>
+    <section id="trending-venues" className="mx-auto mt-7 max-w-3xl px-4 sm:px-5 lg:px-6">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="text-lg font-semibold text-white">Trending Venues</h2>
         <Link
           href="/discover"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-cyan-400/50 hover:text-white"
+          className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300"
         >
-          Explore all
+          See All
         </Link>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        {trendingVenues.map((venue) => (
-          <DiscoverVenueCard
-            key={venue.id}
-            venue={venue}
-            isSaved={savedVenueIds.includes(venue.id)}
-            onToggleSave={() => toggleSavedVenue(venue.id)}
-          />
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 [scrollbar-width:none]">
+        {venueCards.map((venue, index) => (
+          <VenueDiscoveryCard key={venue.id} venue={venue} animationDelayMs={index * 45} />
         ))}
       </div>
     </section>

@@ -128,6 +128,10 @@ export type DiscoverVenue = {
   livePreviewAvailable: boolean;
   isLive: boolean;
   badge?: string;
+  heroImage: string;
+  logoImage: string | null;
+  galleryImages: string[];
+  thumbnailImage: string;
   imageClass: string;
   address: string;
   hours: string;
@@ -157,7 +161,60 @@ export type DiscoverVenue = {
   amenities: string[];
 };
 
-export const discoverVenues: DiscoverVenue[] = [
+const defaultVenueImage =
+  "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1800&q=80";
+
+const discoverVenueImageCatalog: Record<
+  string,
+  {
+    heroImage: string;
+    logoImage: string | null;
+    galleryImages: string[];
+    thumbnailImage: string;
+  }
+> = {
+  "Tongue & Groove": {
+    heroImage:
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1800&q=80",
+    logoImage: null,
+    galleryImages: [
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1800&q=80",
+      "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1468818438311-4bab781ab9b8?auto=format&fit=crop&w=1600&q=80",
+    ],
+    thumbnailImage:
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80",
+  },
+  "District Atlanta": {
+    heroImage:
+      "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1800&q=80",
+    logoImage: null,
+    galleryImages: [
+      "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1800&q=80",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1600&q=80",
+    ],
+    thumbnailImage:
+      "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1200&q=80",
+  },
+  "Believe Music Hall": {
+    heroImage:
+      "https://images.unsplash.com/photo-1574391884720-bbc7cacb4e85?auto=format&fit=crop&w=1800&q=80",
+    logoImage: null,
+    galleryImages: [
+      "https://images.unsplash.com/photo-1574391884720-bbc7cacb4e85?auto=format&fit=crop&w=1800&q=80",
+      "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?auto=format&fit=crop&w=1600&q=80",
+    ],
+    thumbnailImage:
+      "https://images.unsplash.com/photo-1574391884720-bbc7cacb4e85?auto=format&fit=crop&w=1200&q=80",
+  },
+};
+
+type DiscoverVenueSeed = Omit<
+  DiscoverVenue,
+  "heroImage" | "logoImage" | "galleryImages" | "thumbnailImage"
+>;
+
+const discoverVenueSeeds: DiscoverVenueSeed[] = [
   {
     id: 1,
     slug: "tongue-and-groove",
@@ -711,6 +768,21 @@ export const discoverVenues: DiscoverVenue[] = [
     amenities: ["VIP tables", "Bottle service", "Outdoor area", "Food", "Accessibility"],
   },
 ];
+
+export const discoverVenues: DiscoverVenue[] = discoverVenueSeeds.map((venue) => {
+  const catalog = discoverVenueImageCatalog[venue.name];
+  const heroImage = catalog?.heroImage ?? defaultVenueImage;
+  const galleryImages = catalog?.galleryImages?.length ? catalog.galleryImages : [heroImage];
+  const thumbnailImage = catalog?.thumbnailImage ?? heroImage;
+
+  return {
+    ...venue,
+    heroImage,
+    logoImage: catalog?.logoImage ?? null,
+    galleryImages,
+    thumbnailImage,
+  };
+});
 
 export function getVenueBySlug(slug: string) {
   return discoverVenues.find((venue) => venue.slug === slug);

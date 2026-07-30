@@ -20,6 +20,7 @@ type AppHeaderProps = {
   onBack: () => void;
   showBackButton: boolean;
   isSignedIn: boolean;
+  alwaysShowLogo?: boolean;
 };
 
 function PlaceholderIcon({ label }: { label: string }) {
@@ -55,6 +56,7 @@ export default function AppHeader({
   onBack,
   showBackButton,
   isSignedIn,
+  alwaysShowLogo = false,
 }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#04070b]/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
@@ -62,21 +64,23 @@ export default function AppHeader({
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             {showBackButton ? <BackButton onBack={onBack} /> : null}
-            <button
-              type="button"
-              onClick={onToggleMobileMenu}
-              className="nightly-btn-secondary inline-flex items-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100 lg:hidden"
-              aria-expanded={mobileMenuOpen}
-              aria-label="Toggle mobile navigation menu"
-            >
-              Menu
-            </button>
+            {!alwaysShowLogo ? (
+              <button
+                type="button"
+                onClick={onToggleMobileMenu}
+                className="nightly-btn-secondary inline-flex items-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-zinc-100 lg:hidden"
+                aria-expanded={mobileMenuOpen}
+                aria-label="Toggle mobile navigation menu"
+              >
+                Menu
+              </button>
+            ) : null}
             <NightlyLogoLink
               role={activeRole}
               width={95}
               height={26}
               imageClassName="h-7 w-auto"
-              className="lg:hidden"
+              className={alwaysShowLogo ? "" : "lg:hidden"}
             />
           </div>
           <h1 className="mt-2 truncate text-lg font-semibold text-white sm:text-xl">{pageTitle}</h1>
@@ -103,22 +107,26 @@ export default function AppHeader({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
-            aria-label="Notifications placeholder"
-            title="Notifications (placeholder)"
-          >
-            <PlaceholderIcon label="N" />
-          </button>
-          <Link
-            href="/profile"
-            className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
-            aria-label="Settings"
-            title="Settings"
-          >
-            <PlaceholderIcon label="S" />
-          </Link>
+          {!alwaysShowLogo ? (
+            <button
+              type="button"
+              className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
+              aria-label="Notifications placeholder"
+              title="Notifications (placeholder)"
+            >
+              <PlaceholderIcon label="N" />
+            </button>
+          ) : null}
+          {!alwaysShowLogo ? (
+            <Link
+              href="/profile"
+              className="nightly-btn-secondary rounded-full border border-white/20 bg-white/5 p-2 text-zinc-200"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <PlaceholderIcon label="S" />
+            </Link>
+          ) : null}
           {isSignedIn ? (
             <div className="rounded-full border border-white/20 bg-white/5 p-0.5">
               <UserButton />

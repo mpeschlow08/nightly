@@ -22,6 +22,11 @@ type VenuePlaceDetails = {
   latitude: number | null;
   longitude: number | null;
   googleMapsUri: string | null;
+  photoReferences: string[];
+  coverPhotoReference: string | null;
+  logoImageUrl: string | null;
+  coverImageUrl: string | null;
+  galleryImageUrls: string[];
 };
 
 type DraftForm = {
@@ -35,6 +40,11 @@ type DraftForm = {
   latitude: string;
   longitude: string;
   googleMapsUrl: string;
+  photoReferencesJson: string;
+  coverPhotoReference: string;
+  coverImageUrl: string;
+  galleryImageUrlsJson: string;
+  logoImageUrl: string;
 };
 
 type ExistingVenueValues = {
@@ -59,6 +69,16 @@ function isMeaningful(value: string) {
   return value.trim().length > 0;
 }
 
+function countJsonArrayItems(value: string) {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 function toDraftFromDetails(details: VenuePlaceDetails): DraftForm {
   return {
     googlePlaceId: details.placeId,
@@ -79,6 +99,13 @@ function toDraftFromDetails(details: VenuePlaceDetails): DraftForm {
         ? String(details.longitude)
         : "",
     googleMapsUrl: details.googleMapsUri ?? "",
+    photoReferencesJson:
+      details.photoReferences.length > 0 ? JSON.stringify(details.photoReferences) : "",
+    coverPhotoReference: details.coverPhotoReference ?? "",
+    coverImageUrl: details.coverImageUrl ?? "",
+    galleryImageUrlsJson:
+      details.galleryImageUrls.length > 0 ? JSON.stringify(details.galleryImageUrls) : "",
+    logoImageUrl: details.logoImageUrl ?? "",
   };
 }
 
@@ -258,6 +285,11 @@ export function ImportBusinessInformationSection({
         <form action={importAction} className="mt-5 grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="venueId" value={venueId} />
           <input type="hidden" name="googlePlaceId" value={draft.googlePlaceId} />
+          <input type="hidden" name="googlePhotoReferencesJson" value={draft.photoReferencesJson} />
+          <input type="hidden" name="googleCoverPhotoReference" value={draft.coverPhotoReference} />
+          <input type="hidden" name="googleCoverImageUrl" value={draft.coverImageUrl} />
+          <input type="hidden" name="googleGalleryImageUrlsJson" value={draft.galleryImageUrlsJson} />
+          <input type="hidden" name="googleLogoImageUrl" value={draft.logoImageUrl} />
 
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-zinc-200">Venue name</label>
@@ -369,6 +401,13 @@ export function ImportBusinessInformationSection({
               rows={6}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-xs text-white outline-none"
             />
+          </div>
+
+          <div className="sm:col-span-2 rounded-xl border border-white/10 bg-zinc-900/65 px-3 py-2 text-xs text-zinc-300">
+            <p className="font-medium text-zinc-100">Imported imagery preview</p>
+            <p className="mt-1">Cover image: {isMeaningful(draft.coverImageUrl) ? "Available" : "Not available"}</p>
+            <p className="mt-1">Gallery images: {countJsonArrayItems(draft.galleryImageUrlsJson)}</p>
+            <p className="mt-1">Logo image: {isMeaningful(draft.logoImageUrl) ? "Available" : "Not available"}</p>
           </div>
 
           {hasConflicts ? (

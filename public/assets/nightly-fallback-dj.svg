@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" role="img" aria-labelledby="title desc">
+  <title id="title">Nightly DJ Fallback</title>
+  <desc id="desc">Nightly branded fallback image for DJ avatars.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#101727" />
+      <stop offset="50%" stop-color="#132947" />
+      <stop offset="100%" stop-color="#1f1633" />
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" fill="url(#bg)" />
+  <circle cx="450" cy="340" r="150" fill="#f8fafc" fill-opacity="0.16" />
+  <rect x="210" y="520" width="480" height="230" rx="120" fill="#f8fafc" fill-opacity="0.16" />
+  <circle cx="140" cy="140" r="100" fill="#22d3ee" fill-opacity="0.2" />
+  <circle cx="760" cy="170" r="90" fill="#f472b6" fill-opacity="0.18" />
+  <text x="84" y="840" fill="#f8fafc" font-size="62" font-family="'Segoe UI', sans-serif" font-weight="700">Nightly DJ</text>
+</svg>

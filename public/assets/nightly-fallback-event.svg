@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Nightly Event Fallback</title>
+  <desc id="desc">Nightly branded fallback image for event artwork.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0b1220" />
+      <stop offset="55%" stop-color="#11223f" />
+      <stop offset="100%" stop-color="#1a0f2f" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)" />
+  <circle cx="250" cy="200" r="180" fill="#22d3ee" fill-opacity="0.16" />
+  <circle cx="1320" cy="120" r="130" fill="#f472b6" fill-opacity="0.14" />
+  <circle cx="1200" cy="760" r="280" fill="#8b5cf6" fill-opacity="0.12" />
+  <g fill="none" stroke="#e2e8f0" stroke-opacity="0.4">
+    <path d="M180 760 C360 620, 560 840, 760 690" stroke-width="10" stroke-linecap="round" />
+    <path d="M840 650 C980 560, 1130 730, 1380 560" stroke-width="10" stroke-linecap="round" />
+  </g>
+  <text x="96" y="862" fill="#f8fafc" font-size="78" font-family="'Segoe UI', sans-serif" font-weight="700">Nightly Event</text>
+</svg>

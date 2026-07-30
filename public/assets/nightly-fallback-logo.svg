@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">Nightly Venue Logo Fallback</title>
+  <desc id="desc">Nightly branded fallback logo when venue branding is unavailable.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0b1220" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)" />
+  <rect x="80" y="80" width="480" height="480" rx="92" fill="#f8fafc" fill-opacity="0.1" stroke="#f8fafc" stroke-opacity="0.25" stroke-width="10" />
+  <path d="M196 420 L276 220 L340 356 L404 220 L444 420" fill="none" stroke="#22d3ee" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="126" y="518" fill="#e2e8f0" font-size="46" font-family="'Segoe UI', sans-serif" font-weight="700">Nightly Venue</text>
+</svg>

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { asc, eq, sql } from "drizzle-orm";
 import { head } from "@vercel/blob";
@@ -11,6 +11,7 @@ import { events, venueBusinessHours, venueCameras, venueImages, venues } from "@
 import { requireAuthorizedOwnerForVenue } from "./lib/authorization";
 import { isTableMissingError } from "./lib/events-support";
 import { getGooglePlaceVenueDetails } from "./lib/google-places";
+import { refreshVenueImagesForVenue } from "./lib/venue-image-import";
 import {
   assertCurrentOwnerVenueId,
   ensureCameraOwnedByCurrentOwner,
@@ -361,17 +362,29 @@ function revalidateOwnerAndVenue(venueId: number) {
   revalidatePath("/owner/events");
   revalidatePath("/owner/cameras");
   revalidatePath(`/venues/${venueId}`);
+  revalidateTag("consumer:venues", "max");
+  revalidateTag("consumer:home", "max");
+  revalidateTag("consumer:explore", "max");
+  revalidateTag("consumer:live", "max");
 }
 
 function revalidateEventsConsumers(venueId: number) {
   revalidatePath("/");
   revalidatePath(`/venues/${venueId}`);
+  revalidateTag("consumer:events", "max");
+  revalidateTag("consumer:home", "max");
+  revalidateTag("consumer:explore", "max");
+  revalidateTag("consumer:live", "max");
 }
 
 function revalidateHoursConsumers(venueId: number) {
   revalidatePath("/owner");
   revalidatePath("/owner/hours");
   revalidatePath(`/venues/${venueId}`);
+  revalidateTag("consumer:venues", "max");
+  revalidateTag("consumer:home", "max");
+  revalidateTag("consumer:explore", "max");
+  revalidateTag("consumer:live", "max");
 }
 
 function hasNonEmptyValue(value: unknown) {
@@ -611,6 +624,23 @@ export async function importOwnerVenueFromGoogleAction(formData: FormData) {
     const latitude = asOptionalFloat(formData.get("latitude"), "Latitude");
     const longitude = asOptionalFloat(formData.get("longitude"), "Longitude");
     const googleMapsUrl = asOptionalHttpUrl(formData.get("googleMapsUrl"), "Google Maps URL");
+    const googlePhotoReferencesJson = asOptionalJsonString(
+      formData.get("googlePhotoReferencesJson"),
+      "Google photo references"
+    );
+    const googleCoverPhotoReference = asOptionalString(formData.get("googleCoverPhotoReference"));
+    const googleCoverImageUrl = asOptionalHttpUrl(
+      formData.get("googleCoverImageUrl"),
+      "Google cover image URL"
+    );
+    const googleGalleryImageUrlsJson = asOptionalJsonString(
+      formData.get("googleGalleryImageUrlsJson"),
+      "Google gallery image URLs"
+    );
+    const googleLogoImageUrl = asOptionalHttpUrl(
+      formData.get("googleLogoImageUrl"),
+      "Google logo image URL"
+    );
 
     const overwriteCandidates: Array<{
       existing: unknown;
@@ -657,11 +687,20 @@ export async function importOwnerVenueFromGoogleAction(formData: FormData) {
         latitude,
         longitude,
         googleMapsUrl,
+        heroImageUrl: googleCoverImageUrl ?? venue.heroImageUrl,
+        thumbnailImageUrl: googleCoverImageUrl ?? venue.thumbnailImageUrl,
+        galleryImageUrlsJson: googleGalleryImageUrlsJson ?? venue.galleryImageUrlsJson,
+        googlePhotoReferencesJson: googlePhotoReferencesJson ?? venue.googlePhotoReferencesJson,
+        googleCoverPhotoReference: googleCoverPhotoReference ?? venue.googleCoverPhotoReference,
+        googleLogoImageUrl: googleLogoImageUrl ?? venue.googleLogoImageUrl,
         googlePlaceId: latestGoogleDetails.placeId,
         googleImportedAt: new Date(),
         googleDataConfirmedByOwnerAt: new Date(),
+        officialWebsiteUrl: websiteUrl,
       })
       .where(eq(venues.id, venueId));
+
+    await refreshVenueImagesForVenue({ venueId, force: false });
 
     revalidateOwnerAndVenue(venueId);
   } catch (error) {
@@ -669,6 +708,29 @@ export async function importOwnerVenueFromGoogleAction(formData: FormData) {
   }
 
   redirect("/owner/venue?success=business-information-imported");
+}
+
+export async function refreshOwnerVenueImagesAction(formData: FormData) {
+  try {
+    const venueId = asInt(formData.get("venueId"), "Venue ID");
+    const force = asBoolean(formData.get("forceRefresh"));
+
+    await assertCurrentOwnerVenueId(venueId);
+
+    const result = await refreshVenueImagesForVenue({
+      venueId,
+      force,
+    });
+
+    if (result.status === "failed") {
+      throw new Error(result.reason);
+    }
+
+    revalidateOwnerAndVenue(venueId);
+    redirect(mutationSuccessPath("/owner/venue", `Image refresh ${result.status}.`));
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/venue", error));
+  }
 }
 
 export async function addOwnerVenueImageAction(formData: FormData) {

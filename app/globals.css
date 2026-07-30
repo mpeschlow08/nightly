@@ -79,6 +79,10 @@ button:focus {
     animation: nightly-page-enter 320ms var(--nightly-ease-standard);
   }
 
+  .nightly-fade-in {
+    animation: nightly-fade-in 420ms var(--nightly-ease-standard) both;
+  }
+
   .nightly-card {
     box-shadow: var(--nightly-card-shadow);
     transition-property: border-color, box-shadow, transform, background-color;
@@ -109,6 +113,18 @@ button:focus {
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nightly-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 
   to {

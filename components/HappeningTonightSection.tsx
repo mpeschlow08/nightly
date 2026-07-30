@@ -1,48 +1,26 @@
-import { happeningTonight } from "@/data/nightly";
+import Link from "next/link";
 
-export default function HappeningTonightSection() {
+import VenueDiscoveryCard from "@/components/home/VenueDiscoveryCard";
+import type { ConsumerVenueCard } from "@/lib/consumer/types";
+
+type Props = {
+  liveTonight: ConsumerVenueCard[];
+};
+
+export default function HappeningTonightSection({ liveTonight }: Props) {
+
   return (
-    <section id="live-tonight" className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Live now</p>
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Live Tonight</h2>
-        </div>
-        <button className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-cyan-400/50 hover:text-white">
-          See all
-        </button>
+    <section id="live-tonight" className="mx-auto mt-6 max-w-3xl px-4 sm:px-5 lg:px-6">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="text-lg font-semibold text-white">Live Tonight</h2>
+        <Link href="/events" className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300">
+          See All
+        </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {happeningTonight.map((event) => (
-          <article key={event.id} className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-            <div className={`relative h-36 bg-gradient-to-br ${event.imageClass}`}>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.24),_transparent_55%)]" />
-              {event.badge ? (
-                <span className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.3em] text-cyan-100">
-                  {event.badge}
-                </span>
-              ) : null}
-            </div>
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-cyan-200">{event.genre}</p>
-                <p className="text-sm text-zinc-400">{event.distance}</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">{event.event}</h3>
-                <p className="mt-1 text-sm text-zinc-400">{event.venue}</p>
-              </div>
-              <div className="flex items-center justify-between text-sm text-zinc-300">
-                <span>{event.time}</span>
-                <span>{event.cover}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="rounded-full bg-white/10 px-2.5 py-1 text-zinc-300">{event.crowd}</span>
-                <button className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">Reserve</button>
-              </div>
-            </div>
-          </article>
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 [scrollbar-width:none]">
+        {liveTonight.map((venue, index) => (
+          <VenueDiscoveryCard key={venue.id} venue={venue} animationDelayMs={index * 45} />
         ))}
       </div>
     </section>

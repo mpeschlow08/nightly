@@ -21,17 +21,26 @@ export async function POST(req: Request) {
   const payload = await req.text();
   const wh = new Webhook(WEBHOOK_SECRET);
 
-  let evt: any;
+  let eventType = "unknown";
 
   try {
-    evt = wh.verify(payload, {
+    const verified = wh.verify(payload, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
     });
+
+    if (
+      typeof verified === "object" &&
+      verified !== null &&
+      "type" in verified &&
+      typeof verified.type === "string"
+    ) {
+      eventType = verified.type;
+    }
   } catch {
     return new Response("Invalid signature", { status: 400 });
   }
 
-  return NextResponse.json({ received: true, eventType: evt.type });
+  return NextResponse.json({ received: true, eventType });
 }

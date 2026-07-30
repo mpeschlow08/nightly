@@ -1,9 +1,15 @@
 import { notFound } from "next/navigation";
 
-import { importOwnerVenueFromGoogleAction, updateOwnerVenueAction } from "../actions";
+import {
+  importOwnerVenueFromGoogleAction,
+  refreshOwnerVenueImagesAction,
+  updateOwnerVenueAction,
+} from "../actions";
 import { getOwnerVenue } from "../lib/data";
+import HeroImage from "@/components/media/HeroImage";
 import { OwnerBlobImageUpload } from "@/components/owner/OwnerBlobImageUpload";
 import { ImportBusinessInformationSection } from "@/components/owner/ImportBusinessInformationSection";
+import VenueLogo from "@/components/media/VenueLogo";
 
 type OwnerVenuePageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
@@ -34,16 +40,41 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
       ) : null}
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+        <p className="text-sm font-medium text-zinc-200">Imported imagery</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Source: {venue.imageSource ?? "nightly_fallback"} {venue.imagesLastRefreshedAt ? `• Last refresh ${venue.imagesLastRefreshedAt.toISOString()}` : ""}
+        </p>
+        {venue.imageRefreshError ? (
+          <p className="mt-2 text-xs text-rose-200">Last refresh error: {venue.imageRefreshError}</p>
+        ) : null}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <HeroImage src={venue.heroImageUrl} alt={`${venue.name} hero`} />
+          <VenueLogo src={venue.logoUrl} alt={`${venue.name} logo`} className="max-w-[10rem]" />
+        </div>
+
+        <form action={refreshOwnerVenueImagesAction} className="mt-4 flex flex-wrap items-center gap-3">
+          <input type="hidden" name="venueId" value={venueId} />
+          <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200">
+            <input type="checkbox" name="forceRefresh" value="true" className="h-4 w-4 accent-cyan-500" />
+            Force refresh imported fields
+          </label>
+          <button
+            type="submit"
+            className="rounded-xl border border-cyan-400/40 bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/30"
+          >
+            Refresh Venue Images
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
         <p className="text-sm font-medium text-zinc-200">Venue logo</p>
         <p className="mt-1 text-xs text-zinc-400">Upload a square-friendly logo. New uploads replace the current logo.</p>
 
         <div className="mt-4">
           {venue.logoUrl ? (
-            <img
-              src={venue.logoUrl}
-              alt={`${venue.name} logo`}
-              className="h-24 w-24 rounded-2xl border border-white/10 bg-white/5 object-contain p-2"
-            />
+            <VenueLogo src={venue.logoUrl} alt={`${venue.name} logo`} className="h-24 w-24 rounded-2xl border border-white/10" />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-white/20 bg-zinc-900/70 text-[11px] uppercase tracking-[0.18em] text-zinc-400">
               No logo

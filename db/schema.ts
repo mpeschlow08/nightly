@@ -77,48 +77,89 @@ export const djSampleMixes = pgTable(
   })
 );
 
-export const venues = pgTable("venues", {
-  id: serial("id").primaryKey(),
+export const venues = pgTable(
+  "venues",
+  {
+    id: serial("id").primaryKey(),
 
-  name: text("name").notNull(),
-  description: text("description"),
-  city: text("city"),
+    name: text("name").notNull(),
+    description: text("description"),
+    shortDescription: text("short_description"),
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postal_code"),
 
-  slug: text("slug"),
-  neighborhood: text("neighborhood"),
-  tagline: text("tagline"),
-  googlePlaceId: text("google_place_id"),
-  logoUrl: text("logo_url"),
-  address: text("address"),
-  phone: text("phone"),
-  websiteUrl: text("website_url"),
-  priceLevel: integer("price_level"),
-  dressCode: text("dress_code"),
-  ageRequirement: integer("age_requirement"),
-  openingHoursJson: text("opening_hours_json"),
-  latitude: real("latitude"),
-  longitude: real("longitude"),
-  googleMapsUrl: text("google_maps_url"),
-  googleImportedAt: timestamp("google_imported_at"),
-  googleDataConfirmedByOwnerAt: timestamp("google_data_confirmed_by_owner_at"),
+    slug: text("slug"),
+    neighborhood: text("neighborhood"),
+    tagline: text("tagline"),
+    googlePlaceId: text("google_place_id"),
+    logoUrl: text("logo_url"),
+    heroImageUrl: text("hero_image_url"),
+    thumbnailImageUrl: text("thumbnail_image_url"),
+    imageSource: text("image_source").default("nightly_fallback"),
+    galleryImageUrlsJson: text("gallery_image_urls_json"),
+    googlePhotoReferencesJson: text("google_photo_references_json"),
+    googleCoverPhotoReference: text("google_cover_photo_reference"),
+    googleLogoImageUrl: text("google_logo_image_url"),
+    officialWebsiteUrl: text("official_website_url"),
+    officialWebsiteImageUrl: text("official_website_image_url"),
+    officialWebsiteIconUrl: text("official_website_icon_url"),
+    officialWebsiteCanonicalUrl: text("official_website_canonical_url"),
+    officialWebsiteTitle: text("official_website_title"),
+    imagesLastRefreshedAt: timestamp("images_last_refreshed_at"),
+    imageRefreshError: text("image_refresh_error"),
+    address: text("address"),
+    phone: text("phone"),
+    websiteUrl: text("website_url"),
+    priceLevel: integer("price_level"),
+    dressCode: text("dress_code"),
+    ageRequirement: integer("age_requirement"),
+    openingHoursJson: text("opening_hours_json"),
+    timezone: text("timezone").default("America/New_York"),
+    venueCategoriesJson: text("venue_categories_json"),
+    amenitiesJson: text("amenities_json"),
+    parkingInformation: text("parking_information"),
+    valetAvailable: boolean("valet_available"),
+    coverChargeInformation: text("cover_charge_information"),
+    averageRating: real("average_rating"),
+    reviewCount: integer("review_count"),
+    publicationStatus: text("publication_status").notNull().default("published"),
+    verificationStatus: text("verification_status").notNull().default("unverified"),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    archivedAt: timestamp("archived_at"),
+    suspendedAt: timestamp("suspended_at"),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    googleMapsUrl: text("google_maps_url"),
+    googleImportedAt: timestamp("google_imported_at"),
+    googleDataConfirmedByOwnerAt: timestamp("google_data_confirmed_by_owner_at"),
 
-  genres: text("genres").array(),
+    genres: text("genres").array(),
 
-  crowdLevel: text("crowd_level").default("Mellow"),
-  distanceMiles: real("distance_miles").default(0),
-  cover: integer("cover").default(0),
-  vibeScore: integer("vibe_score").default(80),
+    crowdLevel: text("crowd_level").default("Mellow"),
+    distanceMiles: real("distance_miles").default(0),
+    cover: integer("cover").default(0),
+    vibeScore: integer("vibe_score").default(80),
 
-  isOpenNow: boolean("is_open_now").default(false),
-  livePreviewAvailable: boolean("live_preview_available").default(false),
-  isLive: boolean("is_live").default(false),
+    isOpenNow: boolean("is_open_now").default(false),
+    livePreviewAvailable: boolean("live_preview_available").default(false),
+    isLive: boolean("is_live").default(false),
 
-  imageClass: text("image_class").default(
-    "from-cyan-500/85 via-blue-600/70 to-slate-950"
-  ),
+    imageClass: text("image_class").default(
+      "from-cyan-500/85 via-blue-600/70 to-slate-950"
+    ),
 
-  createdAt: timestamp("created_at").defaultNow(),
-});
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    slugIdx: index("venues_slug_idx").on(table.slug),
+    googlePlaceIdIdx: index("venues_google_place_id_idx").on(table.googlePlaceId),
+    publicationStatusIdx: index("venues_publication_status_idx").on(table.publicationStatus),
+    nameIdx: index("venues_name_idx").on(table.name),
+    neighborhoodIdx: index("venues_neighborhood_idx").on(table.neighborhood),
+  })
+);
 
 export const venueMembers = pgTable(
   "venue_members",
@@ -152,29 +193,48 @@ export const venueImages = pgTable("venue_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const events = pgTable("events", {
-  id: serial("id").primaryKey(),
-  venueId: integer("venue_id")
-    .notNull()
-    .references(() => venues.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  eventDate: timestamp("event_date").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time"),
-  startsAt: timestamp("starts_at").notNull(),
-  endsAt: timestamp("ends_at"),
-  coverImageUrl: text("cover_image_url"),
-  ticketUrl: text("ticket_url"),
-  coverCents: integer("cover_cents").notNull().default(0),
-  ageRequirement: integer("age_requirement"),
-  genre: text("genre"),
-  dressCode: text("dress_code"),
-  isFeatured: boolean("is_featured").notNull().default(false),
-  is21Plus: boolean("is_21_plus").notNull().default(false),
-  isPublished: boolean("is_published").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const events = pgTable(
+  "events",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    slug: text("slug"),
+    title: text("title").notNull(),
+    description: text("description"),
+    eventDate: timestamp("event_date").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time"),
+    startsAt: timestamp("starts_at").notNull(),
+    endsAt: timestamp("ends_at"),
+    timezone: text("timezone").default("America/New_York"),
+    coverImageUrl: text("cover_image_url"),
+    ticketUrl: text("ticket_url"),
+    guestListUrl: text("guest_list_url"),
+    ticketStatus: text("ticket_status").default("on_sale"),
+    coverCents: integer("cover_cents").notNull().default(0),
+    ageRequirement: integer("age_requirement"),
+    genre: text("genre"),
+    genresJson: text("genres_json"),
+    dressCode: text("dress_code"),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    featuredStatus: text("featured_status").notNull().default("none"),
+    is21Plus: boolean("is_21_plus").notNull().default(false),
+    isPublished: boolean("is_published").notNull().default(false),
+    publicationStatus: text("publication_status").notNull().default("draft"),
+    isCanceled: boolean("is_canceled").notNull().default(false),
+    isArchived: boolean("is_archived").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    slugIdx: index("events_slug_idx").on(table.slug),
+    venueIdIdx: index("events_venue_id_idx").on(table.venueId),
+    startsAtIdx: index("events_starts_at_idx").on(table.startsAt),
+    publicationStatusIdx: index("events_publication_status_idx").on(table.publicationStatus),
+  })
+);
 
 export const venueBusinessHours = pgTable("venue_business_hours", {
   id: serial("id").primaryKey(),

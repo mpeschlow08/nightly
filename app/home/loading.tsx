@@ -1,32 +1,21 @@
-import { RouteLoadingShell } from "@/components/navigation/RouteLoadingShell";
-
 export default function HomeLoading() {
   return (
-    <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
-      <RouteLoadingShell
-        eyebrow="Consumer"
-        title="Loading city pulse"
-        subtitle="Syncing live energy, trending venues, and tonight's recommendations."
-        metricCount={3}
-        cardCount={6}
-        listCount={5}
-      />
+    <div className="min-h-screen overflow-x-hidden bg-[#04070b] text-zinc-100 antialiased">
+      <div className="mx-auto max-w-3xl space-y-7 px-4 pb-24 pt-4 sm:px-5 lg:px-6">
+        <div className="h-40 animate-pulse rounded-[1.25rem] border border-white/10 bg-white/5" />
 
-      <div className="mx-auto mt-6 max-w-7xl space-y-6 px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="h-28 animate-pulse rounded-3xl border border-white/10 bg-white/5" />
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="h-24 animate-pulse rounded-2xl border border-cyan-400/20 bg-cyan-500/10" />
-          <div className="h-24 animate-pulse rounded-2xl border border-violet-400/20 bg-violet-500/10" />
-          <div className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/5" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/5"
-            />
-          ))}
-        </div>
+        {Array.from({ length: 5 }).map((_, sectionIndex) => (
+          <section key={sectionIndex} className="space-y-3">
+            <div className="h-5 w-36 animate-pulse rounded-full bg-white/10" />
+            <div className="-mx-4 flex gap-3 overflow-x-hidden px-4 sm:-mx-5 sm:px-5">
+              {Array.from({ length: 2 }).map((__, cardIndex) => (
+                <div key={`${sectionIndex}-${cardIndex}`} className="h-[18.8rem] min-w-[17.2rem] animate-pulse rounded-[1.2rem] border border-white/10 bg-white/5" />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <div className="h-14" />
       </div>
     </div>
   );

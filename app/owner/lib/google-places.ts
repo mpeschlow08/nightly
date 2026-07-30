@@ -9,6 +9,13 @@ type GooglePlaceLocation = {
   longitude?: number;
 };
 
+type GooglePlacePhoto = {
+  name?: string;
+  widthPx?: number;
+  heightPx?: number;
+  authorAttributions?: Array<{ displayName?: string; uri?: string }>;
+};
+
 type GoogleSearchPlace = {
   id?: string;
   displayName?: { text?: string };
@@ -27,6 +34,8 @@ type GoogleDetailsPlace = {
   regularOpeningHours?: unknown;
   location?: GooglePlaceLocation;
   googleMapsUri?: string;
+  photos?: GooglePlacePhoto[];
+  iconMaskBaseUri?: string;
 };
 
 export type VenueSearchResult = {
@@ -49,6 +58,17 @@ export type VenuePlaceDetails = {
   latitude: number | null;
   longitude: number | null;
   googleMapsUri: string | null;
+  photos: Array<{
+    reference: string;
+    widthPx: number | null;
+    heightPx: number | null;
+    attributions: Array<{ displayName: string | null; uri: string | null }>;
+  }>;
+  photoReferences: string[];
+  coverPhotoReference: string | null;
+  logoImageUrl: string | null;
+  coverImageUrl: string | null;
+  galleryImageUrls: string[];
 };
 
 const GOOGLE_PLACES_BASE_URL = "https://places.googleapis.com/v1";
@@ -65,7 +85,7 @@ const ATLANTA_LOCATION_BIAS = {
 const GOOGLE_TEXT_SEARCH_FIELDS =
   "places.id,places.displayName,places.formattedAddress,places.addressComponents,places.location";
 const GOOGLE_PLACE_DETAILS_FIELDS =
-  "id,displayName,formattedAddress,addressComponents,nationalPhoneNumber,websiteUri,regularOpeningHours,location,googleMapsUri";
+  "id,displayName,formattedAddress,addressComponents,nationalPhoneNumber,websiteUri,regularOpeningHours,location,googleMapsUri,photos,iconMaskBaseUri";
 
 export const MAX_VENUE_SEARCH_QUERY_LENGTH = 120;
 
@@ -95,6 +115,22 @@ export function sanitizeVenueSearchQuery(query: string) {
   }
 
   return collapsed;
+}
+
+function normalizePhotoReference(reference: string | undefined) {
+  const trimmed = reference?.trim() ?? "";
+
+  return trimmed.length > 0 ? trimmed.replace(/^\/+/, "") : null;
+}
+
+export function buildGooglePlacePhotoMediaUrl(photoReference: string, maxWidthPx = 1600) {
+  const normalizedReference = normalizePhotoReference(photoReference);
+
+  if (!normalizedReference) {
+    return null;
+  }
+
+  return `/api/venues/google-photo?ref=${encodeURIComponent(normalizedReference)}&maxWidthPx=${maxWidthPx}`;
 }
 
 function parseCity(addressComponents: GoogleAddressComponent[] | undefined) {
@@ -161,6 +197,47 @@ function toVenuePlaceDetails(place: GoogleDetailsPlace): VenuePlaceDetails {
     throw new Error("Google Place Details response was missing required fields.");
   }
 
+  const photoReferences = Array.from(
+    new Set(
+      (place.photos ?? [])
+        .map((photo) => normalizePhotoReference(photo.name))
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const photos = (place.photos ?? [])
+    .map((photo) => {
+      const reference = normalizePhotoReference(photo.name);
+
+      if (!reference) {
+        return null;
+      }
+
+      return {
+        reference,
+        widthPx: Number.isFinite(photo.widthPx) ? (photo.widthPx as number) : null,
+        heightPx: Number.isFinite(photo.heightPx) ? (photo.heightPx as number) : null,
+        attributions: (photo.authorAttributions ?? []).map((item) => ({
+          displayName: item.displayName?.trim() || null,
+          uri: item.uri?.trim() || null,
+        })),
+      };
+    })
+    .filter((photo): photo is NonNullable<typeof photo> => Boolean(photo));
+
+  const coverPhotoReference = photoReferences[0] ?? null;
+  const coverImageUrl = coverPhotoReference
+    ? buildGooglePlacePhotoMediaUrl(coverPhotoReference, 1800)
+    : null;
+  const galleryImageUrls = photoReferences
+    .map((reference) => buildGooglePlacePhotoMediaUrl(reference, 1400))
+    .filter((value): value is string => Boolean(value));
+
+  const logoImageUrl =
+    place.iconMaskBaseUri?.trim()
+      ? `${place.iconMaskBaseUri.trim()}.png`
+      : null;
+
   return {
     placeId,
     displayName,
@@ -176,6 +253,12 @@ function toVenuePlaceDetails(place: GoogleDetailsPlace): VenuePlaceDetails {
       ? (place.location?.longitude as number)
       : null,
     googleMapsUri: place.googleMapsUri?.trim() || null,
+    photos,
+    photoReferences,
+    coverPhotoReference,
+    logoImageUrl,
+    coverImageUrl,
+    galleryImageUrls,
   };
 }
 

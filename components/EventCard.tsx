@@ -3,27 +3,30 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import type { NightlyEvent } from "@/data/events";
+import EventImage from "@/components/media/EventImage";
+import type { ConsumerEventCard } from "@/lib/consumer/types";
 
 type EventCardProps = {
-  event: NightlyEvent;
+  event: ConsumerEventCard;
 };
 
 export default function EventCard({ event }: EventCardProps) {
   const [saved, setSaved] = useState(false);
+  const imageUrl = event.imageUrl;
 
   return (
     <article className="nightly-card nightly-card-interactive overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 backdrop-blur-xl">
-      <div className={`relative h-40 bg-gradient-to-br ${event.imageClass}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.22),_transparent_55%)]" />
-        {event.live ? (
+      <div className="relative">
+        <EventImage src={imageUrl} alt={`${event.name} artwork`} orientation="portrait" className="rounded-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/18 to-transparent" />
+        {event.isLive ? (
           <span className="absolute left-3 top-3 rounded-full border border-cyan-200/30 bg-black/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-cyan-100">
             Live
           </span>
         ) : null}
-        {event.featured ? (
+        {event.ticketStatus === "Sold out" ? (
           <span className="absolute right-3 top-3 rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-100">
-            Featured
+            Sold Out
           </span>
         ) : null}
       </div>
@@ -55,7 +58,7 @@ export default function EventCard({ event }: EventCardProps) {
         <div className="grid gap-2 text-sm text-zinc-300">
           <div className="flex items-center justify-between">
             <span className="text-zinc-400">When</span>
-            <span className="font-medium text-white">{event.startTime} • {event.endTime}</span>
+            <span className="font-medium text-white">{event.startTimeLabel}{event.endTimeLabel ? ` • ${event.endTimeLabel}` : ""}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-zinc-400">Where</span>
@@ -67,13 +70,13 @@ export default function EventCard({ event }: EventCardProps) {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-zinc-400">Vibe</span>
-            <span className="font-medium text-white">{event.vibeScore}/100</span>
+            <span className="font-medium text-white">{event.distanceMiles != null ? `${event.distanceMiles.toFixed(1)} mi` : "--"}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-300">
-          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{event.crowdLevel}</span>
-          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{event.ageRequirement}</span>
+          {event.crowdLevel ? <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{event.crowdLevel}</span> : null}
+          {event.ageRequirementLabel ? <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{event.ageRequirementLabel}</span> : null}
           <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{event.ticketStatus}</span>
         </div>
 
