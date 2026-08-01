@@ -4,6 +4,7 @@ import HappeningTonightSection from "@/components/HappeningTonightSection";
 import EventsTonightSection from "@/components/EventsTonightSection";
 import PopularNearYouSection from "@/components/PopularNearYouSection";
 import LiveVibeSection from "@/components/LiveVibeSection";
+import Link from "next/link";
 import DiscoveryVenueSection from "@/components/home/DiscoveryVenueSection";
 import DiscoveryEventSection from "@/components/home/DiscoveryEventSection";
 import NeighborhoodDiscoverySection from "@/components/home/NeighborhoodDiscoverySection";
@@ -39,6 +40,20 @@ export default async function ConsumerHomePage() {
                 <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200/80">AI City Pulse</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">{homeData.cityPulse.headline}</h2>
                 <p className="mt-2 text-sm text-zinc-300">{homeData.cityPulse.summary}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href="/concierge"
+                    className="rounded-full bg-cyan-500/15 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/25"
+                  >
+                    Ask concierge
+                  </Link>
+                  <Link
+                    href="/discover"
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-zinc-200 transition hover:border-cyan-300/30 hover:bg-cyan-500/10"
+                  >
+                    Explore the city
+                  </Link>
+                </div>
               </div>
             </section>
           ) : null}

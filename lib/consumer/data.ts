@@ -296,6 +296,40 @@ function normalizeTicketStatus(value: string | null | undefined) {
   return value ?? "On sale";
 }
 
+function startingPriceCentsForEvent(row: typeof events.$inferSelect) {
+  if (row.coverCents && row.coverCents > 0) {
+    return row.coverCents;
+  }
+
+  return row.requiresTickets ? 0 : null;
+}
+
+function ticketSalesStateForEvent(row: typeof events.$inferSelect) {
+  const now = new Date();
+  const salesStartAt = row.ticketSalesStartAt ?? null;
+  const salesEndAt = row.ticketSalesEndAt ?? null;
+
+  if (!row.requiresTickets && !row.supportsFreeRsvp) {
+    return "No ticketing";
+  }
+
+  if (row.ticketStatus?.trim()) {
+    return normalizeTicketStatus(row.ticketStatus);
+  }
+
+  if (salesStartAt && salesStartAt > now) {
+    return "On sale soon";
+  }
+
+  if (salesEndAt && salesEndAt < now) {
+    return "Sales ended";
+  }
+
+  return row.capacity != null && row.capacity > 0 && row.ticketStatus === "sold_out"
+    ? "Sold out"
+    : "On sale";
+}
+
 function toEventCardModel(
   row: typeof events.$inferSelect,
   venue: typeof venues.$inferSelect,
@@ -328,7 +362,14 @@ function toEventCardModel(
     ageRequirementLabel: toAgeRequirementLabel(row.ageRequirement),
     dressCode: row.dressCode,
     crowdLevel: venue.crowdLevel,
-    ticketStatus: normalizeTicketStatus(row.ticketStatus),
+    ticketStatus: ticketSalesStateForEvent(row),
+    ticketSalesVisibility: row.ticketSalesVisibility ?? "public",
+    requiresTickets: Boolean(row.requiresTickets),
+    supportsFreeRsvp: Boolean(row.supportsFreeRsvp),
+    waitlistEnabled: Boolean(row.waitlistEnabled),
+    guestListEnabled: Boolean(row.guestListUrl || row.rsvpUrl),
+    startingPriceCents: startingPriceCentsForEvent(row),
+    capacity: row.capacity ?? null,
     ticketUrl: row.ticketUrl,
     guestListUrl: row.guestListUrl,
     isLive: isEventLive(row.startsAt, row.endsAt, now),
@@ -857,6 +898,20 @@ export async function getEventBySlug(slugOrId: string): Promise<ConsumerEventDet
     ticketUrl: row.event.ticketUrl,
     guestListUrl: row.event.guestListUrl,
     ticketStatus: model.ticketStatus,
+    requiresTickets: Boolean(row.event.requiresTickets),
+    supportsFreeRsvp: Boolean(row.event.supportsFreeRsvp),
+    waitlistEnabled: Boolean(row.event.waitlistEnabled),
+    ticketSalesVisibility: row.event.ticketSalesVisibility ?? "public",
+    startingPriceCents: startingPriceCentsForEvent(row.event),
+    salesStartAtIso: row.event.ticketSalesStartAt?.toISOString() ?? null,
+    salesEndAtIso: row.event.ticketSalesEndAt?.toISOString() ?? null,
+    doorsOpenAtIso: row.event.doorsOpenAt?.toISOString() ?? null,
+    capacity: row.event.capacity ?? null,
+    reservedCapacity: row.event.reservedCapacity ?? 0,
+    minimumAge: row.event.minimumAge ?? null,
+    transferPolicy: row.event.ticketTransferPolicy ?? "allowed",
+    refundPolicy: row.event.refundPolicy ?? "standard",
+    reEntryPolicy: row.event.reEntryPolicy ?? "no_reentry",
   };
 }
 

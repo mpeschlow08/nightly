@@ -1,14 +1,24 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
 const PROTECTED_PATH_PREFIXES = [
+  "/bookings",
   "/select-role",
   "/onboarding",
   "/dj/onboarding",
   "/dj/dashboard",
   "/dj/mixes",
+  "/dj/bookings",
+  "/dj/availability",
   "/profile",
   "/owner",
+  "/owner/bookings",
+  "/owner/availability",
+  "/tickets",
+  "/door",
   "/admin",
+  "/admin/bookings",
+  "/api/admin/health",
+  "/api/feedback",
   "/api/owner/google-places",
 ];
 
@@ -23,5 +33,5 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*|favicon.ico|api/discovery/track).*)"],
+  matcher: ["/((?!_next|.*\\..*|favicon.ico|api/discovery/track|api/live|api/ready|api/health).*)"],
 };

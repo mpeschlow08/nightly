@@ -1,12 +1,35 @@
 import { notFound } from "next/navigation";
 
 import { getOwnerVenue } from "../lib/data";
+import { getCurrentOwnerVenue } from "../lib/ownership";
+import { isFeatureEnabled } from "@/lib/platform/feature-access";
 
 export default async function OwnerSettingsPage() {
+  const owner = await getCurrentOwnerVenue();
+  const settingsEnabled = await isFeatureEnabled("feature.beta_only_features", {
+    environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+    userId: owner.clerkUserId,
+    venueId: owner.venueId,
+    role: owner.role,
+    city: owner.venue.city ?? undefined,
+  });
+
   const { venue, role } = await getOwnerVenue();
 
   if (!venue) {
     notFound();
+  }
+
+  if (!settingsEnabled) {
+    return (
+      <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
+        <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Owner Settings</p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">Coming in a later release</h2>
+        <p className="mt-2 text-sm text-zinc-300">
+          Staff management and billing controls are intentionally deferred from Nightly Beta V1.
+        </p>
+      </section>
+    );
   }
 
   return (

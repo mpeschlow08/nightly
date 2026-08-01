@@ -69,6 +69,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const friendPulse = friendPulseForVenue(event.venueName);
 
   const guestListStatus = event.guestListUrl ? "Guest list available" : "Guest list not available";
+  const ticketingStatus = event.requiresTickets
+    ? event.ticketStatus
+    : event.supportsFreeRsvp
+      ? "Free RSVP available"
+      : "No ticketing required";
+  const salesWindowLabel = event.salesStartAtIso
+    ? `${new Date(event.salesStartAtIso).toLocaleString()}${event.salesEndAtIso ? ` - ${new Date(event.salesEndAtIso).toLocaleString()}` : ""}`
+    : "Sales window not set";
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#04070b] text-zinc-100 antialiased">
@@ -131,27 +139,66 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             </div>
           </section>
 
-          <section className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <button type="button" className="nightly-btn-secondary min-h-11 rounded-full border border-violet-300/35 bg-violet-500/20 px-3 text-sm font-medium text-violet-100">
-              Buy Tickets
-            </button>
-            <button type="button" className="nightly-btn-secondary min-h-11 rounded-full border border-violet-300/35 bg-violet-500/15 px-3 text-sm font-medium text-violet-100">
-              Join Guest List
-            </button>
-            <button type="button" className="nightly-btn-secondary min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-zinc-100">
-              Add to Calendar
-            </button>
-            <a
-              href={venuePreview?.googleMapsUrl ?? `https://maps.google.com/?q=${encodeURIComponent(`${event.venueName} ${event.neighborhood}`)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="nightly-btn-secondary min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-center text-sm text-zinc-100"
-            >
-              Get Directions
-            </a>
-            <button type="button" className="nightly-btn-secondary col-span-2 min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-zinc-100 sm:col-span-1">
-              Share Event
-            </button>
+          <section className="mt-7 rounded-[1.2rem] border border-white/10 bg-[#070c17] p-4">
+            <EventSectionHeading title="Tickets & Entry" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5 sm:col-span-2">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Ticketing Status</p>
+                <p className="mt-1 text-sm text-zinc-200">{ticketingStatus}</p>
+                <p className="mt-1 text-xs text-zinc-500">Sales window: {salesWindowLabel}</p>
+              </article>
+              <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Starting Price</p>
+                <p className="mt-1 text-sm text-zinc-200">{event.startingPriceCents != null ? `$${Math.round(event.startingPriceCents / 100)}` : "No cover"}</p>
+              </article>
+              <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Policy Summary</p>
+                <p className="mt-1 text-sm text-zinc-200">{event.transferPolicy} • {event.refundPolicy}</p>
+              </article>
+              <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Capacity</p>
+                <p className="mt-1 text-sm text-zinc-200">{event.capacity != null ? `${event.capacity} total` : "Capacity not set"}</p>
+              </article>
+              <article className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Entry Window</p>
+                <p className="mt-1 text-sm text-zinc-200">{event.doorsOpenAtIso ? `Doors open ${new Date(event.doorsOpenAtIso).toLocaleTimeString()}` : "Doors time not set"}</p>
+              </article>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {event.requiresTickets ? (
+                <Link href={`/tickets?event=${event.slug}`} className="nightly-btn-secondary min-h-11 rounded-full border border-violet-300/35 bg-violet-500/20 px-3 text-sm font-medium text-violet-100">
+                  Buy Tickets
+                </Link>
+              ) : event.supportsFreeRsvp ? (
+                <Link href={`/tickets?event=${event.slug}&mode=rsvp`} className="nightly-btn-secondary min-h-11 rounded-full border border-violet-300/35 bg-violet-500/20 px-3 text-sm font-medium text-violet-100">
+                  RSVP Free
+                </Link>
+              ) : null}
+              {event.guestListUrl || event.guestListUrl === null ? (
+                <Link href={`/tickets?event=${event.slug}&mode=guest-list`} className="nightly-btn-secondary min-h-11 rounded-full border border-violet-300/35 bg-violet-500/15 px-3 text-sm font-medium text-violet-100">
+                  Join Guest List
+                </Link>
+              ) : null}
+              {event.waitlistEnabled ? (
+                <Link href={`/tickets?event=${event.slug}&mode=waitlist`} className="nightly-btn-secondary min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-zinc-100">
+                  Join Waitlist
+                </Link>
+              ) : null}
+              <button type="button" className="nightly-btn-secondary min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-zinc-100">
+                Add to Calendar
+              </button>
+              <a
+                href={venuePreview?.googleMapsUrl ?? `https://maps.google.com/?q=${encodeURIComponent(`${event.venueName} ${event.neighborhood}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="nightly-btn-secondary min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-center text-sm text-zinc-100"
+              >
+                Get Directions
+              </a>
+              <button type="button" className="nightly-btn-secondary col-span-2 min-h-11 rounded-full border border-white/15 bg-white/5 px-3 text-sm text-zinc-100 sm:col-span-1">
+                Share Event
+              </button>
+            </div>
           </section>
 
           <section className="mt-7">

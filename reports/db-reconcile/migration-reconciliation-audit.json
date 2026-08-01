@@ -1,0 +1,928 @@
+{
+  "generatedAt": "2026-08-01T01:43:51.339Z",
+  "journalOrder": [
+    {
+      "idx": 0,
+      "tag": "0000_colorful_ezekiel_stane",
+      "when": 1784005903339
+    },
+    {
+      "idx": 1,
+      "tag": "0001_venue_images",
+      "when": 1784981830000
+    },
+    {
+      "idx": 2,
+      "tag": "0002_venue_logo",
+      "when": 1785105600000
+    },
+    {
+      "idx": 3,
+      "tag": "0003_google_places_owner_import",
+      "when": 1785182400000
+    },
+    {
+      "idx": 4,
+      "tag": "0004_optimal_marvel_apes",
+      "when": 1785182401000
+    },
+    {
+      "idx": 5,
+      "tag": "0005_volatile_earthquake",
+      "when": 1785182402000
+    },
+    {
+      "idx": 6,
+      "tag": "0006_parched_iron_monger",
+      "when": 1785182403000
+    },
+    {
+      "idx": 7,
+      "tag": "0007_huge_storm",
+      "when": 1785349667512
+    },
+    {
+      "idx": 8,
+      "tag": "0008_neat_killer_shrike",
+      "when": 1785352559855
+    },
+    {
+      "idx": 9,
+      "tag": "0009_flowery_lake",
+      "when": 1785352935746
+    },
+    {
+      "idx": 10,
+      "tag": "0010_venue_image_refresh_system",
+      "when": 1785600000000
+    },
+    {
+      "idx": 11,
+      "tag": "0011_consumer_data_layer",
+      "when": 1785690000000
+    },
+    {
+      "idx": 12,
+      "tag": "0012_venue_claim_workflow",
+      "when": 1788354000000
+    },
+    {
+      "idx": 13,
+      "tag": "0013_event_management_system",
+      "when": 1788440400000
+    },
+    {
+      "idx": 14,
+      "tag": "0014_loud_payback",
+      "when": 1785462980640
+    },
+    {
+      "idx": 15,
+      "tag": "0015_lyrical_tony_stark",
+      "when": 1785465509345
+    },
+    {
+      "idx": 16,
+      "tag": "0016_naive_ben_grimm",
+      "when": 1785467729330
+    },
+    {
+      "idx": 17,
+      "tag": "0017_salty_amphibian",
+      "when": 1785469397047
+    },
+    {
+      "idx": 18,
+      "tag": "0018_crazy_sauron",
+      "when": 1785471015418
+    },
+    {
+      "idx": 19,
+      "tag": "0019_glorious_smasher",
+      "when": 1785547690023
+    }
+  ],
+  "liveLedgerRows": [
+    {
+      "id": 1,
+      "hash": "20ad4498d3e178b1e528642d38853ab32015cc2ab30a2835810d1ac5a0459ea9",
+      "created_at": "1784005903339",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 2,
+      "hash": "fec3d49fb0bbbbe41e42e79b72acafe479e5db65be60c09cffc67631542a3782",
+      "created_at": "1784981830000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 3,
+      "hash": "959c10979f4a80c34972056653dd63154c8411e96d9f8b6c6cb705c3cb675752",
+      "created_at": "1785105600000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 4,
+      "hash": "b2a185fa9ebf415d8a396db12297a4a67469bf8777268da68bd93204b2c8330a",
+      "created_at": "1785182400000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 5,
+      "hash": "d5d23e1e3a982ec4f7cdbbcd8457f758cc30894d6976c5304f3dc88872fd4fe6",
+      "created_at": "1785182401000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 6,
+      "hash": "2aaff564b86dfd22df5674fb4d5f3fdf7ae6f90bcd02fb0acbdc0c487fae6afc",
+      "created_at": "1785182402000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 7,
+      "hash": "dcdf46e2b5508e4a27ec967533741db050a28a898f43f120c0dac09ff557eea2",
+      "created_at": "1785182403000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 8,
+      "hash": "42ba64cd5f06a147ad0317ea480a6754e2fcd5f5ac2f22d3be6668d30e96fc6d",
+      "created_at": "1785349667512",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 9,
+      "hash": "7fecf79597967e885a92d5e766e9d60211cb8a671cb206841ef342b00f221018",
+      "created_at": "1785352559855",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 10,
+      "hash": "e5350e47d3c8bf3c861c1bdea7589921847d65cd184d794de3f079d5e7dbff27",
+      "created_at": "1785352935746",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 11,
+      "hash": "53fb3978b303c78bdf5b23a7938a5a9b65c3d2410dfcd58a02ce433f259d5ec0",
+      "created_at": "1785600000000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 12,
+      "hash": "53560b1977cc10aed73976e6c4cef730bed95862c04b4c84bdaea1d4b06adde4",
+      "created_at": "1785690000000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 13,
+      "hash": "dcc9d3924339e0d09a8a82351bceae16a52091f9cf00ff5546864d9e9a3bb2a8",
+      "created_at": "1788354000000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 14,
+      "hash": "8b1bd1bf90807b71b232e68efad107f535b85e6ea192750ab5d61320e5111f38",
+      "created_at": "1788440400000",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 15,
+      "hash": "679a393ac9759656020ffb11e62ae8bad159aeed320bcd660a1a9807c61109dd",
+      "created_at": "1785462980640",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 16,
+      "hash": "555c29276979aa81072685d4fc366d76ef6e74412e46a546de0d1e934136ff22",
+      "created_at": "1785465509345",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 17,
+      "hash": "5a0af0a9a2272d4447ccbbeeead0858f41fdf361569ca8aedf8d834fa26817d9",
+      "created_at": "1785467729330",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 18,
+      "hash": "7f95706f162e3d15c7906ebc3b4e0cdc3b58072b8998f504eec92a9d291c3db6",
+      "created_at": "1785469397047",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 19,
+      "hash": "828948b984dd148d3d274daef3d28fe8bca345d610a78cb3f1ad3dd6f2dc0419",
+      "created_at": "1785471015418",
+      "schema_name": "drizzle"
+    },
+    {
+      "id": 20,
+      "hash": "ac1092eda92da74024b82a6b49f7b2c77301132f39a913122dee85bbead26ec0",
+      "created_at": "1785547690023",
+      "schema_name": "drizzle"
+    }
+  ],
+  "classifications": [
+    {
+      "file": "0000_colorful_ezekiel_stane.sql",
+      "tag": "0000_colorful_ezekiel_stane",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venues"
+      ],
+      "enums": [],
+      "presentCreateTables": [
+        "venues"
+      ],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0001_venue_images.sql",
+      "tag": "0001_venue_images",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venue_images"
+      ],
+      "enums": [],
+      "presentCreateTables": [
+        "venue_images"
+      ],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0002_venue_logo.sql",
+      "tag": "0002_venue_logo",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0003_google_places_owner_import.sql",
+      "tag": "0003_google_places_owner_import",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0004_optimal_marvel_apes.sql",
+      "tag": "0004_optimal_marvel_apes",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "users"
+      ],
+      "enums": [
+        "user_role"
+      ],
+      "presentCreateTables": [
+        "users"
+      ],
+      "presentEnums": [
+        "user_role"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0005_volatile_earthquake.sql",
+      "tag": "0005_volatile_earthquake",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "dj_profiles"
+      ],
+      "enums": [],
+      "presentCreateTables": [
+        "dj_profiles"
+      ],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0006_parched_iron_monger.sql",
+      "tag": "0006_parched_iron_monger",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "dj_sample_mixes"
+      ],
+      "enums": [],
+      "presentCreateTables": [
+        "dj_sample_mixes"
+      ],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0007_huge_storm.sql",
+      "tag": "0007_huge_storm",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venue_members"
+      ],
+      "enums": [
+        "venue_member_role"
+      ],
+      "presentCreateTables": [
+        "venue_members"
+      ],
+      "presentEnums": [
+        "venue_member_role"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0007_venue_image_system.sql",
+      "tag": "0007_venue_image_system",
+      "inJournal": false,
+      "hashRecorded": false,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "superseded_or_invalid"
+    },
+    {
+      "file": "0008_neat_killer_shrike.sql",
+      "tag": "0008_neat_killer_shrike",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venue_cameras"
+      ],
+      "enums": [],
+      "presentCreateTables": [
+        "venue_cameras"
+      ],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0009_flowery_lake.sql",
+      "tag": "0009_flowery_lake",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0010_venue_image_refresh_system.sql",
+      "tag": "0010_venue_image_refresh_system",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0011_consumer_data_layer.sql",
+      "tag": "0011_consumer_data_layer",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0012_venue_claim_workflow.sql",
+      "tag": "0012_venue_claim_workflow",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0013_event_management_system.sql",
+      "tag": "0013_event_management_system",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0014_loud_payback.sql",
+      "tag": "0014_loud_payback",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "audit_logs",
+        "booking_attachments",
+        "booking_audit_log",
+        "booking_checkins",
+        "booking_contract_versions",
+        "booking_contracts",
+        "booking_coupon_usage",
+        "booking_discounts",
+        "booking_disputes",
+        "booking_messages",
+        "booking_notifications",
+        "booking_participants",
+        "booking_payments",
+        "booking_pricing",
+        "booking_refunds",
+        "booking_requirements",
+        "booking_reviews",
+        "booking_status_history",
+        "bookings",
+        "concierge_messages",
+        "concierge_threads",
+        "dj_availability",
+        "event_analytics_daily",
+        "event_lineup",
+        "event_moderation_flags",
+        "event_notification_outbox",
+        "event_recurrence_instances",
+        "event_revision_requests",
+        "venue_availability",
+        "venue_claim_requests",
+        "venue_profile_change_requests",
+        "venue_publish_history"
+      ],
+      "enums": [
+        "booking_attachment_kind",
+        "booking_checkin_status",
+        "booking_contract_status",
+        "booking_discount_kind",
+        "booking_dispute_status",
+        "booking_lifecycle_status",
+        "booking_notification_status",
+        "booking_participant_role",
+        "booking_payment_status",
+        "booking_pricing_kind",
+        "booking_review_subject",
+        "claim_status",
+        "concierge_message_role",
+        "concierge_thread_status",
+        "event_lifecycle_status",
+        "event_type",
+        "moderation_status"
+      ],
+      "presentCreateTables": [
+        "audit_logs",
+        "booking_attachments",
+        "booking_audit_log",
+        "booking_checkins",
+        "booking_contract_versions",
+        "booking_contracts",
+        "booking_coupon_usage",
+        "booking_discounts",
+        "booking_disputes",
+        "booking_messages",
+        "booking_notifications",
+        "booking_participants",
+        "booking_payments",
+        "booking_pricing",
+        "booking_refunds",
+        "booking_requirements",
+        "booking_reviews",
+        "booking_status_history",
+        "bookings",
+        "concierge_messages",
+        "concierge_threads",
+        "dj_availability",
+        "event_analytics_daily",
+        "event_lineup",
+        "event_moderation_flags",
+        "event_notification_outbox",
+        "event_recurrence_instances",
+        "event_revision_requests",
+        "venue_availability",
+        "venue_claim_requests",
+        "venue_profile_change_requests",
+        "venue_publish_history"
+      ],
+      "presentEnums": [
+        "booking_attachment_kind",
+        "booking_checkin_status",
+        "booking_contract_status",
+        "booking_discount_kind",
+        "booking_dispute_status",
+        "booking_lifecycle_status",
+        "booking_notification_status",
+        "booking_participant_role",
+        "booking_payment_status",
+        "booking_pricing_kind",
+        "booking_review_subject",
+        "claim_status",
+        "concierge_message_role",
+        "concierge_thread_status",
+        "event_lifecycle_status",
+        "event_type",
+        "moderation_status"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0014_nightly_concierge.sql",
+      "tag": "0014_nightly_concierge",
+      "inJournal": false,
+      "hashRecorded": false,
+      "creates": [],
+      "enums": [],
+      "presentCreateTables": [],
+      "presentEnums": [],
+      "status": "superseded_or_invalid"
+    },
+    {
+      "file": "0015_lyrical_tony_stark.sql",
+      "tag": "0015_lyrical_tony_stark",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "door_staff_assignments",
+        "guest_list_entries",
+        "guest_lists",
+        "promoter_event_assignments",
+        "promoter_profiles",
+        "ticket_audit_log",
+        "ticket_inventory_holds",
+        "ticket_notifications",
+        "ticket_order_items",
+        "ticket_orders",
+        "ticket_products",
+        "ticket_refunds",
+        "ticket_scan_sessions",
+        "ticket_scans",
+        "ticket_transfers",
+        "ticket_waitlists",
+        "tickets"
+      ],
+      "enums": [
+        "guest_list_entry_status",
+        "promoter_assignment_status",
+        "ticket_order_status",
+        "ticket_product_type",
+        "ticket_refund_status",
+        "ticket_sales_visibility",
+        "ticket_scan_decision",
+        "ticket_status",
+        "ticket_transfer_status"
+      ],
+      "presentCreateTables": [
+        "door_staff_assignments",
+        "guest_list_entries",
+        "guest_lists",
+        "promoter_event_assignments",
+        "promoter_profiles",
+        "ticket_audit_log",
+        "ticket_inventory_holds",
+        "ticket_notifications",
+        "ticket_order_items",
+        "ticket_orders",
+        "ticket_products",
+        "ticket_refunds",
+        "ticket_scan_sessions",
+        "ticket_scans",
+        "ticket_transfers",
+        "ticket_waitlists",
+        "tickets"
+      ],
+      "presentEnums": [
+        "guest_list_entry_status",
+        "promoter_assignment_status",
+        "ticket_order_status",
+        "ticket_product_type",
+        "ticket_refund_status",
+        "ticket_sales_visibility",
+        "ticket_scan_decision",
+        "ticket_status",
+        "ticket_transfer_status"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0016_naive_ben_grimm.sql",
+      "tag": "0016_naive_ben_grimm",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "activity_feed",
+        "friend_blocks",
+        "friend_favorites",
+        "friend_mutes",
+        "friend_requests",
+        "friends",
+        "group_members",
+        "group_message_reactions",
+        "group_messages",
+        "group_polls",
+        "group_votes",
+        "meet_requests",
+        "night_out_sessions",
+        "presence",
+        "privacy_settings",
+        "social_groups",
+        "social_notifications",
+        "social_preferences",
+        "social_profiles",
+        "social_reports"
+      ],
+      "enums": [
+        "friend_relationship_status",
+        "friend_request_status",
+        "social_group_member_role",
+        "social_group_member_status",
+        "social_group_message_type",
+        "social_group_poll_status",
+        "social_group_visibility",
+        "meet_request_status",
+        "meet_request_type",
+        "night_out_location_mode",
+        "night_out_status",
+        "presence_status",
+        "social_notification_status",
+        "social_report_status",
+        "social_visibility"
+      ],
+      "presentCreateTables": [
+        "activity_feed",
+        "friend_blocks",
+        "friend_favorites",
+        "friend_mutes",
+        "friend_requests",
+        "friends",
+        "group_members",
+        "group_message_reactions",
+        "group_messages",
+        "group_polls",
+        "group_votes",
+        "meet_requests",
+        "night_out_sessions",
+        "presence",
+        "privacy_settings",
+        "social_groups",
+        "social_notifications",
+        "social_preferences",
+        "social_profiles",
+        "social_reports"
+      ],
+      "presentEnums": [
+        "friend_relationship_status",
+        "friend_request_status",
+        "social_group_member_role",
+        "social_group_member_status",
+        "social_group_message_type",
+        "social_group_poll_status",
+        "social_group_visibility",
+        "meet_request_status",
+        "meet_request_type",
+        "night_out_location_mode",
+        "night_out_status",
+        "presence_status",
+        "social_notification_status",
+        "social_report_status",
+        "social_visibility"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0017_salty_amphibian.sql",
+      "tag": "0017_salty_amphibian",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "direct_conversations",
+        "direct_message_reactions",
+        "direct_messages",
+        "group_invites",
+        "group_join_requests",
+        "media_assets",
+        "night_out_plan_members",
+        "night_out_plan_stops",
+        "night_out_plans",
+        "presence_history",
+        "social_message_media",
+        "social_message_mentions",
+        "social_message_receipts",
+        "story_posts",
+        "story_views"
+      ],
+      "enums": [
+        "social_group_invite_status",
+        "social_group_join_request_status",
+        "social_media_asset_kind",
+        "social_media_moderation_status",
+        "social_message_receipt_status",
+        "social_story_post_status"
+      ],
+      "presentCreateTables": [
+        "direct_conversations",
+        "direct_message_reactions",
+        "direct_messages",
+        "group_invites",
+        "group_join_requests",
+        "media_assets",
+        "night_out_plan_members",
+        "night_out_plan_stops",
+        "night_out_plans",
+        "presence_history",
+        "social_message_media",
+        "social_message_mentions",
+        "social_message_receipts",
+        "story_posts",
+        "story_views"
+      ],
+      "presentEnums": [
+        "social_group_invite_status",
+        "social_group_join_request_status",
+        "social_media_asset_kind",
+        "social_media_moderation_status",
+        "social_message_receipt_status",
+        "social_story_post_status"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0018_crazy_sauron.sql",
+      "tag": "0018_crazy_sauron",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venue_ai_insights",
+        "venue_bottle_packages",
+        "venue_customer_notes",
+        "venue_customer_profiles",
+        "venue_floor_plan_objects",
+        "venue_floor_plans",
+        "venue_incident_reports",
+        "venue_inventory_items",
+        "venue_inventory_movements",
+        "venue_loyalty_ledger",
+        "venue_loyalty_rewards",
+        "venue_marketing_campaigns",
+        "venue_operation_plans",
+        "venue_operation_tasks",
+        "venue_purchase_orders",
+        "venue_shift_requests",
+        "venue_shifts",
+        "venue_staff_availability",
+        "venue_staff_certifications",
+        "venue_staff_invitations",
+        "venue_staff_profiles",
+        "venue_suppliers",
+        "venue_time_entries",
+        "venue_vip_reservations"
+      ],
+      "enums": [
+        "venue_ai_insight_status",
+        "venue_ai_insight_type",
+        "venue_incident_severity",
+        "venue_inventory_movement_type",
+        "venue_loyalty_tier",
+        "venue_marketing_campaign_status",
+        "venue_marketing_channel",
+        "venue_purchase_order_status",
+        "venue_shift_request_status",
+        "venue_shift_request_type",
+        "venue_shift_status",
+        "venue_staff_department",
+        "venue_staff_status",
+        "venue_task_status",
+        "venue_vip_reservation_status"
+      ],
+      "presentCreateTables": [
+        "venue_ai_insights",
+        "venue_bottle_packages",
+        "venue_customer_notes",
+        "venue_customer_profiles",
+        "venue_floor_plan_objects",
+        "venue_floor_plans",
+        "venue_incident_reports",
+        "venue_inventory_items",
+        "venue_inventory_movements",
+        "venue_loyalty_ledger",
+        "venue_loyalty_rewards",
+        "venue_marketing_campaigns",
+        "venue_operation_plans",
+        "venue_operation_tasks",
+        "venue_purchase_orders",
+        "venue_shift_requests",
+        "venue_shifts",
+        "venue_staff_availability",
+        "venue_staff_certifications",
+        "venue_staff_invitations",
+        "venue_staff_profiles",
+        "venue_suppliers",
+        "venue_time_entries",
+        "venue_vip_reservations"
+      ],
+      "presentEnums": [
+        "venue_ai_insight_status",
+        "venue_ai_insight_type",
+        "venue_incident_severity",
+        "venue_inventory_movement_type",
+        "venue_loyalty_tier",
+        "venue_marketing_campaign_status",
+        "venue_marketing_channel",
+        "venue_purchase_order_status",
+        "venue_shift_request_status",
+        "venue_shift_request_type",
+        "venue_shift_status",
+        "venue_staff_department",
+        "venue_staff_status",
+        "venue_task_status",
+        "venue_vip_reservation_status"
+      ],
+      "status": "fully_applied"
+    },
+    {
+      "file": "0019_glorious_smasher.sql",
+      "tag": "0019_glorious_smasher",
+      "inJournal": true,
+      "hashRecorded": true,
+      "creates": [
+        "venue_ai_conversations",
+        "venue_ai_messages",
+        "venue_anomalies",
+        "venue_benchmark_snapshots",
+        "venue_campaign_drafts",
+        "venue_customer_segment_snapshots",
+        "venue_event_forecasts",
+        "venue_insight_feedback",
+        "venue_insight_recommendations",
+        "venue_intelligence_actions",
+        "venue_intelligence_runs",
+        "venue_intelligence_snapshots",
+        "venue_intelligence_sources",
+        "venue_inventory_forecasts",
+        "venue_marketing_recommendations",
+        "venue_metric_snapshots",
+        "venue_pricing_recommendations",
+        "venue_promoter_insights",
+        "venue_revenue_forecasts",
+        "venue_staffing_recommendations"
+      ],
+      "enums": [
+        "venue_intelligence_action_status",
+        "venue_intelligence_confidence",
+        "venue_intelligence_conversation_status",
+        "venue_intelligence_message_role",
+        "venue_intelligence_recommendation_type",
+        "venue_intelligence_run_status",
+        "venue_intelligence_snapshot_type",
+        "venue_intelligence_status"
+      ],
+      "presentCreateTables": [
+        "venue_ai_conversations",
+        "venue_ai_messages",
+        "venue_anomalies",
+        "venue_benchmark_snapshots",
+        "venue_campaign_drafts",
+        "venue_customer_segment_snapshots",
+        "venue_event_forecasts",
+        "venue_insight_feedback",
+        "venue_insight_recommendations",
+        "venue_intelligence_actions",
+        "venue_intelligence_runs",
+        "venue_intelligence_snapshots",
+        "venue_intelligence_sources",
+        "venue_inventory_forecasts",
+        "venue_marketing_recommendations",
+        "venue_metric_snapshots",
+        "venue_pricing_recommendations",
+        "venue_promoter_insights",
+        "venue_revenue_forecasts",
+        "venue_staffing_recommendations"
+      ],
+      "presentEnums": [
+        "venue_intelligence_action_status",
+        "venue_intelligence_confidence",
+        "venue_intelligence_conversation_status",
+        "venue_intelligence_message_role",
+        "venue_intelligence_recommendation_type",
+        "venue_intelligence_run_status",
+        "venue_intelligence_snapshot_type",
+        "venue_intelligence_status"
+      ],
+      "status": "fully_applied"
+    }
+  ],
+  "firstDivergence": null
+}

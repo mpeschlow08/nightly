@@ -1,57 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nightly
 
-## Getting Started
+Nightly is a Next.js 16 platform for nightlife discovery, venue operations, bookings, ticketing, social crews, and admin controls.
 
-First, run the development server:
+## Local Development
+
+1. Install dependencies:
+
+```bash
+npm ci
+```
+
+2. Copy environment values from `.env.example` into `.env.local`.
+
+3. Run the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Validation Commands
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run these before merging or deploying:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npx tsc --noEmit
+npm test
+npm run build
+```
 
-## Learn More
+## Environment Validation
 
-To learn more about Next.js, take a look at the following resources:
+Validate required runtime configuration:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run env:check
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database Operational Commands
 
-## Deploy on Vercel
+```bash
+npm run db:status
+npm run db:verify
+npm run db:parity
+npm run db:smoke
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `db:status`: database health and key table checks
+- `db:verify`: migration ledger vs local migration drift detection
+- `db:parity`: migration ledger and schema parity snapshot
+- `db:smoke`: basic read-path smoke checks across core tables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Security and Smoke Commands
 
-## Environment Variables
+```bash
+npm run security:secret-scan
+npm run security:deps-audit
+npm run smoke:routes
+```
 
-Configure these values before using owner Google Places import:
+## Health Endpoints
 
-- `DATABASE_URL`: Postgres connection string.
-- `GOOGLE_PLACES_API_KEY`: Server-side Google Places API (New) key.
-- `OWNER_PORTAL_AUTHORIZED_USER_IDS`: Comma-separated Clerk user IDs allowed to manage the owner portal venue.
-- `PUBLIC_BLOB_STORE_ID`: Vercel Blob store ID.
-- `PUBLIC_BLOB_READ_WRITE_TOKEN`: Vercel Blob read/write token.
+- `GET /api/health/live`: process liveness
+- `GET /api/health`: service + database health
+- `GET /api/health/ready`: launch readiness summary
+- `GET /api/admin/health`: admin-only deep readiness report
 
-Keep `GOOGLE_PLACES_API_KEY` on the server only. Do not expose it to the browser.
+## Security and Reliability Notes
 
-## Google Places API (New) Setup
+- Webhook requests are verified and tracked in durable `webhook_deliveries` storage.
+- Production logging uses structured JSON with automatic secret redaction.
+- Owner Google Places search currently uses temporary in-memory rate-limiting and should be replaced with distributed infrastructure for full multi-instance protection.
 
-1. In Google Cloud Console, enable **Places API (New)** for your project.
-2. Create an API key restricted to Places API (New).
-3. Apply application restrictions appropriate to your deployment.
-4. Set the key as `GOOGLE_PLACES_API_KEY` in your deployment environment.
+## Runbooks
 
-The owner import flow uses Google data only to prefill an owner-editable review form. Data is saved only after owner confirmation.
+Launch readiness checklist: `docs/operations/launch-readiness.md`.

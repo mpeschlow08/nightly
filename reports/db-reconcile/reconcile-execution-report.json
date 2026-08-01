@@ -1,0 +1,2413 @@
+{
+  "startedAt": "2026-08-01T01:40:08.603Z",
+  "apply": [
+    {
+      "tag": "0014_loud_payback",
+      "executed": 113,
+      "skipped": 145,
+      "statementCount": 258,
+      "details": [
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_type"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "create_table"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "skip",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        },
+        {
+          "action": "skip",
+          "kind": "create_index"
+        }
+      ]
+    },
+    {
+      "tag": "0015_lyrical_tony_stark",
+      "executed": 168,
+      "skipped": 0,
+      "statementCount": 168,
+      "details": [
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_column"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        }
+      ]
+    },
+    {
+      "tag": "0019_glorious_smasher",
+      "executed": 143,
+      "skipped": 0,
+      "statementCount": 143,
+      "details": [
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_type"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "create_table"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "add_constraint"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        },
+        {
+          "action": "exec",
+          "kind": "create_index"
+        }
+      ]
+    }
+  ],
+  "verify": [
+    {
+      "tag": "0014_loud_payback",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    },
+    {
+      "tag": "0015_lyrical_tony_stark",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    },
+    {
+      "tag": "0016_naive_ben_grimm",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    },
+    {
+      "tag": "0017_salty_amphibian",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    },
+    {
+      "tag": "0018_crazy_sauron",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    },
+    {
+      "tag": "0019_glorious_smasher",
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      },
+      "ok": true
+    }
+  ],
+  "ledger": [
+    {
+      "tag": "0014_loud_payback",
+      "action": "inserted",
+      "hash": "679a393ac9759656020ffb11e62ae8bad159aeed320bcd660a1a9807c61109dd",
+      "createdAt": 1785462980640
+    },
+    {
+      "tag": "0015_lyrical_tony_stark",
+      "action": "inserted",
+      "hash": "555c29276979aa81072685d4fc366d76ef6e74412e46a546de0d1e934136ff22",
+      "createdAt": 1785465509345
+    },
+    {
+      "tag": "0016_naive_ben_grimm",
+      "action": "inserted",
+      "hash": "5a0af0a9a2272d4447ccbbeeead0858f41fdf361569ca8aedf8d834fa26817d9",
+      "createdAt": 1785467729330
+    },
+    {
+      "tag": "0017_salty_amphibian",
+      "action": "inserted",
+      "hash": "7f95706f162e3d15c7906ebc3b4e0cdc3b58072b8998f504eec92a9d291c3db6",
+      "createdAt": 1785469397047
+    },
+    {
+      "tag": "0018_crazy_sauron",
+      "action": "inserted",
+      "hash": "828948b984dd148d3d274daef3d28fe8bca345d610a78cb3f1ad3dd6f2dc0419",
+      "createdAt": 1785471015418
+    },
+    {
+      "tag": "0019_glorious_smasher",
+      "action": "inserted",
+      "hash": "ac1092eda92da74024b82a6b49f7b2c77301132f39a913122dee85bbead26ec0",
+      "createdAt": 1785547690023
+    }
+  ],
+  "completedAt": "2026-08-01T01:43:33.414Z",
+  "ok": true
+}

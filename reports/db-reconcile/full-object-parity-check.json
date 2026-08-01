@@ -1,0 +1,254 @@
+{
+  "generatedAt": "2026-08-01T01:48:50.152Z",
+  "perMigration": [
+    {
+      "file": "0000_colorful_ezekiel_stane.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0001_venue_images.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0002_venue_logo.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0003_google_places_owner_import.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0004_optimal_marvel_apes.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0005_volatile_earthquake.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0006_parched_iron_monger.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0007_huge_storm.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0007_venue_image_system.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0008_neat_killer_shrike.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0009_flowery_lake.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0010_venue_image_refresh_system.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0011_consumer_data_layer.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0012_venue_claim_workflow.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0013_event_management_system.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0014_loud_payback.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0014_nightly_concierge.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0015_lyrical_tony_stark.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0016_naive_ben_grimm.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0017_salty_amphibian.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0018_crazy_sauron.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    },
+    {
+      "file": "0019_glorious_smasher.sql",
+      "ok": true,
+      "missing": {
+        "tables": [],
+        "enums": [],
+        "indexes": [],
+        "columns": [],
+        "constraints": []
+      }
+    }
+  ],
+  "missingTotals": {
+    "tables": 0,
+    "enums": 0,
+    "indexes": 0,
+    "columns": 0,
+    "constraints": 0
+  }
+}

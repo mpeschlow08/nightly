@@ -18,6 +18,7 @@ import {
   ensureEventOwnedByCurrentOwner,
   ensureImageOwnedByCurrentOwner,
 } from "./lib/ownership";
+import { assertFeatureEnabled } from "@/lib/platform/feature-access";
 
 function asNonEmptyString(value: FormDataEntryValue | null, label: string) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -1134,7 +1135,19 @@ function normalizeCameraStreamType(value: FormDataEntryValue | null) {
 export async function addOwnerCameraAction(formData: FormData) {
   try {
     const venueId = asInt(formData.get("venueId"), "Venue ID");
-    await assertCurrentOwnerVenueId(venueId);
+    const ownership = await requireAuthorizedOwnerForVenue(venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
 
     const name = asNonEmptyString(formData.get("name"), "Camera name");
     const streamUrl = asNonEmptyString(formData.get("streamUrl"), "Stream URL");
@@ -1161,6 +1174,19 @@ export async function renameOwnerCameraAction(formData: FormData) {
   try {
     const cameraId = asInt(formData.get("cameraId"), "Camera ID");
     const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
     const name = asNonEmptyString(formData.get("name"), "Camera name");
 
     await db.update(venueCameras).set({ name }).where(eq(venueCameras.id, cameraId));
@@ -1176,6 +1202,19 @@ export async function setPrimaryOwnerCameraAction(formData: FormData) {
   try {
     const cameraId = asInt(formData.get("cameraId"), "Camera ID");
     const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
 
     await db.update(venueCameras).set({ isPrimary: false }).where(eq(venueCameras.venueId, camera.venueId));
     await db.update(venueCameras).set({ isPrimary: true }).where(eq(venueCameras.id, cameraId));
@@ -1191,6 +1230,19 @@ export async function toggleOwnerCameraStatusAction(formData: FormData) {
   try {
     const cameraId = asInt(formData.get("cameraId"), "Camera ID");
     const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
     const nextStatus = asNonEmptyString(formData.get("status"), "Status").toLowerCase();
 
     if (nextStatus !== "enabled" && nextStatus !== "disabled") {
@@ -1215,6 +1267,19 @@ export async function deleteOwnerCameraAction(formData: FormData) {
   try {
     const cameraId = asInt(formData.get("cameraId"), "Camera ID");
     const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
 
     await db.delete(venueCameras).where(eq(venueCameras.id, cameraId));
 

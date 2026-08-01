@@ -7,8 +7,10 @@ import {
   setPrimaryOwnerCameraAction,
   toggleOwnerCameraStatusAction,
 } from "../actions";
-import { getOwnerCameras, getOwnerVenue } from "../lib/data";
+import { getOwnerCameras } from "../lib/data";
+import { getCurrentOwnerVenue } from "../lib/ownership";
 import EmptyStateCard from "@/components/EmptyStateCard";
+import { isFeatureEnabled } from "@/lib/platform/feature-access";
 
 type OwnerCamerasPageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
@@ -19,20 +21,41 @@ function formatStreamType(type: string) {
 }
 
 export default async function OwnerCamerasPage({ searchParams }: OwnerCamerasPageProps) {
-  const [{ venueId, venue }, cameraState, params] = await Promise.all([
-    getOwnerVenue(),
+  const [owner, cameraState, params, liveCamerasEnabled] = await Promise.all([
+    getCurrentOwnerVenue(),
     getOwnerCameras(),
     searchParams,
+    getCurrentOwnerVenue().then((currentOwner) =>
+      isFeatureEnabled("feature.live_cameras", {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: currentOwner.clerkUserId,
+        venueId: currentOwner.venueId,
+        role: currentOwner.role,
+        city: currentOwner.venue.city ?? undefined,
+      })
+    ),
   ]);
 
-  if (!venue) {
+  if (!owner.venue) {
     notFound();
+  }
+
+  if (!liveCamerasEnabled) {
+    return (
+      <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
+        <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Live Cameras</p>
+        <h2 className="mt-3 text-2xl font-semibold text-white">Unavailable in Beta V1</h2>
+        <p className="mt-2 text-sm text-zinc-300">
+          Live camera management is deferred until the post-beta VenueOS and camera rollout.
+        </p>
+      </section>
+    );
   }
 
   return (
     <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
       <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Live Cameras</p>
-      <h2 className="mt-3 text-2xl font-semibold text-white">{venue.name} Camera Management</h2>
+      <h2 className="mt-3 text-2xl font-semibold text-white">{owner.venue.name} Camera Management</h2>
       <p className="mt-2 text-sm text-zinc-300">Manage stream sources for the Nightly Live camera experience.</p>
 
       {params.success ? (
@@ -53,7 +76,7 @@ export default async function OwnerCamerasPage({ searchParams }: OwnerCamerasPag
       ) : null}
 
       <form action={addOwnerCameraAction} className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-        <input type="hidden" name="venueId" value={venueId} />
+        <input type="hidden" name="venueId" value={owner.venueId} />
         <h3 className="text-sm font-semibold text-white">Add camera</h3>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

@@ -41,6 +41,7 @@ const roleItems: Record<Exclude<AppRole, null>, NavItem[]> = {
   consumer: [
     { label: "Home", href: "/home" },
     { label: "Explore", href: "/discover" },
+    { label: "Concierge", href: "/concierge" },
     { label: "Map", href: "/map" },
     { label: "Events", href: "/events" },
     { label: "Friends", href: "/crews" },
@@ -61,6 +62,16 @@ const roleItems: Record<Exclude<AppRole, null>, NavItem[]> = {
   ],
   owner: [
     { label: "Dashboard", href: "/owner" },
+    { label: "Operations", href: "/owner/operations" },
+    { label: "Staff", href: "/owner/staff" },
+    { label: "Scheduling", href: "/owner/scheduling" },
+    { label: "Floor", href: "/owner/floor" },
+    { label: "VIP", href: "/owner/vip" },
+    { label: "Inventory", href: "/owner/inventory" },
+    { label: "CRM", href: "/owner/crm" },
+    { label: "Marketing", href: "/owner/marketing" },
+    { label: "Loyalty", href: "/owner/loyalty" },
+    { label: "Reports", href: "/owner/reports" },
     { label: "Venue Profile", href: "/owner/venue" },
     { label: "Events", href: "/owner/events" },
     { label: "Gallery", href: "/owner/images" },
@@ -115,6 +126,7 @@ function getPageTitle(pathname: string) {
   if (pathname === "/") return "Welcome";
   if (pathname === "/home") return "Home";
   if (pathname === "/discover") return "Explore";
+  if (pathname === "/concierge") return "AI Concierge";
   if (pathname === "/map") return "Map";
   if (pathname === "/events") return "Events";
   if (pathname.startsWith("/events/")) return "Event Details";
@@ -128,6 +140,17 @@ function getPageTitle(pathname: string) {
   if (pathname.startsWith("/dj/profile/")) return "Public DJ Profile";
   if (pathname === "/owner" || pathname === "/owner/dashboard") return "Owner Dashboard";
   if (pathname === "/owner/venue") return "Venue Profile";
+  if (pathname === "/owner/operations") return "Operations";
+  if (pathname === "/owner/staff") return "Staff";
+  if (pathname === "/owner/scheduling") return "Scheduling";
+  if (pathname === "/owner/floor") return "Floor";
+  if (pathname === "/owner/tables") return "Tables";
+  if (pathname === "/owner/vip") return "VIP";
+  if (pathname === "/owner/inventory") return "Inventory";
+  if (pathname === "/owner/crm") return "CRM";
+  if (pathname === "/owner/marketing") return "Marketing";
+  if (pathname === "/owner/loyalty") return "Loyalty";
+  if (pathname === "/owner/reports") return "Reports";
   if (pathname === "/owner/events") return "Owner Events";
   if (pathname === "/owner/images") return "Owner Gallery";
   if (pathname === "/owner/cameras") return "Owner Cameras";
@@ -183,6 +206,13 @@ function getUsefulBreadcrumbs(pathname: string): Breadcrumb[] {
     ];
   }
 
+  if (["/owner/operations", "/owner/staff", "/owner/scheduling", "/owner/floor", "/owner/tables", "/owner/vip", "/owner/inventory", "/owner/crm", "/owner/marketing", "/owner/loyalty", "/owner/reports"].includes(pathname)) {
+    return [
+      { label: "Owner Dashboard", href: "/owner" },
+      { label: getPageTitle(pathname) },
+    ];
+  }
+
   if (pathname === "/owner/hours") {
     return [
       { label: "Owner Dashboard", href: "/owner" },
@@ -209,7 +239,7 @@ function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
     return [
       { label: "Home", href: "/home" },
       { label: "Explore", href: "/discover" },
-      { label: "Link Up", href: "/crews" },
+      { label: "Concierge", href: "/concierge" },
       { label: "Profile", href: "/profile" },
     ];
   }

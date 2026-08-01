@@ -47,6 +47,13 @@ export type ConsumerEventCard = {
   dressCode: string | null;
   crowdLevel: string | null;
   ticketStatus: string;
+  ticketSalesVisibility?: string;
+  requiresTickets?: boolean;
+  supportsFreeRsvp?: boolean;
+  waitlistEnabled?: boolean;
+  guestListEnabled?: boolean;
+  startingPriceCents?: number | null;
+  capacity?: number | null;
   ticketUrl: string | null;
   guestListUrl: string | null;
   isLive: boolean;
@@ -125,6 +132,20 @@ export type ConsumerEventDetail = {
   ticketUrl: string | null;
   guestListUrl: string | null;
   ticketStatus: string;
+  requiresTickets: boolean;
+  supportsFreeRsvp: boolean;
+  waitlistEnabled: boolean;
+  ticketSalesVisibility: string;
+  startingPriceCents: number | null;
+  salesStartAtIso: string | null;
+  salesEndAtIso: string | null;
+  doorsOpenAtIso: string | null;
+  capacity: number | null;
+  reservedCapacity: number;
+  minimumAge: number | null;
+  transferPolicy: string;
+  refundPolicy: string;
+  reEntryPolicy: string;
 };
 
 export type ConsumerDJCard = {
