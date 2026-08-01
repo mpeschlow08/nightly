@@ -10,7 +10,11 @@ import { writeAuditLog } from "@/app/lib/audit-log";
 import { getCurrentOwnerVenue } from "@/app/owner/lib/ownership";
 import { db } from "@/db";
 import {
+  bookingActivity,
+  billSplits,
+  bookingPayments,
   venueAiInsights,
+  venueAddons,
   venueBottlePackages,
   venueCustomerNotes,
   venueCustomerProfiles,
@@ -32,6 +36,8 @@ import {
   venueStaffInvitations,
   venueStaffProfiles,
   venueSuppliers,
+  venueTables,
+  venueServers,
   venueTimeEntries,
   venueVipReservations,
 } from "@/db/schema";
@@ -596,4 +602,100 @@ export async function createVenueIncidentReportAction(formData: FormData) {
 
   revalidateVenueOsRoutes();
   redirectWithStatus("/owner/operations", "incidentCreated");
+}
+
+export async function createVenueTableAction(formData: FormData) {
+  const membership = await getCurrentOwnerVenue();
+  await db.insert(venueTables).values({
+    venueId: membership.venueId,
+    floorObjectId: toOptionalInt(formData.get("floorObjectId")),
+    tableCode: toTrimmedString(formData.get("tableCode")),
+    name: toTrimmedString(formData.get("name")),
+    sectionName: toTrimmedString(formData.get("sectionName")) || null,
+    minimumGuests: toOptionalInt(formData.get("minimumGuests")) ?? 1,
+    maximumGuests: toOptionalInt(formData.get("maximumGuests")) ?? 12,
+    minimumSpendCents: toOptionalInt(formData.get("minimumSpendCents")) ?? 0,
+    depositPercent: toOptionalInt(formData.get("depositPercent")) ?? 20,
+    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    isActive: true,
+  });
+
+  revalidateVenueOsRoutes();
+  redirectWithStatus("/owner/tables", "tableCreated");
+}
+
+export async function createVenueServerAction(formData: FormData) {
+  const membership = await getCurrentOwnerVenue();
+  await db.insert(venueServers).values({
+    venueId: membership.venueId,
+    staffProfileId: toOptionalInt(formData.get("staffProfileId")),
+    displayName: toTrimmedString(formData.get("displayName")),
+    email: toTrimmedString(formData.get("email")) || null,
+    phone: toTrimmedString(formData.get("phone")) || null,
+    isLead: toBoolean(formData.get("isLead")),
+    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    isActive: true,
+  });
+
+  revalidateVenueOsRoutes();
+  redirectWithStatus("/owner/vip", "serverCreated");
+}
+
+export async function createVenueAddonAction(formData: FormData) {
+  const membership = await getCurrentOwnerVenue();
+  await db.insert(venueAddons).values({
+    venueId: membership.venueId,
+    name: toTrimmedString(formData.get("name")),
+    category: toTrimmedString(formData.get("category")) || "service",
+    description: toTrimmedString(formData.get("description")) || null,
+    unitPriceCents: toOptionalInt(formData.get("unitPriceCents")) ?? 0,
+    isPerGuest: toBoolean(formData.get("isPerGuest")),
+    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    isActive: true,
+  });
+
+  revalidateVenueOsRoutes();
+  redirectWithStatus("/owner/vip", "addonCreated");
+}
+
+export async function checkInVipReservationAction(formData: FormData) {
+  const reservationId = toOptionalInt(formData.get("reservationId"));
+  const bookingId = toOptionalInt(formData.get("bookingId"));
+  const status = toTrimmedString(formData.get("status")) || "arrived";
+
+  if (!reservationId) {
+    throw new Error("Reservation ID is required.");
+  }
+
+  const now = new Date();
+  await db.update(venueVipReservations).set({
+    status: status as never,
+    ...(status === "arrived" ? { arrivalAt: now } : {}),
+    ...(status === "seated" ? { seatedAt: now } : {}),
+    updatedAt: now,
+  }).where(eq(venueVipReservations.id, reservationId));
+
+  if (bookingId) {
+    await db.insert(bookingActivity).values({
+      bookingId,
+      activityType: status === "seated" ? "vip_seated" : "vip_arrived",
+      details: `VIP reservation marked ${status}.`,
+      metadataJson: JSON.stringify({ reservationId }),
+      createdAt: now,
+    });
+
+    await db.update(billSplits).set({
+      status: status === "seated" ? "ready_to_collect" : "pending",
+      updatedAt: now,
+    }).where(eq(billSplits.bookingId, bookingId));
+
+    await db.update(bookingPayments).set({
+      status: status === "seated" ? "due" : "pending",
+      ...(status === "seated" ? { dueAt: now } : {}),
+      updatedAt: now,
+    }).where(eq(bookingPayments.bookingId, bookingId));
+  }
+
+  revalidateVenueOsRoutes();
+  redirectWithStatus("/owner/vip", "vipCheckinUpdated");
 }

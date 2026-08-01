@@ -5,16 +5,16 @@ import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-import type { DiscoverVenue } from "@/data/nightly";
+import type { ConsumerVenueCard } from "@/lib/consumer/types";
 
-type VenueWithCoords = DiscoverVenue & {
+export type MapVenue = ConsumerVenueCard & {
   coordinates: [number, number];
 };
 
 type Props = {
-  venues: VenueWithCoords[];
-  selectedVenue: VenueWithCoords | null;
-  onSelectVenue: (venue: VenueWithCoords) => void;
+  venues: MapVenue[];
+  selectedVenue: MapVenue | null;
+  onSelectVenue: (venue: MapVenue) => void;
   center: [number, number];
   zoom: number;
 };
@@ -29,8 +29,8 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
   return null;
 }
 
-function getCrowdTone(venue: DiscoverVenue) {
-  const level = venue.crowdLevel.toLowerCase();
+function getCrowdTone(venue: MapVenue) {
+  const level = (venue.crowdLevel ?? "").toLowerCase();
 
   if (level.includes("packed")) {
     return "red";
@@ -81,10 +81,10 @@ export default function MapLeaflet({ venues, selectedVenue, onSelectVenue, cente
                       <p className="mt-1 font-semibold text-white">{venue.name}</p>
                     </div>
                     <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-zinc-300">
-                      {venue.crowdLevel}
+                      {venue.crowdLevel ?? "Unknown"}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm text-zinc-400">{venue.tagline}</p>
+                  <p className="mt-3 text-sm text-zinc-400">{venue.distanceLabel ?? venue.neighborhood}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-zinc-300">
                     {venue.genres.slice(0, 3).map((genre) => (
                       <span key={genre} className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
@@ -107,26 +107,26 @@ export default function MapLeaflet({ venues, selectedVenue, onSelectVenue, cente
               <h3 className="mt-1 text-lg font-semibold text-white">{selectedVenue.name}</h3>
             </div>
             <span className="rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200">
-              {selectedVenue.badge ?? "Tonight"}
+              {selectedVenue.liveLabel ?? "Tonight"}
             </span>
           </div>
 
           <div className="mt-4 grid gap-2 text-sm text-zinc-300">
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <span>DJ</span>
-              <span className="font-medium text-white">{selectedVenue.liveDjName}</span>
+              <span>Status</span>
+              <span className="font-medium text-white">{selectedVenue.liveStatusProvenance.replace("_", " ")}</span>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <span>Cover</span>
-              <span className="font-medium text-white">${selectedVenue.cover}</span>
+              <span>Crowd</span>
+              <span className="font-medium text-white">{selectedVenue.crowdLevel ?? "Unknown"}</span>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <span>Wait</span>
-              <span className="font-medium text-white">{selectedVenue.waitTime}</span>
+              <span>Genre</span>
+              <span className="font-medium text-white">{selectedVenue.genre}</span>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <span>Vibe</span>
-              <span className="font-medium text-white">{selectedVenue.vibeScore}/100</span>
+              <span>Distance</span>
+              <span className="font-medium text-white">{selectedVenue.distanceLabel ?? "--"}</span>
             </div>
           </div>
 
@@ -139,7 +139,7 @@ export default function MapLeaflet({ venues, selectedVenue, onSelectVenue, cente
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-zinc-400">{selectedVenue.openUntil}</p>
+            <p className="text-sm text-zinc-400">{selectedVenue.neighborhood}</p>
             <a href={`/venues/${selectedVenue.slug}`} className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90">
               Open venue
             </a>

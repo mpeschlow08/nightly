@@ -537,7 +537,7 @@ export default function ConciergeClient({ homeData, exploreData, starterPrompts 
   const cityPulse = recommendations?.cityPulse ?? homeData.cityPulse;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_32%),radial-gradient(circle_at_92%_6%,_rgba(168,85,247,0.12),_transparent_24%),linear-gradient(180deg,_#04070b_0%,_#070b12_58%,_#0b1120_100%)] text-zinc-100">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_32%),radial-gradient(circle_at_92%_6%,_rgba(168,85,247,0.12),_transparent_24%),linear-gradient(180deg,_#04070b_0%,_#070b12_58%,_#0b1120_100%)] text-zinc-100">
       <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
           <div className="rounded-[2rem] border border-white/10 bg-[#060912]/90 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-7">
@@ -653,7 +653,7 @@ export default function ConciergeClient({ homeData, exploreData, starterPrompts 
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 <div>
-                  <p suppressHydrationWarning className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">Saved thread key: {sessionKey ? sessionKey.slice(0, 8) : "..."}</p>
+                  <p suppressHydrationWarning className="max-w-full break-all text-[11px] uppercase tracking-[0.16em] text-zinc-500">Saved thread key: {sessionKey ? sessionKey.slice(0, 8) : "..."}</p>
                   <p className="mt-1 text-[11px] text-zinc-500">Press Enter to send, Shift+Enter for a new line.</p>
                 </div>
                 <button

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import {
   importOwnerVenueFromGoogleAction,
+  refreshOwnerVenueGoogleDataAction,
   refreshOwnerVenueImagesAction,
   updateOwnerVenueAction,
 } from "../actions";
@@ -66,6 +67,42 @@ export default async function OwnerVenuePage({ searchParams }: OwnerVenuePagePro
             Refresh Venue Images
           </button>
         </form>
+
+        <div className="mt-6 border-t border-white/10 pt-4">
+          <p className="text-sm font-medium text-zinc-200">Google data synchronization</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            Status: {venue.googleRefreshStatus} {venue.googleDataLastFetchedAt ? `• Last checked ${venue.googleDataLastFetchedAt.toISOString()}` : ""}
+          </p>
+          {venue.googleRefreshStatus === "relink_required" ? (
+            <div className="mt-2 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              Google linkage needs confirmation. Use the relink workflow below to select and import the correct Google business.
+              <a href="#google-business-import" className="ml-2 font-semibold underline underline-offset-2">
+                Relink Google Business
+              </a>
+            </div>
+          ) : null}
+          {venue.googleRefreshError ? (
+            <p className="mt-2 text-xs text-rose-200">Latest Google sync error: {venue.googleRefreshError}</p>
+          ) : null}
+
+          <form action={refreshOwnerVenueGoogleDataAction} className="mt-3 flex flex-wrap items-center gap-3">
+            <input type="hidden" name="venueId" value={venueId} />
+            <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200">
+              <input type="checkbox" name="dryRun" value="true" className="h-4 w-4 accent-cyan-500" />
+              Dry run only
+            </label>
+            <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-zinc-200">
+              <input type="checkbox" name="forceRefresh" value="true" className="h-4 w-4 accent-cyan-500" />
+              Force refresh
+            </label>
+            <button
+              type="submit"
+              className="rounded-xl border border-cyan-400/40 bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/30"
+            >
+              Refresh from Google
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">

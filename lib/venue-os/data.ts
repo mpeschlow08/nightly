@@ -3,9 +3,12 @@ import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import { getCurrentOwnerVenue } from "@/app/owner/lib/ownership";
 import { db } from "@/db";
 import {
+  billSplits,
   bookings,
   ticketOrders,
   ticketRefunds,
+  tableBookings,
+  venueAddons,
   venueAiInsights,
   venueBottlePackages,
   venueCustomerNotes,
@@ -28,6 +31,8 @@ import {
   venueStaffInvitations,
   venueStaffProfiles,
   venueSuppliers,
+  venueTables,
+  venueServers,
   venueTimeEntries,
   venueVipReservations,
   venues,
@@ -199,10 +204,26 @@ export async function getFloorData() {
 
 export async function getVipData() {
   const { venueId } = await currentVenue();
-  const [reservations, packages] = await Promise.all([
+  const [reservations, packages, tables, servers, addons, tableBookingRows, splitRows] = await Promise.all([
     db.select().from(venueVipReservations).where(eq(venueVipReservations.venueId, venueId)).orderBy(desc(venueVipReservations.createdAt)).limit(20),
     db.select().from(venueBottlePackages).where(eq(venueBottlePackages.venueId, venueId)).orderBy(desc(venueBottlePackages.isActive), asc(venueBottlePackages.name)).limit(20),
+    db.select().from(venueTables).where(eq(venueTables.venueId, venueId)).orderBy(desc(venueTables.isActive), asc(venueTables.tableCode)).limit(50),
+    db.select().from(venueServers).where(eq(venueServers.venueId, venueId)).orderBy(desc(venueServers.isLead), asc(venueServers.displayName)).limit(30),
+    db.select().from(venueAddons).where(eq(venueAddons.venueId, venueId)).orderBy(desc(venueAddons.isActive), asc(venueAddons.name)).limit(40),
+    db.select().from(tableBookings).where(eq(tableBookings.venueId, venueId)).orderBy(desc(tableBookings.createdAt)).limit(40),
+    db
+      .select({
+        id: billSplits.id,
+        status: billSplits.status,
+      })
+      .from(billSplits)
+      .innerJoin(bookings, eq(billSplits.bookingId, bookings.id))
+      .where(and(eq(bookings.venueId, venueId), eq(billSplits.status, "pending")))
+      .orderBy(desc(billSplits.createdAt))
+      .limit(80),
   ]);
+
+  const pendingSplitCount = splitRows.filter((split) => split.status === "pending").length;
 
   return {
     title: "VIP Operations",
@@ -211,9 +232,13 @@ export async function getVipData() {
       { label: "Reservations", value: String(reservations.length) },
       { label: "Arrived", value: String(reservations.filter((reservation) => reservation.status === "arrived" || reservation.status === "seated").length) },
       { label: "Packages", value: String(packages.length) },
+      { label: "Table catalog", value: String(tables.length) },
+      { label: "Servers", value: String(servers.length) },
+      { label: "Add-ons", value: String(addons.length) },
+      { label: "Pending splits", value: String(pendingSplitCount), tone: pendingSplitCount > 0 ? "warning" : "good" },
       { label: "Final spend", value: formatMoney(reservations.reduce((sum, reservation) => sum + reservation.finalSpendCents, 0)) },
     ],
-    primaryQueue: reservations.map((reservation) => ({ id: reservation.id, title: reservation.reservationName, subtitle: `Party of ${reservation.partySize}`, status: reservation.status, detail: formatMoney(reservation.minimumSpendCents) })),
+    primaryQueue: tableBookingRows.map((reservation) => ({ id: reservation.id, title: reservation.reservationName ?? "VIP reservation", subtitle: `Party of ${reservation.partySize}`, status: reservation.status, detail: formatMoney(reservation.minimumSpendCents) })),
     secondaryQueue: packages.map((pkg) => ({ id: pkg.id, title: pkg.name, subtitle: pkg.description ?? "Bottle package", status: pkg.isActive ? "active" : "inactive", detail: formatMoney(pkg.priceCents) })),
   } satisfies VenueOsSectionPayload;
 }

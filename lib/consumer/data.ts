@@ -76,6 +76,42 @@ function parseStringArrayJson(value: string | null | undefined) {
   }
 }
 
+function parseAttributionArrayJson(value: string | null | undefined) {
+  if (!value) {
+    return [] as Array<{ displayName: string | null; uri: string | null }>;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [] as Array<{ displayName: string | null; uri: string | null }>;
+    }
+
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return null;
+        }
+
+        const record = item as Record<string, unknown>;
+        return {
+          displayName:
+            typeof record.displayName === "string" && record.displayName.trim().length > 0
+              ? record.displayName.trim()
+              : null,
+          uri:
+            typeof record.uri === "string" && record.uri.trim().length > 0
+              ? record.uri.trim()
+              : null,
+        };
+      })
+      .filter((item): item is { displayName: string | null; uri: string | null } => Boolean(item));
+  } catch {
+    return [] as Array<{ displayName: string | null; uri: string | null }>;
+  }
+}
+
 function toAgeRequirementLabel(value: number | null | undefined) {
   if (typeof value !== "number") {
     return null;
@@ -835,6 +871,16 @@ export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDet
     coverChargeInformation: row.coverChargeInformation,
     averageRating: row.averageRating,
     reviewCount: row.reviewCount,
+    googleRating: row.googleRating,
+    googleUserRatingCount: row.googleUserRatingCount,
+    googleBusinessStatus: row.googleBusinessStatus,
+    googlePrimaryType: row.googlePrimaryType,
+    googleTypes: parseStringArrayJson(row.googleTypesJson),
+    googleAttributions: parseAttributionArrayJson(row.googleAttributionsJson),
+    googleDataLastFetchedAt: row.googleDataLastFetchedAt?.toISOString() ?? null,
+    googleDataExpiresAt: row.googleDataExpiresAt?.toISOString() ?? null,
+    googleRefreshStatus: row.googleRefreshStatus,
+    isGoogleDataStale: row.googleDataExpiresAt ? row.googleDataExpiresAt.getTime() <= Date.now() : true,
     imageSource: row.imageSource ?? "existing",
     heroImageUrl: card.heroImageUrl,
     thumbnailImageUrl: card.thumbnailImageUrl,

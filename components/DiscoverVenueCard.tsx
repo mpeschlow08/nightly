@@ -22,8 +22,10 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
   return (
     <article className="nightly-card nightly-card-interactive group overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 backdrop-blur-xl">
       <div className="relative">
-        <VenueImage src={venue.thumbnailImage || venue.heroImage} alt={`${venue.name} venue`} orientation="horizontal" className="rounded-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+        <Link href={`/venues/${venue.slug}`} aria-label={`Open ${venue.name} venue details`} className="block">
+          <VenueImage src={venue.thumbnailImage || venue.heroImage} alt={`${venue.name} venue`} orientation="horizontal" className="rounded-none" />
+        </Link>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
         {venue.isLive ? (
           <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-cyan-100">
             {venue.badge ?? "LIVE"}

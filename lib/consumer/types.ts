@@ -99,6 +99,16 @@ export type ConsumerVenueDetail = {
   coverChargeInformation: string | null;
   averageRating: number | null;
   reviewCount: number | null;
+  googleRating: number | null;
+  googleUserRatingCount: number | null;
+  googleBusinessStatus: string | null;
+  googlePrimaryType: string | null;
+  googleTypes: string[];
+  googleAttributions: Array<{ displayName: string | null; uri: string | null }>;
+  googleDataLastFetchedAt: string | null;
+  googleDataExpiresAt: string | null;
+  googleRefreshStatus: string;
+  isGoogleDataStale: boolean;
   imageSource: string;
   heroImageUrl: string;
   thumbnailImageUrl: string;

@@ -1,10 +1,12 @@
 import Link from "next/link";
+import OwnerTableStatusBoardClient from "@/components/bookings/OwnerTableStatusBoardClient";
 
 import {
   addVenueStaffCertificationAction,
   clockInVenueStaffAction,
   clockOutVenueStaffAction,
   createVenueAiInsightRequestAction,
+  createVenueAddonAction,
   createVenueBottlePackageAction,
   createVenueCustomerNoteAction,
   createVenueCustomerProfileAction,
@@ -22,8 +24,11 @@ import {
   createVenueShiftAction,
   createVenueShiftRequestAction,
   createVenueStaffProfileAction,
+  createVenueServerAction,
   createVenueSupplierAction,
+  createVenueTableAction,
   createVenueVipReservationAction,
+  checkInVipReservationAction,
   inviteVenueStaffAction,
   saveVenueStaffAvailabilityAction,
   updateVenueStaffStatusAction,
@@ -105,6 +110,7 @@ function ModuleForms({ moduleKey }: { moduleKey: VenueOsModuleKey }) {
     case "tables":
       return (
         <div className="grid gap-4 xl:grid-cols-2">
+          <form action={createVenueTableAction}><FormShell title="Create table catalog"><Input name="tableCode" placeholder="T12" /><Input name="name" placeholder="Main Stage 12" /><Input name="sectionName" placeholder="Main stage" /><Input name="floorObjectId" type="number" placeholder="Floor object ID" /><div className="grid gap-3 sm:grid-cols-2"><Input name="minimumGuests" type="number" placeholder="Min guests" /><Input name="maximumGuests" type="number" placeholder="Max guests" /><Input name="minimumSpendCents" type="number" placeholder="Minimum spend cents" /><Input name="depositPercent" type="number" placeholder="Deposit percent" /></div><SubmitButton label="Create table" /></FormShell></form>
           <form action={createVenueFloorPlanAction}><FormShell title="Create floor plan"><Input name="name" placeholder="Main room plan" /><Input name="width" type="number" placeholder="Width" /><Input name="height" type="number" placeholder="Height" /><Input name="backgroundImageUrl" placeholder="Background image URL" /><SubmitButton label="Create floor plan" /></FormShell></form>
           <form action={createVenueFloorObjectAction}><FormShell title="Add floor object"><Input name="floorPlanId" type="number" placeholder="Floor plan ID" /><Input name="objectType" placeholder="table / vip / bar / exit" /><Input name="label" placeholder="Object label" /><Input name="sectionName" placeholder="Section" /><Input name="capacity" type="number" placeholder="Capacity" /><div className="grid gap-3 sm:grid-cols-2"><Input name="x" type="number" placeholder="X" /><Input name="y" type="number" placeholder="Y" /><Input name="width" type="number" placeholder="Width" /><Input name="height" type="number" placeholder="Height" /></div><SubmitButton label="Add object" /></FormShell></form>
         </div>
@@ -112,8 +118,11 @@ function ModuleForms({ moduleKey }: { moduleKey: VenueOsModuleKey }) {
     case "vip":
       return (
         <div className="grid gap-4 xl:grid-cols-2">
+          <form action={createVenueServerAction}><FormShell title="Create server profile"><Input name="displayName" placeholder="Server name" /><Input name="staffProfileId" type="number" placeholder="Staff profile ID" /><Input name="email" placeholder="Email" /><Input name="phone" placeholder="Phone" /><label className="flex items-center gap-3 text-sm text-zinc-200"><input name="isLead" type="checkbox" className="h-4 w-4 accent-cyan-500" /> Lead server</label><SubmitButton label="Create server" /></FormShell></form>
+          <form action={createVenueAddonAction}><FormShell title="Create VIP add-on"><Input name="name" placeholder="Birthday sparkler" /><Input name="category" placeholder="experience / hospitality" /><Input name="unitPriceCents" type="number" placeholder="Unit price cents" /><label className="flex items-center gap-3 text-sm text-zinc-200"><input name="isPerGuest" type="checkbox" className="h-4 w-4 accent-cyan-500" /> Per guest pricing</label><Textarea name="description" rows={3} placeholder="Description" /><SubmitButton label="Create add-on" /></FormShell></form>
           <form action={createVenueVipReservationAction}><FormShell title="Create VIP reservation"><Input name="reservationName" placeholder="Birthday table" /><Input name="partySize" type="number" placeholder="Party size" /><Input name="minimumSpendCents" type="number" placeholder="Minimum spend cents" /><Input name="arrivalAt" type="datetime-local" /><Input name="eventId" type="number" placeholder="Event ID" /><Input name="customerProfileId" type="number" placeholder="Customer profile ID" /><Input name="floorObjectId" type="number" placeholder="Floor object ID" /><SubmitButton label="Create reservation" /></FormShell></form>
           <form action={createVenueBottlePackageAction}><FormShell title="Create bottle package"><Input name="name" placeholder="Champagne starter" /><Input name="priceCents" type="number" placeholder="Price cents" /><Textarea name="packageItems" rows={3} placeholder="Package items, one per line" /><Textarea name="mixers" rows={3} placeholder="Mixers, one per line" /><Textarea name="addOns" rows={3} placeholder="Add-ons, one per line" /><SubmitButton label="Create package" /></FormShell></form>
+          <form action={checkInVipReservationAction}><FormShell title="VIP check-in"><Input name="reservationId" type="number" placeholder="Reservation ID" /><Input name="bookingId" type="number" placeholder="Linked booking ID" /><Select name="status" defaultValue="arrived"><option value="arrived">Arrived</option><option value="seated">Seated</option><option value="closed">Closed</option><option value="no_show">No Show</option></Select><SubmitButton label="Update VIP status" /></FormShell></form>
         </div>
       );
     case "inventory":
@@ -210,6 +219,12 @@ export default async function OwnerVenueOsModulePage({ moduleKey }: { moduleKey:
         <div className="mt-6">
           <ModuleForms moduleKey={moduleKey} />
         </div>
+
+        {moduleKey === "floor" || moduleKey === "tables" ? (
+          <div className="mt-6">
+            <OwnerTableStatusBoardClient />
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-6 xl:grid-cols-2">
           <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">

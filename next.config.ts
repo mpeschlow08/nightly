@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
       `script-src 'self' 'unsafe-inline' ${isProduction ? "" : "'unsafe-eval' "}https://*.clerk.accounts.dev`,
       `worker-src 'self' ${isProduction ? "" : "blob:"}`.trim(),
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.unsplash.com https://places.googleapis.com https://maps.gstatic.com https://*.public.blob.vercel-storage.com https://img.clerk.com",
+      "img-src 'self' data: blob: https://images.unsplash.com https://places.googleapis.com https://maps.gstatic.com https://*.basemaps.cartocdn.com https://*.public.blob.vercel-storage.com https://img.clerk.com",
       "font-src 'self' data:",
       `connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://places.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://*.public.blob.vercel-storage.com ${isProduction ? "" : "https://clerk-telemetry.com"}`.trim(),
       "frame-src 'self' https://*.clerk.accounts.dev",

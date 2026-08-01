@@ -19,6 +19,7 @@ import {
   ensureImageOwnedByCurrentOwner,
 } from "./lib/ownership";
 import { assertFeatureEnabled } from "@/lib/platform/feature-access";
+import { runVenueGoogleDataRefresh } from "@/lib/platform/venue-google-refresh";
 
 function asNonEmptyString(value: FormDataEntryValue | null, label: string) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -88,6 +89,42 @@ function asOptionalJsonString(value: FormDataEntryValue | null, label: string) {
   }
 
   return text;
+}
+
+function parseJsonStringArray(value: string | null | undefined) {
+  if (!value) {
+    return [] as string[];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [] as string[];
+    }
+
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  } catch {
+    return [] as string[];
+  }
+}
+
+function toOwnerOverrideFieldsJson(
+  previousRaw: string | null | undefined,
+  additions: string[]
+) {
+  const merged = new Set(parseJsonStringArray(previousRaw));
+
+  for (const item of additions) {
+    if (item.trim().length > 0) {
+      merged.add(item.trim());
+    }
+  }
+
+  return JSON.stringify(Array.from(merged).sort());
 }
 
 function asInt(value: FormDataEntryValue | null, label: string) {
@@ -507,6 +544,11 @@ export async function updateOwnerVenueAction(formData: FormData) {
   try {
     const venueId = asInt(formData.get("venueId"), "Venue ID");
     await assertCurrentOwnerVenueId(venueId);
+    const [venue] = await db.select().from(venues).where(eq(venues.id, venueId)).limit(1);
+
+    if (!venue) {
+      throw new Error("Venue not found.");
+    }
 
     const name = asNonEmptyString(formData.get("name"), "Venue name");
     const description = asOptionalString(formData.get("description"));
@@ -532,6 +574,28 @@ export async function updateOwnerVenueAction(formData: FormData) {
     const googleMapsUrl = asOptionalHttpUrl(formData.get("googleMapsUrl"), "Google Maps URL");
 
     try {
+      const ownerOverrideFieldsJson = toOwnerOverrideFieldsJson(
+        venue.ownerOverrideFieldsJson,
+        [
+          "name",
+          "description",
+          "tagline",
+          "city",
+          "genres",
+          "crowdLevel",
+          "address",
+          "phone",
+          "websiteUrl",
+          "priceLevel",
+          "dressCode",
+          "ageRequirement",
+          "openingHoursJson",
+          "latitude",
+          "longitude",
+          "googleMapsUrl",
+        ]
+      );
+
       await db
         .update(venues)
         .set({
@@ -552,6 +616,7 @@ export async function updateOwnerVenueAction(formData: FormData) {
           latitude,
           longitude,
           googleMapsUrl,
+          ownerOverrideFieldsJson,
         })
         .where(eq(venues.id, venueId));
     } catch (error) {
@@ -582,6 +647,18 @@ export async function importOwnerVenueFromGoogleAction(formData: FormData) {
     }
 
     const { venue } = await requireAuthorizedOwnerForVenue(venueId);
+
+    const [duplicateVenue] = await db
+      .select({ id: venues.id, name: venues.name })
+      .from(venues)
+      .where(eq(venues.googlePlaceId, selectedPlaceId))
+      .limit(1);
+
+    if (duplicateVenue && duplicateVenue.id !== venueId) {
+      throw new Error(
+        `This Google Place is already linked to ${duplicateVenue.name} (venue ${duplicateVenue.id}). Contact support for review.`
+      );
+    }
 
     const latestGoogleDetails = await getGooglePlaceVenueDetails(selectedPlaceId);
 
@@ -663,9 +740,58 @@ export async function importOwnerVenueFromGoogleAction(formData: FormData) {
         googlePhotoReferencesJson: googlePhotoReferencesJson ?? venue.googlePhotoReferencesJson,
         googleCoverPhotoReference: googleCoverPhotoReference ?? venue.googleCoverPhotoReference,
         googleLogoImageUrl: googleLogoImageUrl ?? venue.googleLogoImageUrl,
+        googlePlaceResourceName: latestGoogleDetails.googleResourceName,
+        googleBusinessStatus: latestGoogleDetails.businessStatus,
+        googlePrimaryType: latestGoogleDetails.primaryType,
+        googleTypesJson:
+          latestGoogleDetails.types.length > 0
+            ? JSON.stringify(latestGoogleDetails.types)
+            : venue.googleTypesJson,
+        googleDisplayName: latestGoogleDetails.displayName,
+        googleFormattedAddress: latestGoogleDetails.formattedAddress,
+        googleNationalPhoneNumber: latestGoogleDetails.nationalPhoneNumber,
+        googleInternationalPhoneNumber: latestGoogleDetails.internationalPhoneNumber,
+        googleWebsiteUri: latestGoogleDetails.websiteUri,
+        googleMapsUri: latestGoogleDetails.googleMapsUri,
+        googleRegularOpeningHoursJson: latestGoogleDetails.regularOpeningHours
+          ? JSON.stringify(latestGoogleDetails.regularOpeningHours)
+          : venue.googleRegularOpeningHoursJson,
+        googleCurrentOpeningHoursJson: latestGoogleDetails.currentOpeningHours
+          ? JSON.stringify(latestGoogleDetails.currentOpeningHours)
+          : venue.googleCurrentOpeningHoursJson,
+        googleUtcOffsetMinutes:
+          typeof latestGoogleDetails.utcOffsetMinutes === "number"
+            ? latestGoogleDetails.utcOffsetMinutes
+            : venue.googleUtcOffsetMinutes,
+        googleRating:
+          typeof latestGoogleDetails.rating === "number"
+            ? latestGoogleDetails.rating
+            : venue.googleRating,
+        googleUserRatingCount:
+          typeof latestGoogleDetails.userRatingCount === "number"
+            ? latestGoogleDetails.userRatingCount
+            : venue.googleUserRatingCount,
+        googlePriceLevel:
+          typeof latestGoogleDetails.priceLevel === "number"
+            ? latestGoogleDetails.priceLevel
+            : venue.googlePriceLevel,
+        googlePhotosJson:
+          latestGoogleDetails.photos.length > 0
+            ? JSON.stringify(latestGoogleDetails.photos)
+            : venue.googlePhotosJson,
+        googleAttributionsJson:
+          latestGoogleDetails.attributions.length > 0
+            ? JSON.stringify(latestGoogleDetails.attributions)
+            : venue.googleAttributionsJson,
         googlePlaceId: latestGoogleDetails.placeId,
         googleImportedAt: new Date(),
         googleDataConfirmedByOwnerAt: new Date(),
+        googleDataLastFetchedAt: new Date(),
+        googleDataExpiresAt: latestGoogleDetails.dataExpiresAt,
+        googleRefreshStatus: "success",
+        googleRefreshError: null,
+        googleRefreshAttemptedAt: new Date(),
+        googleRefreshVersion: "v1",
         officialWebsiteUrl: websiteUrl,
       })
       .where(eq(venues.id, venueId));
@@ -698,6 +824,45 @@ export async function refreshOwnerVenueImagesAction(formData: FormData) {
 
     revalidateOwnerAndVenue(venueId);
     redirect(mutationSuccessPath("/owner/venue", `Image refresh ${result.status}.`));
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/venue", error));
+  }
+}
+
+export async function refreshOwnerVenueGoogleDataAction(formData: FormData) {
+  try {
+    await assertFeatureEnabled("feature.google_places_imports", {
+      role: "owner",
+    }, "Google Places imports are currently disabled.");
+
+    const venueId = asInt(formData.get("venueId"), "Venue ID");
+    const force = asBoolean(formData.get("forceRefresh"));
+    const dryRun = asBoolean(formData.get("dryRun"));
+
+    const { userId } = await requireAuthorizedOwnerForVenue(venueId);
+
+    const result = await runVenueGoogleDataRefresh({
+      mode: "single",
+      venueId,
+      force,
+      dryRun,
+      trigger: "owner",
+      requestedByClerkUserId: userId,
+    });
+
+    if (result.failedCount > 0) {
+      throw new Error("Google refresh completed with failures. Review refresh status in venue details.");
+    }
+
+    revalidateOwnerAndVenue(venueId);
+    redirect(
+      mutationSuccessPath(
+        "/owner/venue",
+        dryRun
+          ? `Google refresh dry run estimated ${result.requestCount} request(s).`
+          : `Google data refreshed for venue. Requests: ${result.requestCount}.`
+      )
+    );
   } catch (error) {
     redirect(mutationErrorPath("/owner/venue", error));
   }

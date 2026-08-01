@@ -36,7 +36,11 @@ export default function EventCard({ event }: EventCardProps) {
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">{event.dateLabel}</p>
             <h3 className="mt-1 text-lg font-semibold text-white">{event.name}</h3>
-            <p className="mt-1 text-sm text-zinc-400">{event.venueName}</p>
+            <p className="mt-1 text-sm text-zinc-400">
+              <Link href={`/venues/${event.venueSlug}`} className="text-zinc-300 hover:text-white" aria-label={`Open ${event.venueName} venue details`}>
+                {event.venueName}
+              </Link>
+            </p>
           </div>
           <button
             type="button"

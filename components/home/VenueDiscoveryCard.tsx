@@ -31,8 +31,22 @@ export default function VenueDiscoveryCard({
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
       <div className="relative overflow-hidden">
-        <VenueImage src={venue.thumbnailImageUrl || venue.heroImageUrl} alt={`${venue.name} nightlife scene`} orientation="portrait" className="rounded-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+        <Link
+          href={venue.href}
+          aria-label={`Open ${venue.name} venue details`}
+          className="block"
+          onClick={() => {
+            void trackDiscoveryInteraction({
+              event: "recommendation_click",
+              recommendationType: "venue",
+              itemId: venue.id,
+              explanationCategory: venue.recommendationReasonCode,
+            });
+          }}
+        >
+          <VenueImage src={venue.thumbnailImageUrl || venue.heroImageUrl} alt={`${venue.name} nightlife scene`} orientation="portrait" className="rounded-none" />
+        </Link>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
 
         {venue.isLive ? (
           <span className="absolute left-3 top-3 rounded-full border border-rose-300/40 bg-rose-500/20 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-rose-100">

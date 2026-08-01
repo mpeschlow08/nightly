@@ -1,5 +1,5 @@
-import type { BookingLifecycleStatus, BookingNotificationType, BookingType } from "./types";
-import { BOOKING_LIFECYCLE_STATUSES, BOOKING_STATUS_LABELS } from "./types";
+import type { BookingLifecycleStatus, BookingNotificationType, BookingType, CustomerReservationStatus, LiveTableStatus, ReservationActorRole, WaitlistStatus } from "./types";
+import { BOOKING_LIFECYCLE_STATUSES, BOOKING_STATUS_LABELS, CUSTOMER_RESERVATION_STATUS_LABELS, LIVE_TABLE_STATUS_LABELS } from "./types";
 
 export const BOOKING_TERMINAL_STATUSES = new Set<BookingLifecycleStatus>([
   "completed",
@@ -120,4 +120,167 @@ export function bookingNotificationTypeForStatus(status: BookingLifecycleStatus)
     default:
       return null;
   }
+}
+
+export function mapLifecycleToCustomerStatus(status: BookingLifecycleStatus): CustomerReservationStatus {
+  switch (status) {
+    case "draft":
+    case "requested":
+    case "pending_review":
+    case "counter_offered":
+    case "accepted":
+      return "pending";
+    case "deposit_required":
+      return "deposit_required";
+    case "deposit_paid":
+      return "deposit_paid";
+    case "confirmed":
+      return "confirmed";
+    case "checked_in":
+      return "checked_in";
+    case "completed":
+    case "closed":
+      return "completed";
+    case "cancelled_by_consumer":
+    case "cancelled_by_venue":
+    case "cancelled_by_dj":
+    case "expired":
+      return "cancelled";
+    case "refund_pending":
+    case "refunded":
+      return "refunded";
+    case "disputed":
+      return "cancelled";
+    default:
+      return "pending";
+  }
+}
+
+export function getCustomerReservationStatusLabel(status: CustomerReservationStatus) {
+  return CUSTOMER_RESERVATION_STATUS_LABELS[status] ?? status;
+}
+
+export function getLiveTableStatusLabel(status: LiveTableStatus) {
+  return LIVE_TABLE_STATUS_LABELS[status] ?? status;
+}
+
+export const RESERVATION_STATUS_TRANSITIONS: Record<CustomerReservationStatus, CustomerReservationStatus[]> = {
+  pending: ["deposit_required", "confirmed", "cancelled"],
+  deposit_required: ["deposit_paid", "cancelled"],
+  deposit_paid: ["confirmed", "cancelled", "refunded"],
+  confirmed: ["checked_in", "cancelled", "refunded"],
+  checked_in: ["seated", "cancelled"],
+  seated: ["bottle_service_active", "completed"],
+  bottle_service_active: ["completed"],
+  completed: [],
+  cancelled: ["refunded"],
+  refunded: [],
+};
+
+export const RESERVATION_STATUS_ALLOWED_ROLES: Record<CustomerReservationStatus, ReservationActorRole[]> = {
+  pending: ["owner", "admin", "system"],
+  deposit_required: ["owner", "admin", "system"],
+  deposit_paid: ["owner", "admin", "system"],
+  confirmed: ["owner", "admin", "system"],
+  checked_in: ["door_staff", "owner", "admin", "system"],
+  seated: ["server", "owner", "admin", "system"],
+  bottle_service_active: ["server", "owner", "admin", "system"],
+  completed: ["server", "owner", "admin", "system"],
+  cancelled: ["consumer", "owner", "admin", "system"],
+  refunded: ["owner", "admin", "system"],
+};
+
+export const WAITLIST_STATUS_TRANSITIONS: Record<WaitlistStatus, WaitlistStatus[]> = {
+  waiting: ["offered", "cancelled", "declined"],
+  offered: ["accepted", "expired", "cancelled", "declined", "converted"],
+  accepted: ["converted", "cancelled"],
+  expired: [],
+  cancelled: [],
+  declined: [],
+  converted: [],
+};
+
+export function canTransitionReservationStatus(
+  fromStatus: CustomerReservationStatus,
+  toStatus: CustomerReservationStatus,
+  actorRole: ReservationActorRole,
+  conditions?: {
+    depositSatisfied?: boolean;
+    hasPaymentIssue?: boolean;
+  }
+) {
+  if (fromStatus === toStatus) {
+    return { allowed: true } as const;
+  }
+
+  const allowedTargets = RESERVATION_STATUS_TRANSITIONS[fromStatus] ?? [];
+  if (!allowedTargets.includes(toStatus)) {
+    return { allowed: false, reason: `Illegal transition ${fromStatus} -> ${toStatus}.` } as const;
+  }
+
+  const allowedRoles = RESERVATION_STATUS_ALLOWED_ROLES[toStatus] ?? [];
+  if (!allowedRoles.includes(actorRole)) {
+    return { allowed: false, reason: `Role ${actorRole} cannot set status ${toStatus}.` } as const;
+  }
+
+  if ((toStatus === "confirmed" || toStatus === "checked_in") && conditions?.depositSatisfied === false) {
+    return { allowed: false, reason: "Deposit must be paid before confirming or checking in." } as const;
+  }
+
+  if (toStatus === "refunded" && conditions?.hasPaymentIssue === false) {
+    return { allowed: false, reason: "Refund status requires a payment/refund pathway." } as const;
+  }
+
+  return { allowed: true } as const;
+}
+
+export function canTransitionWaitlistStatus(fromStatus: WaitlistStatus, toStatus: WaitlistStatus) {
+  if (fromStatus === toStatus) {
+    return true;
+  }
+
+  return (WAITLIST_STATUS_TRANSITIONS[fromStatus] ?? []).includes(toStatus);
+}
+
+export function mapCustomerStatusToBookingLifecycle(status: CustomerReservationStatus, current: BookingLifecycleStatus): BookingLifecycleStatus {
+  switch (status) {
+    case "pending":
+      return current;
+    case "deposit_required":
+      return "deposit_required";
+    case "deposit_paid":
+      return "deposit_paid";
+    case "confirmed":
+      return "confirmed";
+    case "checked_in":
+      return "checked_in";
+    case "seated":
+    case "bottle_service_active":
+      return "checked_in";
+    case "completed":
+      return "completed";
+    case "cancelled":
+      return "cancelled_by_consumer";
+    case "refunded":
+      return "refunded";
+    default:
+      return current;
+  }
+}
+
+export const LIVE_TABLE_STATUS_TRANSITIONS: Record<LiveTableStatus, LiveTableStatus[]> = {
+  available: ["reserved", "vip_hold", "out_of_service"],
+  reserved: ["occupied", "available", "vip_hold", "out_of_service"],
+  occupied: ["cleaning", "available"],
+  cleaning: ["available", "out_of_service"],
+  vip_hold: ["reserved", "available", "out_of_service"],
+  out_of_service: ["available", "cleaning"],
+};
+
+export function canTransitionLiveTableStatus(fromStatus: LiveTableStatus, toStatus: LiveTableStatus) {
+  if (fromStatus === toStatus) {
+    return true;
+  }
+
+  return (LIVE_TABLE_STATUS_TRANSITIONS[fromStatus] ?? []).includes(toStatus);
 }

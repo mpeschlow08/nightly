@@ -61,7 +61,7 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
   const hoursStatus = {
     isOpenNow: venue.isOpenNow,
     statusLabel: venue.isOpenNow ? "Open now" : "Closed right now",
-    todayHoursLabel: "Hours unavailable",
+    todayHoursLabel: venue.openingHoursJson ? "Imported schedule available" : "Hours unavailable",
   };
 
   const heroImage = venue.heroImageUrl;
@@ -90,14 +90,21 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
   const coverLabel = venue.coverChargeInformation ?? "Varies";
   const amenities = venue.amenities.length > 0 ? venue.amenities : ["Dance Floor", "Bar", "Accessibility"];
 
-  const reviews = {
-    rating: venue.averageRating ?? 4.4,
-    totalReviews: venue.reviewCount ?? 0,
-    recent: [
-      { id: 1, author: "Nightly Guest", rating: 4.7, when: "Recent", text: "Great atmosphere and consistent sound all night." },
-      { id: 2, author: "City Explorer", rating: 4.4, when: "This week", text: "Friendly staff and a fun crowd." },
-    ],
-  };
+  const ratingValue =
+    typeof venue.googleRating === "number"
+      ? venue.googleRating
+      : typeof venue.averageRating === "number"
+        ? venue.averageRating
+        : null;
+  const ratingCount =
+    typeof venue.googleUserRatingCount === "number"
+      ? venue.googleUserRatingCount
+      : typeof venue.reviewCount === "number"
+        ? venue.reviewCount
+        : null;
+  const freshnessLabel = venue.googleDataLastFetchedAt
+    ? new Date(venue.googleDataLastFetchedAt).toLocaleString()
+    : "Not yet synchronized";
 
   const crowdLevel = venue.liveLabel ? "Buzzing" : "Steady";
   const isLive = Boolean(venue.liveLabel);
@@ -261,6 +268,31 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           <section className="mt-7 rounded-[1.2rem] border border-white/10 bg-[#070c17] p-4">
+            <VenueSectionHeading title="Data Source" />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <article className="rounded-[0.9rem] border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Google sync status</p>
+                <p className="mt-1 text-sm font-medium text-zinc-100">{venue.googleRefreshStatus}</p>
+              </article>
+              <article className="rounded-[0.9rem] border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Last checked</p>
+                <p className="mt-1 text-sm font-medium text-zinc-100">{freshnessLabel}</p>
+              </article>
+              <article className="rounded-[0.9rem] border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Business status</p>
+                <p className="mt-1 text-sm font-medium text-zinc-100">{venue.googleBusinessStatus ?? "Unknown"}</p>
+              </article>
+              <article className="rounded-[0.9rem] border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">Primary type</p>
+                <p className="mt-1 text-sm font-medium text-zinc-100">{venue.googlePrimaryType ?? "Not provided"}</p>
+              </article>
+            </div>
+            <p className="mt-3 text-xs text-zinc-400">
+              Nightly-specific live data such as crowd shifts, cover updates, lineups, and venue announcements is provided by venue and Nightly systems, not Google Places.
+            </p>
+          </section>
+
+          <section className="mt-7 rounded-[1.2rem] border border-white/10 bg-[#070c17] p-4">
             <VenueSectionHeading title="Amenities" />
             <div className="flex flex-wrap gap-2">
               {amenities.map((item) => (
@@ -276,22 +308,31 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="flex items-end justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Overall Rating</p>
-                <p className="mt-1 text-xl font-semibold text-white">{reviews.rating.toFixed(1)} / 5</p>
+                <p className="mt-1 text-xl font-semibold text-white">{ratingValue != null ? `${ratingValue.toFixed(1)} / 5` : "Unavailable"}</p>
               </div>
-              <p className="text-xs text-zinc-400">{reviews.totalReviews} reviews</p>
+              <p className="text-xs text-zinc-400">{ratingCount != null ? `${ratingCount} reviews` : "No review metadata"}</p>
             </div>
-
-            <div className="mt-3 space-y-2">
-              {reviews.recent.map((review) => (
-                <article key={review.id} className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-zinc-100">{review.author}</p>
-                    <p className="text-xs text-zinc-400">{review.rating.toFixed(1)} • {review.when}</p>
-                  </div>
-                  <p className="mt-1.5 text-sm text-zinc-300">{review.text}</p>
-                </article>
-              ))}
-            </div>
+            <p className="mt-3 text-xs text-zinc-400">
+              Rating metadata shown above is sourced from Google Places when available and may refresh on a scheduled cadence.
+            </p>
+            {venue.googleAttributions.length > 0 ? (
+              <div className="mt-3 rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Photo attribution</p>
+                <ul className="mt-2 space-y-1 text-xs text-zinc-300">
+                  {venue.googleAttributions.slice(0, 6).map((item) => (
+                    <li key={`${item.displayName ?? "unknown"}-${item.uri ?? "none"}`}>
+                      {item.uri ? (
+                        <a href={item.uri} target="_blank" rel="noreferrer" className="text-cyan-200 hover:text-cyan-100">
+                          {item.displayName ?? "Google contributor"}
+                        </a>
+                      ) : (
+                        item.displayName ?? "Google contributor"
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </section>
 
           <section className="mt-7">

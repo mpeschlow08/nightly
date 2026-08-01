@@ -93,10 +93,73 @@ export const BOOKING_NOTIFICATION_TYPES = [
   "booking_completed",
   "booking_cancelled",
   "booking_refund",
+  "reservation_modified",
+  "server_assigned",
+  "arrival_reminder",
   "review_reminder",
 ] as const;
 
+export const CUSTOMER_RESERVATION_STATUS_LABELS: Record<CustomerReservationStatus, string> = {
+  pending: "Pending",
+  deposit_required: "Deposit Required",
+  deposit_paid: "Deposit Paid",
+  confirmed: "Confirmed",
+  checked_in: "Checked In",
+  seated: "Seated",
+  bottle_service_active: "Bottle Service Active",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
+
+export const LIVE_TABLE_STATUS_LABELS: Record<LiveTableStatus, string> = {
+  available: "Available",
+  reserved: "Reserved",
+  occupied: "Occupied",
+  cleaning: "Cleaning",
+  vip_hold: "VIP Hold",
+  out_of_service: "Out Of Service",
+};
+
 export type BookingNotificationType = (typeof BOOKING_NOTIFICATION_TYPES)[number];
+
+export const CUSTOMER_RESERVATION_STATUSES = [
+  "pending",
+  "deposit_required",
+  "deposit_paid",
+  "confirmed",
+  "checked_in",
+  "seated",
+  "bottle_service_active",
+  "completed",
+  "cancelled",
+  "refunded",
+] as const;
+
+export type CustomerReservationStatus = (typeof CUSTOMER_RESERVATION_STATUSES)[number];
+
+export const LIVE_TABLE_STATUSES = [
+  "available",
+  "reserved",
+  "occupied",
+  "cleaning",
+  "vip_hold",
+  "out_of_service",
+] as const;
+
+export type LiveTableStatus = (typeof LIVE_TABLE_STATUSES)[number];
+
+export const WAITLIST_STATUSES = [
+  "waiting",
+  "offered",
+  "accepted",
+  "expired",
+  "cancelled",
+  "declined",
+  "converted",
+] as const;
+
+export type WaitlistStatus = (typeof WAITLIST_STATUSES)[number];
 
 export type BookingRoleContext = {
   clerkUserId: string;
@@ -104,3 +167,5 @@ export type BookingRoleContext = {
   djProfileId?: number | null;
   venueId?: number | null;
 };
+
+export type ReservationActorRole = "consumer" | "owner" | "admin" | "door_staff" | "server" | "system";

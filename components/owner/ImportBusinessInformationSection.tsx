@@ -227,7 +227,24 @@ export function ImportBusinessInformationSection({
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+    <section id="google-business-import" className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+      <div className="rounded-xl border border-white/10 bg-zinc-900/65 p-3">
+        <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">5-minute setup</p>
+        <ol className="mt-2 grid gap-2 text-xs text-zinc-300 sm:grid-cols-2">
+          <li>1. Find business (active)</li>
+          <li>2. Confirm venue (active)</li>
+          <li>3. Import details (active)</li>
+          <li>4. Venue capabilities (coming soon)</li>
+          <li>5. Feature toggles (coming soon)</li>
+          <li>6. Bottle catalog defaults (coming soon)</li>
+          <li>7. Bottle server setup (coming soon)</li>
+          <li>8. Table setup (coming soon)</li>
+          <li>9. Add-ons (coming soon)</li>
+          <li>10. Deposit & minimum spend (coming soon)</li>
+          <li>11. Review and publish (coming soon)</li>
+        </ol>
+      </div>
+
       <p className="text-sm font-semibold text-zinc-100">Import business information</p>
       <p className="mt-2 text-sm text-zinc-300">
         Review and confirm this business information before saving it to your Nightly venue profile.
@@ -278,6 +295,37 @@ export function ImportBusinessInformationSection({
       {selectedResult ? (
         <div className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
           Selected: {selectedResult.displayName}
+        </div>
+      ) : null}
+
+      {draft ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-zinc-900/65">
+          {isMeaningful(draft.coverImageUrl) ? (
+            <img src={draft.coverImageUrl} alt={`${draft.name} preview`} className="h-40 w-full object-cover" />
+          ) : null}
+          <div className="space-y-1 p-3 text-xs text-zinc-300">
+            <p>Phone: {isMeaningful(draft.phone) ? draft.phone : "Not available"}</p>
+            <p>
+              Website:{" "}
+              {isMeaningful(draft.websiteUrl) ? (
+                <a href={draft.websiteUrl} target="_blank" rel="noreferrer" className="text-cyan-200 hover:text-cyan-100">
+                  Open website
+                </a>
+              ) : (
+                "Not available"
+              )}
+            </p>
+            <p>
+              Maps:{" "}
+              {isMeaningful(draft.googleMapsUrl) ? (
+                <a href={draft.googleMapsUrl} target="_blank" rel="noreferrer" className="text-cyan-200 hover:text-cyan-100">
+                  Open Google Maps
+                </a>
+              ) : (
+                "Not available"
+              )}
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -421,7 +469,7 @@ export function ImportBusinessInformationSection({
 
           <label className="sm:col-span-2 inline-flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-200">
             <input type="checkbox" name="confirmReview" value="true" required className="mt-0.5 h-4 w-4 accent-cyan-500" />
-            I reviewed and confirm these values before saving them to my Nightly venue profile.
+            This is my venue, and I reviewed these values before saving them to my Nightly venue profile.
           </label>
 
           <div className="sm:col-span-2 flex flex-wrap gap-3">

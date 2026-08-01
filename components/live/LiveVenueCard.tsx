@@ -11,8 +11,10 @@ export default function LiveVenueCard({ venue }: Props) {
   return (
     <article className="nightly-card nightly-card-interactive relative min-w-[17.8rem] snap-start overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#080b16]">
       <div className="relative">
-        <VenueImage src={venue.heroImageUrl} alt={`${venue.name} live`} orientation="portrait" className="rounded-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 to-transparent" />
+        <Link href={venue.href} aria-label={`Open ${venue.name} venue details`} className="block">
+          <VenueImage src={venue.heroImageUrl} alt={`${venue.name} live`} orientation="portrait" className="rounded-none" />
+        </Link>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 to-transparent" />
 
         <div className="absolute inset-x-0 top-0 p-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-rose-300/40 bg-rose-500/25 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-100">

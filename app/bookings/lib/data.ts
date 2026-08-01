@@ -2,8 +2,12 @@ import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  billSplits,
   bookingAuditLog,
+  bookingActivity,
+  bookingAddons,
   bookingAttachments,
+  bookingBottles,
   bookingCheckins,
   bookingContracts,
   bookingContractVersions,
@@ -18,8 +22,14 @@ import {
   bookingRequirements,
   bookingReviews,
   bookingStatusHistory,
+  bookingItems,
   bookings,
   djProfiles,
+  tableBookings,
+  venueAddons,
+  venueBottlePackages,
+  venueServers,
+  venueTables,
   venues,
   bookingRefunds,
 } from "@/db/schema";
@@ -33,6 +43,13 @@ export type BookingRequestOption = {
   subtitle: string;
   imageUrl: string;
   slug?: string | null;
+};
+
+export type BookingCatalogOption = {
+  id: number;
+  label: string;
+  subtitle: string;
+  amountCents: number;
 };
 
 export type BookingDashboardRow = {
@@ -227,6 +244,63 @@ export type BookingDetailPayload = {
     metadataJson: string | null;
     createdAt: Date;
   }>;
+  tableBooking: {
+    id: number;
+    venueTableId: number | null;
+    tableName: string | null;
+    serverId: number | null;
+    serverName: string | null;
+    bookingCategory: string;
+    reservationName: string | null;
+    partySize: number;
+    reservationStartAt: Date | null;
+    reservationEndAt: Date | null;
+    status: string;
+    minimumSpendCents: number;
+    depositAmountCents: number;
+    notes: string | null;
+  } | null;
+  bookingItems: Array<{
+    id: number;
+    itemType: string;
+    label: string;
+    quantity: number;
+    unitPriceCents: number;
+    totalPriceCents: number;
+  }>;
+  bottleSelections: Array<{
+    id: number;
+    bottlePackageId: number | null;
+    label: string;
+    quantity: number;
+    unitPriceCents: number;
+    notes: string | null;
+  }>;
+  addonSelections: Array<{
+    id: number;
+    venueAddonId: number | null;
+    label: string;
+    quantity: number;
+    unitPriceCents: number;
+    totalPriceCents: number;
+    notes: string | null;
+  }>;
+  billSplits: Array<{
+    id: number;
+    payerDisplayName: string;
+    payerEmail: string | null;
+    splitPercent: number | null;
+    amountCents: number;
+    status: string;
+    paidAt: Date | null;
+  }>;
+  activity: Array<{
+    id: number;
+    activityType: string;
+    details: string | null;
+    actorRole: string | null;
+    createdAt: Date;
+  }>;
   isAccessible: boolean;
 };
 
@@ -246,6 +320,10 @@ export type BookingDashboardData = {
 export type BookingRequestOptions = {
   venues: BookingRequestOption[];
   djs: BookingRequestOption[];
+  vipTables: BookingCatalogOption[];
+  bottlePackages: BookingCatalogOption[];
+  addons: BookingCatalogOption[];
+  servers: BookingCatalogOption[];
 };
 
 function emptyCounts() {
@@ -256,7 +334,7 @@ function emptyCounts() {
 }
 
 export async function getBookingRequestOptions(): Promise<BookingRequestOptions> {
-  const [venueRows, djRows] = await Promise.all([
+  const [venueRows, djRows, vipTableRows, bottleRows, addonRows, serverRows] = await Promise.all([
     db
       .select({
         id: venues.id,
@@ -284,6 +362,50 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
       .from(djProfiles)
       .orderBy(desc(djProfiles.isAvailableForBooking), desc(djProfiles.updatedAt), asc(djProfiles.stageName))
       .limit(24),
+    db
+      .select({
+        id: venueTables.id,
+        tableCode: venueTables.tableCode,
+        name: venueTables.name,
+        sectionName: venueTables.sectionName,
+        minimumSpendCents: venueTables.minimumSpendCents,
+      })
+      .from(venueTables)
+      .where(eq(venueTables.isActive, true))
+      .orderBy(asc(venueTables.name))
+      .limit(40),
+    db
+      .select({
+        id: venueBottlePackages.id,
+        name: venueBottlePackages.name,
+        description: venueBottlePackages.description,
+        priceCents: venueBottlePackages.priceCents,
+      })
+      .from(venueBottlePackages)
+      .where(eq(venueBottlePackages.isActive, true))
+      .orderBy(asc(venueBottlePackages.name))
+      .limit(40),
+    db
+      .select({
+        id: venueAddons.id,
+        name: venueAddons.name,
+        category: venueAddons.category,
+        unitPriceCents: venueAddons.unitPriceCents,
+      })
+      .from(venueAddons)
+      .where(eq(venueAddons.isActive, true))
+      .orderBy(asc(venueAddons.name))
+      .limit(40),
+    db
+      .select({
+        id: venueServers.id,
+        displayName: venueServers.displayName,
+        isLead: venueServers.isLead,
+      })
+      .from(venueServers)
+      .where(eq(venueServers.isActive, true))
+      .orderBy(desc(venueServers.isLead), asc(venueServers.displayName))
+      .limit(40),
   ]);
 
   return {
@@ -300,6 +422,30 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
       subtitle: [dj.city, dj.genres?.[0]].filter(Boolean).join(" • "),
       imageUrl: dj.profileImageUrl ?? "/assets/nightly-fallback-logo.svg",
       slug: dj.username,
+    })),
+    vipTables: vipTableRows.map((table) => ({
+      id: table.id,
+      label: `${table.tableCode} • ${table.name}`,
+      subtitle: table.sectionName ?? "Floor",
+      amountCents: table.minimumSpendCents,
+    })),
+    bottlePackages: bottleRows.map((bottle) => ({
+      id: bottle.id,
+      label: bottle.name,
+      subtitle: bottle.description ?? "Bottle package",
+      amountCents: bottle.priceCents,
+    })),
+    addons: addonRows.map((addon) => ({
+      id: addon.id,
+      label: addon.name,
+      subtitle: addon.category,
+      amountCents: addon.unitPriceCents,
+    })),
+    servers: serverRows.map((server) => ({
+      id: server.id,
+      label: server.displayName,
+      subtitle: server.isLead ? "Lead server" : "Server",
+      amountCents: 0,
     })),
   };
 }
@@ -501,6 +647,12 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
       requirements: [],
       checkin: [],
       auditLog: [],
+      tableBooking: null,
+      bookingItems: [],
+      bottleSelections: [],
+      addonSelections: [],
+      billSplits: [],
+      activity: [],
       isAccessible: false,
     };
   }
@@ -568,11 +720,17 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
       requirements: [],
       checkin: [],
       auditLog: [],
+      tableBooking: null,
+      bookingItems: [],
+      bottleSelections: [],
+      addonSelections: [],
+      billSplits: [],
+      activity: [],
       isAccessible: false,
     };
   }
 
-  const [participants, messages, history, attachments, payments, refunds, disputes, reviews, notifications, contracts, contractVersions, pricing, discounts, couponUsage, requirements, checkin, auditLog] = await Promise.all([
+  const [participants, messages, history, attachments, payments, refunds, disputes, reviews, notifications, contracts, contractVersions, pricing, discounts, couponUsage, requirements, checkin, auditLog, tableBookingRows, itemRows, bottleRows, addonRows, splitRows, activityRows] = await Promise.all([
     db.select().from(bookingParticipants).where(eq(bookingParticipants.bookingId, bookingId)).orderBy(asc(bookingParticipants.createdAt)),
     db.select().from(bookingMessages).where(eq(bookingMessages.bookingId, bookingId)).orderBy(desc(bookingMessages.createdAt), desc(bookingMessages.id)).limit(40),
     db.select().from(bookingStatusHistory).where(eq(bookingStatusHistory.bookingId, bookingId)).orderBy(desc(bookingStatusHistory.createdAt), desc(bookingStatusHistory.id)).limit(60),
@@ -602,7 +760,36 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
     db.select().from(bookingRequirements).where(eq(bookingRequirements.bookingId, bookingId)).orderBy(desc(bookingRequirements.updatedAt), desc(bookingRequirements.id)).limit(20),
     db.select().from(bookingCheckins).where(eq(bookingCheckins.bookingId, bookingId)).limit(1),
     db.select().from(bookingAuditLog).where(eq(bookingAuditLog.bookingId, bookingId)).orderBy(desc(bookingAuditLog.createdAt), desc(bookingAuditLog.id)).limit(40),
+    db
+      .select({
+        id: tableBookings.id,
+        venueTableId: tableBookings.venueTableId,
+        tableName: venueTables.name,
+        serverId: tableBookings.serverId,
+        serverName: venueServers.displayName,
+        bookingCategory: tableBookings.bookingCategory,
+        reservationName: tableBookings.reservationName,
+        partySize: tableBookings.partySize,
+        reservationStartAt: tableBookings.reservationStartAt,
+        reservationEndAt: tableBookings.reservationEndAt,
+        status: tableBookings.status,
+        minimumSpendCents: tableBookings.minimumSpendCents,
+        depositAmountCents: tableBookings.depositAmountCents,
+        notes: tableBookings.notes,
+      })
+      .from(tableBookings)
+      .leftJoin(venueTables, eq(tableBookings.venueTableId, venueTables.id))
+      .leftJoin(venueServers, eq(tableBookings.serverId, venueServers.id))
+      .where(eq(tableBookings.bookingId, bookingId))
+      .limit(1),
+    db.select().from(bookingItems).where(eq(bookingItems.bookingId, bookingId)).orderBy(asc(bookingItems.id)).limit(60),
+    db.select().from(bookingBottles).where(eq(bookingBottles.bookingId, bookingId)).orderBy(asc(bookingBottles.id)).limit(40),
+    db.select().from(bookingAddons).where(eq(bookingAddons.bookingId, bookingId)).orderBy(asc(bookingAddons.id)).limit(40),
+    db.select().from(billSplits).where(eq(billSplits.bookingId, bookingId)).orderBy(asc(billSplits.id)).limit(20),
+    db.select().from(bookingActivity).where(eq(bookingActivity.bookingId, bookingId)).orderBy(desc(bookingActivity.createdAt), desc(bookingActivity.id)).limit(80),
   ]);
+
+  const tableBooking = tableBookingRows[0] ?? null;
 
   return {
     booking: bookingDetail,
@@ -761,6 +948,65 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
       actorClerkUserId: row.actorClerkUserId,
       actorRole: row.actorRole,
       metadataJson: row.metadataJson,
+      createdAt: row.createdAt,
+    })),
+    tableBooking: tableBooking
+      ? {
+          id: tableBooking.id,
+          venueTableId: tableBooking.venueTableId,
+          tableName: tableBooking.tableName,
+          serverId: tableBooking.serverId,
+          serverName: tableBooking.serverName,
+          bookingCategory: tableBooking.bookingCategory,
+          reservationName: tableBooking.reservationName,
+          partySize: tableBooking.partySize,
+          reservationStartAt: tableBooking.reservationStartAt,
+          reservationEndAt: tableBooking.reservationEndAt,
+          status: tableBooking.status,
+          minimumSpendCents: tableBooking.minimumSpendCents,
+          depositAmountCents: tableBooking.depositAmountCents,
+          notes: tableBooking.notes,
+        }
+      : null,
+    bookingItems: itemRows.map((row) => ({
+      id: row.id,
+      itemType: row.itemType,
+      label: row.label,
+      quantity: row.quantity,
+      unitPriceCents: row.unitPriceCents,
+      totalPriceCents: row.totalPriceCents,
+    })),
+    bottleSelections: bottleRows.map((row) => ({
+      id: row.id,
+      bottlePackageId: row.bottlePackageId,
+      label: row.label,
+      quantity: row.quantity,
+      unitPriceCents: row.unitPriceCents,
+      notes: row.notes,
+    })),
+    addonSelections: addonRows.map((row) => ({
+      id: row.id,
+      venueAddonId: row.venueAddonId,
+      label: row.label,
+      quantity: row.quantity,
+      unitPriceCents: row.unitPriceCents,
+      totalPriceCents: row.totalPriceCents,
+      notes: row.notes,
+    })),
+    billSplits: splitRows.map((row) => ({
+      id: row.id,
+      payerDisplayName: row.payerDisplayName,
+      payerEmail: row.payerEmail,
+      splitPercent: row.splitPercent,
+      amountCents: row.amountCents,
+      status: row.status,
+      paidAt: row.paidAt,
+    })),
+    activity: activityRows.map((row) => ({
+      id: row.id,
+      activityType: row.activityType,
+      details: row.details,
+      actorRole: row.actorRole,
       createdAt: row.createdAt,
     })),
     isAccessible: true,

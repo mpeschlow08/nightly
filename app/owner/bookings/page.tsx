@@ -34,6 +34,15 @@ export default async function OwnerBookingsPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/owner/arrivals" className="rounded-full border border-cyan-300/30 bg-cyan-500/12 px-5 py-3 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/20">
+            Arrival board
+          </Link>
+          <Link href="/door/reservations" className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10">
+            Door reservations
+          </Link>
+          <Link href="/server/dashboard" className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10">
+            Server dashboard
+          </Link>
           <Link href="/owner/availability" className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-cyan-300/40 hover:bg-cyan-500/10">
             Manage availability
           </Link>

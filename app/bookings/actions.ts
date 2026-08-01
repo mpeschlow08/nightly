@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -10,6 +10,9 @@ import { writeAuditLog } from "@/app/lib/audit-log";
 import { db } from "@/db";
 import {
   bookingAuditLog,
+  bookingActivity,
+  bookingAddons,
+  bookingBottles,
   bookingContracts,
   bookingContractVersions,
   bookingMessages,
@@ -18,9 +21,16 @@ import {
   bookingPayments,
   bookingPricing,
   bookingCheckins,
+  bookingItems,
   bookingRequirements,
   bookingStatusHistory,
+  billSplits,
   bookings,
+  tableBookings,
+  venueAddons,
+  venueBottlePackages,
+  venueServers,
+  venueTables,
 } from "@/db/schema";
 import { getAllowedBookingTransitions, bookingNotificationTypeForStatus } from "@/lib/bookings/lifecycle";
 import { requireConsumerBookingActor, getBookingActor } from "./lib/auth";
@@ -52,6 +62,46 @@ function toDateAtTime(dateValue: string, timeValue: string) {
   }
 
   return candidate;
+}
+
+function toIdList(value: FormDataEntryValue | null | undefined) {
+  if (typeof value !== "string") {
+    return [] as number[];
+  }
+
+  return value
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item) && item > 0);
+}
+
+function parseSplitLines(raw: string, fallbackTotalCents: number) {
+  if (!raw.trim()) {
+    return [] as Array<{ name: string; email: string | null; amountCents: number; splitPercent: number | null }>;
+  }
+
+  const parsed = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [nameRaw, emailRaw, amountRaw] = line.split("|").map((part) => part?.trim() ?? "");
+      const amountCents = Math.max(Number(amountRaw) || 0, 0);
+      return {
+        name: nameRaw || "Guest",
+        email: emailRaw || null,
+        amountCents,
+      };
+    })
+    .filter((row) => row.amountCents > 0);
+
+  const splitTotal = parsed.reduce((sum, row) => sum + row.amountCents, 0);
+  return parsed.map((row) => ({
+    name: row.name,
+    email: row.email,
+    amountCents: row.amountCents,
+    splitPercent: splitTotal > 0 ? Number(((row.amountCents / splitTotal) * 100).toFixed(2)) : fallbackTotalCents > 0 ? Number(((row.amountCents / fallbackTotalCents) * 100).toFixed(2)) : null,
+  }));
 }
 
 function buildStatusPatch(status: BookingLifecycleStatus, now: Date) {
@@ -179,8 +229,38 @@ export async function createBookingRequestAction(formData: FormData) {
   const specialRequests = toStringValue(formData.get("specialRequests"));
   const city = toStringValue(formData.get("city"));
   const bookingNumber = bookingNumberForNow(now);
-  const depositRequiredCents = Math.max(Math.round(budgetCents * 0.2), 0);
-  const totalCents = Math.max(budgetCents, 0);
+  const tableId = toNumber(formData.get("tableId"));
+  const serverId = toNumber(formData.get("serverId"));
+  const reservationName = toStringValue(formData.get("reservationName"));
+  const minimumSpendInputCents = Math.max(toNumber(formData.get("minimumSpendCents")) ?? 0, 0);
+  const bottlePackageIds = toIdList(formData.get("bottlePackageIds"));
+  const addonIds = toIdList(formData.get("addonIds"));
+  const splitLines = parseSplitLines(toStringValue(formData.get("splitBillLines")), budgetCents);
+
+  const [tableRow, serverRow, bottleRows, addonRows] = await Promise.all([
+    tableId
+      ? db.query.venueTables.findFirst({ where: eq(venueTables.id, tableId) })
+      : Promise.resolve(null),
+    serverId
+      ? db.query.venueServers.findFirst({ where: eq(venueServers.id, serverId) })
+      : Promise.resolve(null),
+    bottlePackageIds.length > 0
+      ? db.select().from(venueBottlePackages).where(inArray(venueBottlePackages.id, bottlePackageIds))
+      : Promise.resolve([]),
+    addonIds.length > 0
+      ? db.select().from(venueAddons).where(inArray(venueAddons.id, addonIds))
+      : Promise.resolve([]),
+  ]);
+
+  const selectedBottles = bottleRows.filter((row) => bottlePackageIds.includes(row.id));
+  const selectedAddons = addonRows.filter((row) => addonIds.includes(row.id));
+  const catalogBottleTotalCents = selectedBottles.reduce((sum, row) => sum + row.priceCents, 0);
+  const catalogAddonTotalCents = selectedAddons.reduce((sum, row) => sum + row.unitPriceCents, 0);
+  const minimumSpendCents = Math.max(minimumSpendInputCents, tableRow?.minimumSpendCents ?? 0);
+  const computedVipTotalCents = minimumSpendCents + catalogBottleTotalCents + catalogAddonTotalCents;
+  const totalCents = Math.max(budgetCents, computedVipTotalCents, 0);
+  const depositPercent = Math.min(Math.max(tableRow?.depositPercent ?? 20, 0), 100);
+  const depositRequiredCents = Math.max(Math.round(totalCents * (depositPercent / 100)), 0);
   const platformFeeCents = Math.round(totalCents * 0.12);
   const payoutCents = Math.max(totalCents - platformFeeCents - depositRequiredCents, 0);
 
@@ -219,6 +299,56 @@ export async function createBookingRequestAction(formData: FormData) {
   if (!booking) {
     throw new Error("Failed to create booking.");
   }
+
+  const [bookingContract] = await db
+    .insert(bookingContracts)
+    .values({
+      bookingId: booking.id,
+      versionNumber: 1,
+      status: status === "draft" ? "draft" : "sent",
+      title: `Nightly booking ${bookingNumber}`,
+      termsJson: JSON.stringify({
+        bookingNumber,
+        bookingType,
+        depositRequiredCents,
+        totalCents,
+        platformFeeCents,
+        payoutCents,
+        requestedStartAt: requestedStartAt.toISOString(),
+        requestedEndAt: requestedEndAt.toISOString(),
+        timezone,
+      }),
+      generatedAt: now,
+      sentAt: status === "draft" ? null : now,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: bookingContracts.id });
+
+  if (!bookingContract) {
+    throw new Error("Failed to create booking contract.");
+  }
+
+  const tableBookingPayload = tableRow
+    ? {
+        bookingId: booking.id,
+        venueId: tableRow.venueId,
+        venueTableId: tableRow.id,
+        serverId: serverRow?.id ?? null,
+        bookingCategory: bookingType === "bottle_service_reservation" ? "bottle_service" : "vip_table",
+        reservationName: reservationName || null,
+        partySize: Math.max(guestCount, 1),
+        reservationStartAt: requestedStartAt,
+        reservationEndAt: requestedEndAt,
+        status: status === "draft" ? "draft" : "pending",
+        minimumSpendCents,
+        depositAmountCents: depositRequiredCents,
+        notes: notes || null,
+        metadataJson: JSON.stringify({ floorObjectId: tableRow.floorObjectId, sectionName: tableRow.sectionName }),
+        createdAt: now,
+        updatedAt: now,
+      }
+    : null;
 
   await Promise.all([
     addBookingHistory({
@@ -290,29 +420,112 @@ export async function createBookingRequestAction(formData: FormData) {
       createdAt: now,
       updatedAt: now,
     }),
-    db.insert(bookingContracts).values({
+    ...(tableBookingPayload ? [db.insert(tableBookings).values(tableBookingPayload)] : []),
+    db.insert(bookingItems).values([
+      {
+        bookingId: booking.id,
+        itemType: "reservation_base",
+        referenceId: tableRow?.id ?? null,
+        label: bookingType === "bottle_service_reservation" ? "Bottle Service Reservation" : "VIP Table Reservation",
+        quantity: 1,
+        unitPriceCents: minimumSpendCents > 0 ? minimumSpendCents : totalCents,
+        totalPriceCents: minimumSpendCents > 0 ? minimumSpendCents : totalCents,
+        metadataJson: JSON.stringify({ bookingType }),
+        createdAt: now,
+      },
+      ...selectedBottles.map((bottle) => ({
+        bookingId: booking.id,
+        itemType: "bottle_package",
+        referenceId: bottle.id,
+        label: bottle.name,
+        quantity: 1,
+        unitPriceCents: bottle.priceCents,
+        totalPriceCents: bottle.priceCents,
+        metadataJson: JSON.stringify({ description: bottle.description }),
+        createdAt: now,
+      })),
+      ...selectedAddons.map((addon) => ({
+        bookingId: booking.id,
+        itemType: "addon",
+        referenceId: addon.id,
+        label: addon.name,
+        quantity: 1,
+        unitPriceCents: addon.unitPriceCents,
+        totalPriceCents: addon.unitPriceCents,
+        metadataJson: JSON.stringify({ category: addon.category }),
+        createdAt: now,
+      })),
+    ]),
+    ...(selectedBottles.length > 0
+      ? [
+          db.insert(bookingBottles).values(
+            selectedBottles.map((bottle) => ({
+              bookingId: booking.id,
+              bottlePackageId: bottle.id,
+              label: bottle.name,
+              quantity: 1,
+              unitPriceCents: bottle.priceCents,
+              mixersJson: bottle.mixersJson,
+              notes: bottle.description,
+              createdAt: now,
+              updatedAt: now,
+            }))
+          ),
+        ]
+      : []),
+    ...(selectedAddons.length > 0
+      ? [
+          db.insert(bookingAddons).values(
+            selectedAddons.map((addon) => ({
+              bookingId: booking.id,
+              venueAddonId: addon.id,
+              label: addon.name,
+              quantity: 1,
+              unitPriceCents: addon.unitPriceCents,
+              totalPriceCents: addon.unitPriceCents,
+              notes: addon.description,
+              createdAt: now,
+              updatedAt: now,
+            }))
+          ),
+        ]
+      : []),
+    ...(splitLines.length > 0
+      ? [
+          db.insert(billSplits).values(
+            splitLines.map((split) => ({
+              bookingId: booking.id,
+              payerDisplayName: split.name,
+              payerEmail: split.email,
+              splitPercent: split.splitPercent,
+              amountCents: split.amountCents,
+              status: "pending",
+              inviteToken: randomUUID(),
+              invitedAt: now,
+              metadataJson: JSON.stringify({ source: "consumer_request" }),
+              createdAt: now,
+              updatedAt: now,
+            }))
+          ),
+        ]
+      : []),
+    db.insert(bookingActivity).values({
       bookingId: booking.id,
-      versionNumber: 1,
-      status: status === "draft" ? "draft" : "sent",
-      title: `Nightly booking ${bookingNumber}`,
-      termsJson: JSON.stringify({
-        bookingNumber,
-        bookingType,
-        depositRequiredCents,
-        totalCents,
-        platformFeeCents,
-        payoutCents,
-        requestedStartAt: requestedStartAt.toISOString(),
-        requestedEndAt: requestedEndAt.toISOString(),
-        timezone,
+      actorClerkUserId: actor.clerkUserId,
+      actorRole: actor.role,
+      activityType: "booking_created",
+      details: status === "draft" ? "Draft booking created with VIP preferences." : "Booking request submitted with VIP preferences.",
+      metadataJson: JSON.stringify({
+        tableId: tableRow?.id ?? null,
+        serverId: serverRow?.id ?? null,
+        bottlePackageIds,
+        addonIds,
+        splitCount: splitLines.length,
       }),
-      generatedAt: now,
-      sentAt: status === "draft" ? null : now,
       createdAt: now,
-      updatedAt: now,
     }),
     db.insert(bookingContractVersions).values({
-      bookingContractId: booking.id,
+      bookingContractId: bookingContract.id,
       versionNumber: 1,
       contentJson: JSON.stringify({
         title: `Nightly booking ${bookingNumber}`,
@@ -466,6 +679,15 @@ export async function submitBookingCounterOfferAction(formData: FormData) {
       isSystem: false,
       createdAt: now,
     }),
+    db.insert(bookingActivity).values({
+      bookingId,
+      actorClerkUserId: actor.clerkUserId,
+      actorRole: actor.role,
+      activityType: "counter_offer",
+      details: counterNote,
+      metadataJson: JSON.stringify({ nextPrice, nextDeposit, nextDuration }),
+      createdAt: now,
+    }),
     queueBookingNotification({
       bookingId,
       notificationType: "booking_countered",
@@ -524,6 +746,16 @@ export async function transitionBookingStatusAction(formData: FormData) {
     actorRole: actor.role,
     note,
     metadata: { nextStatus },
+  });
+
+  await db.insert(bookingActivity).values({
+    bookingId,
+    actorClerkUserId: actor.clerkUserId,
+    actorRole: actor.role,
+    activityType: "status_transition",
+    details: note,
+    metadataJson: JSON.stringify({ fromStatus: booking.booking.lifecycleStatus, toStatus: nextStatus }),
+    createdAt: now,
   });
 
   const notificationType = bookingNotificationTypeForStatus(nextStatus);

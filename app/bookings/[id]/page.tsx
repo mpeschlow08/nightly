@@ -1,9 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import BookingStatusBadge from "@/components/bookings/BookingStatusBadge";
 import BookingTimeline from "@/components/bookings/BookingTimeline";
-import { getAllowedBookingTransitions, bookingTypeLabels } from "@/lib/bookings/lifecycle";
+import CustomerReservationActionsClient from "@/components/bookings/CustomerReservationActionsClient";
+import { getAllowedBookingTransitions, bookingTypeLabels, getCustomerReservationStatusLabel } from "@/lib/bookings/lifecycle";
+import { CUSTOMER_TIMELINE_ORDER, getOrCreateReservationPass, getReservationTimeline } from "@/lib/bookings/operations";
 import { getBookingActor } from "../lib/auth";
 import { getBookingById } from "../lib/data";
 import { transitionBookingStatusAction, submitBookingCounterOfferAction } from "../actions";
@@ -37,6 +40,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
   const allowedTransitions = getAllowedBookingTransitions(payload.booking.lifecycleStatus);
   const canTransition = actor.role !== "consumer";
+  const [reservationTimeline, reservationPass] = await Promise.all([
+    getReservationTimeline(payload.booking.id),
+    payload.booking.venueId ? getOrCreateReservationPass(payload.booking.id, payload.booking.venueId) : Promise.resolve(null),
+  ]);
+  const timelineProgress = reservationTimeline ? reservationTimeline.progressIndex : 0;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(167,139,250,0.14),_transparent_25%),linear-gradient(140deg,_#04070b_0%,_#090d18_55%,_#111326_100%)] px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
@@ -75,6 +83,15 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           <div className="space-y-6">
             <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
               <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Timeline</p>
+              {reservationTimeline ? (
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                  {CUSTOMER_TIMELINE_ORDER.map((status, index) => (
+                    <div key={status} className={`rounded-xl border px-3 py-2 text-xs uppercase tracking-[0.16em] ${index <= timelineProgress ? "border-cyan-300/35 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-zinc-950/70 text-zinc-500"}`}>
+                      {getCustomerReservationStatusLabel(status)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Venue</p>
@@ -125,6 +142,24 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                 )}
               </div>
             </article>
+
+            {actor.role === "consumer" ? (
+              <CustomerReservationActionsClient
+                bookingId={payload.booking.id}
+                venueId={payload.booking.venueId}
+                initialPartySize={payload.tableBooking?.partySize ?? payload.booking.guestCount}
+                isTerminal={[
+                  "completed",
+                  "closed",
+                  "cancelled_by_consumer",
+                  "cancelled_by_venue",
+                  "cancelled_by_dj",
+                  "expired",
+                  "refund_pending",
+                  "refunded",
+                ].includes(payload.booking.lifecycleStatus)}
+              />
+            ) : null}
           </div>
 
           <aside className="space-y-6">
@@ -195,6 +230,35 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                 )}
               </div>
             </article>
+
+            <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Table & service</p>
+              {payload.tableBooking ? (
+                <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
+                  <p className="font-medium text-white">{payload.tableBooking.tableName ?? "Unassigned table"}</p>
+                  <p>{payload.tableBooking.serverName ?? "Server not assigned"}</p>
+                  <p>Status: {payload.tableBooking.status}</p>
+                  <p>Minimum spend: {formatCurrency(payload.tableBooking.minimumSpendCents)}</p>
+                  <p>Deposit: {formatCurrency(payload.tableBooking.depositAmountCents)}</p>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No table service selected.</p>
+              )}
+              {reservationPass ? (
+                <div className="mt-4 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-100">Dynamic reservation pass</p>
+                  <p className="mt-2 break-all text-xs text-cyan-50/90">{reservationPass.checkInToken}</p>
+                  <Image
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(JSON.stringify({ type: "nightly_reservation", token: reservationPass.checkInToken, bookingId: payload.booking.id }))}`}
+                    alt="Reservation QR pass"
+                    width={160}
+                    height={160}
+                    className="mt-3 h-40 w-40 rounded-lg border border-cyan-200/30 bg-white p-1"
+                  />
+                  <p className="mt-2 text-[11px] text-cyan-100/85">Apple Wallet and Google Wallet hooks are reserved for the next release.</p>
+                </div>
+              ) : null}
+            </article>
           </aside>
         </section>
 
@@ -234,6 +298,59 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               ))}
             </div>
           </article>
+
+          <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Bottle & add-ons</p>
+            <div className="mt-4 space-y-3">
+              {payload.bottleSelections.map((item) => (
+                <div key={`bottle-${item.id}`} className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
+                  <p className="font-medium text-white">{item.label}</p>
+                  <p className="mt-1">{item.quantity} x {formatCurrency(item.unitPriceCents)}</p>
+                </div>
+              ))}
+              {payload.addonSelections.map((item) => (
+                <div key={`addon-${item.id}`} className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
+                  <p className="font-medium text-white">{item.label}</p>
+                  <p className="mt-1">{item.quantity} x {formatCurrency(item.unitPriceCents)}</p>
+                </div>
+              ))}
+              {payload.bottleSelections.length === 0 && payload.addonSelections.length === 0 ? (
+                <p className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No bottle packages or add-ons selected.</p>
+              ) : null}
+            </div>
+          </article>
+
+          <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Bill splits</p>
+            <div className="mt-4 space-y-3">
+              {payload.billSplits.map((split) => (
+                <div key={split.id} className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
+                  <p className="font-medium text-white">{split.payerDisplayName}</p>
+                  <p className="mt-1">{formatCurrency(split.amountCents)} • {split.status}</p>
+                </div>
+              ))}
+              {payload.billSplits.length === 0 ? (
+                <p className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No split bill setup on this booking.</p>
+              ) : null}
+            </div>
+          </article>
+        </section>
+
+        <section className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
+          <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Activity log</p>
+          <div className="mt-4 space-y-3">
+            {payload.activity.length === 0 ? (
+              <p className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No activity entries yet.</p>
+            ) : (
+              payload.activity.map((entry) => (
+                <div key={entry.id} className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
+                  <p className="font-medium text-white">{entry.activityType.replace(/_/g, " ")}</p>
+                  <p className="mt-1">{entry.details ?? "No detail"}</p>
+                  <p className="mt-1 text-xs text-zinc-400">{entry.createdAt.toLocaleString()}</p>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <div className="flex flex-wrap gap-3">

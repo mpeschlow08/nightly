@@ -15,6 +15,22 @@ type BookingUserRow = {
   role: BookingRoleContext["role"];
 };
 
+function redirectToBookingRoleHome(role: BookingRoleContext["role"]) {
+  if (role === "dj") {
+    redirect("/dj/bookings");
+  }
+
+  if (role === "owner") {
+    redirect("/owner/bookings");
+  }
+
+  if (role === "admin") {
+    redirect("/admin/bookings");
+  }
+
+  redirect("/bookings");
+}
+
 async function getAuthenticatedBookingUser() {
   const { userId } = await auth();
 
@@ -76,7 +92,7 @@ export async function requireConsumerBookingActor() {
   const actor = await getBookingActor();
 
   if (actor.role !== "consumer") {
-    redirect("/home");
+    redirectToBookingRoleHome(actor.role);
   }
 
   return actor;
@@ -86,7 +102,7 @@ export async function requireDjBookingActor() {
   const actor = await getBookingActor();
 
   if (actor.role !== "dj") {
-    redirect("/dj/bookings");
+    redirectToBookingRoleHome(actor.role);
   }
 
   return actor;
@@ -96,7 +112,7 @@ export async function requireOwnerBookingActor() {
   const actor = await getBookingActor();
 
   if (actor.role !== "owner") {
-    redirect("/owner/bookings");
+    redirectToBookingRoleHome(actor.role);
   }
 
   return actor;
@@ -106,7 +122,7 @@ export async function requireAdminBookingActor() {
   const actor = await getBookingActor();
 
   if (actor.role !== "admin") {
-    redirect("/admin/bookings");
+    redirectToBookingRoleHome(actor.role);
   }
 
   return actor;

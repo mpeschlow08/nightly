@@ -91,6 +91,56 @@ export default function BookingRequestForm({ options, action }: BookingRequestFo
           <input name="budgetCents" type="number" min={0} step={100} defaultValue={50000} className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40" />
         </label>
 
+        <label className="space-y-2 text-sm text-zinc-200">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Reservation name</span>
+          <input name="reservationName" placeholder="Birthday Table" className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40" />
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Minimum spend cents</span>
+          <input name="minimumSpendCents" type="number" min={0} step={100} defaultValue={0} className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40" />
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">VIP table</span>
+          <select name="tableId" className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40">
+            <option value="">No table selected</option>
+            {options.vipTables.map((table) => (
+              <option key={table.id} value={table.id}>
+                {table.label} ({table.amountCents.toLocaleString()}c)
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Preferred server</span>
+          <select name="serverId" className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40">
+            <option value="">Assign later</option>
+            {options.servers.map((server) => (
+              <option key={server.id} value={server.id}>{server.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200 sm:col-span-2">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Bottle package IDs (comma separated)</span>
+          <input name="bottlePackageIds" placeholder={options.bottlePackages.slice(0, 3).map((item) => `${item.id}`).join(", ") || "e.g. 1,4"} className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40" />
+          <p className="text-xs text-zinc-500">Available: {options.bottlePackages.slice(0, 4).map((item) => `${item.id}:${item.label}`).join(" | ") || "No packages yet"}</p>
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200 sm:col-span-2">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Add-on IDs (comma separated)</span>
+          <input name="addonIds" placeholder={options.addons.slice(0, 3).map((item) => `${item.id}`).join(", ") || "e.g. 2,3"} className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-300/40" />
+          <p className="text-xs text-zinc-500">Available: {options.addons.slice(0, 4).map((item) => `${item.id}:${item.label}`).join(" | ") || "No add-ons yet"}</p>
+        </label>
+
+        <label className="space-y-2 text-sm text-zinc-200 sm:col-span-2">
+          <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Split bill lines</span>
+          <textarea name="splitBillLines" rows={3} placeholder="Name|email@example.com|25000" className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/40" />
+          <p className="text-xs text-zinc-500">One guest per line: name|email|amount_cents</p>
+        </label>
+
         <label className="space-y-2 text-sm text-zinc-200 sm:col-span-2">
           <span className="text-xs uppercase tracking-[0.24em] text-zinc-400">Notes</span>
           <textarea name="notes" rows={4} placeholder="Describe the vibe, scope, timing, and any must-haves." className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/40" />

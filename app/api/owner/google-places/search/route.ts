@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       venueCity: venue.city,
       venueLatitude: venue.latitude,
       venueLongitude: venue.longitude,
+      correlationId: context.correlationId,
     });
 
     return NextResponse.json({ results });

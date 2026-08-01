@@ -8,10 +8,12 @@ import {
   platformFeatureFlagHistory,
   platformFeatureFlags,
   users,
+  venues,
 } from "@/db/schema";
 
 import { writeAdminAuditEvent } from "@/app/admin/lib/audit";
 import { requireAdminPermission } from "@/app/admin/lib/permissions";
+import { runVenueGoogleDataRefresh } from "@/lib/platform/venue-google-refresh";
 
 function getRequiredText(formData: FormData, key: string, label: string) {
   const value = formData.get(key);
@@ -33,6 +35,10 @@ function getInt(formData: FormData, key: string, label: string) {
   }
 
   return value;
+}
+
+function getOptionalBool(formData: FormData, key: string) {
+  return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
 export async function suspendUserAction(formData: FormData) {
@@ -307,4 +313,89 @@ export async function disableFeatureFlagAction(formData: FormData) {
   });
 
   revalidatePath("/admin/feature-flags");
+}
+
+export async function runVenueGoogleRefreshAction(formData: FormData) {
+  const actor = await requireAdminPermission("jobs:manage");
+  const venueIdRaw = formData.get("venueId");
+  const mode = getRequiredText(formData, "mode", "Mode") as "single" | "batch" | "stale_only" | "failed_only";
+  const dryRun = getOptionalBool(formData, "dryRun");
+  const force = getOptionalBool(formData, "force");
+  const limitRaw = formData.get("limit");
+  const limit = typeof limitRaw === "string" && limitRaw.trim().length > 0 ? Number.parseInt(limitRaw, 10) : undefined;
+  const venueId =
+    typeof venueIdRaw === "string" && venueIdRaw.trim().length > 0
+      ? Number.parseInt(venueIdRaw, 10)
+      : undefined;
+
+  const result = await runVenueGoogleDataRefresh({
+    mode,
+    venueId,
+    limit,
+    dryRun,
+    force,
+    trigger: "admin",
+    requestedByClerkUserId: actor.clerkUserId,
+  });
+
+  await writeAdminAuditEvent({
+    actorClerkUserId: actor.clerkUserId,
+    action: "admin_venue_google_refresh_run",
+    resourceType: "venue_google_refresh_run",
+    resourceId: result.runId,
+    scope: "venues",
+    reason: "Admin initiated venue Google data refresh",
+    after: {
+      mode,
+      venueId: venueId ?? null,
+      dryRun,
+      force,
+      selectedVenueCount: result.selectedVenueCount,
+      requestCount: result.requestCount,
+      failedCount: result.failedCount,
+    },
+  });
+
+  revalidatePath("/admin/venues");
+  revalidatePath("/admin/overview");
+
+  if (venueId) {
+    revalidatePath(`/admin/venues/${venueId}`);
+  }
+}
+
+export async function setVenueGoogleRefreshSuspendedAction(formData: FormData) {
+  const actor = await requireAdminPermission("venues:approve");
+  const venueId = getInt(formData, "venueId", "Venue ID");
+  const suspend = getOptionalBool(formData, "suspend");
+  const reason = getRequiredText(formData, "reason", "Reason");
+
+  const current = await db.query.venues.findFirst({ where: eq(venues.id, venueId) });
+
+  if (!current) {
+    throw new Error("Venue not found.");
+  }
+
+  await db
+    .update(venues)
+    .set({
+      googleRefreshSuspendedAt: suspend ? new Date() : null,
+      googleRefreshStatus: suspend ? "suspended" : current.googleRefreshStatus,
+      updatedAt: new Date(),
+    })
+    .where(eq(venues.id, venueId));
+
+  await writeAdminAuditEvent({
+    actorClerkUserId: actor.clerkUserId,
+    action: "admin_venue_google_refresh_suspension_changed",
+    resourceType: "venue",
+    resourceId: venueId,
+    scope: "venues",
+    reason,
+    before: { googleRefreshSuspendedAt: current.googleRefreshSuspendedAt?.toISOString() ?? null },
+    after: { googleRefreshSuspendedAt: suspend ? new Date().toISOString() : null },
+  });
+
+  revalidatePath(`/admin/venues/${venueId}`);
+  revalidatePath("/admin/venues");
 }

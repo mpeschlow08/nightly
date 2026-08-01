@@ -334,6 +334,33 @@ export const venues = pgTable(
     neighborhood: text("neighborhood"),
     tagline: text("tagline"),
     googlePlaceId: text("google_place_id"),
+    googlePlaceResourceName: text("google_place_resource_name"),
+    googleBusinessStatus: text("google_business_status"),
+    googlePrimaryType: text("google_primary_type"),
+    googleTypesJson: text("google_types_json"),
+    googleDisplayName: text("google_display_name"),
+    googleFormattedAddress: text("google_formatted_address"),
+    googleNationalPhoneNumber: text("google_national_phone_number"),
+    googleInternationalPhoneNumber: text("google_international_phone_number"),
+    googleWebsiteUri: text("google_website_uri"),
+    googleMapsUri: text("google_maps_uri"),
+    googleRegularOpeningHoursJson: text("google_regular_opening_hours_json"),
+    googleCurrentOpeningHoursJson: text("google_current_opening_hours_json"),
+    googleUtcOffsetMinutes: integer("google_utc_offset_minutes"),
+    googleRating: real("google_rating"),
+    googleUserRatingCount: integer("google_user_rating_count"),
+    googlePriceLevel: integer("google_price_level"),
+    googlePhotosJson: text("google_photos_json"),
+    googleAttributionsJson: text("google_attributions_json"),
+    googleDataLastFetchedAt: timestamp("google_data_last_fetched_at"),
+    googleDataExpiresAt: timestamp("google_data_expires_at"),
+    googleRefreshStatus: text("google_refresh_status").notNull().default("never"),
+    googleRefreshError: text("google_refresh_error"),
+    googleRefreshAttemptedAt: timestamp("google_refresh_attempted_at"),
+    googleRefreshVersion: text("google_refresh_version"),
+    ownerOverrideFieldsJson: text("owner_override_fields_json").notNull().default("[]"),
+    adminOverrideFieldsJson: text("admin_override_fields_json").notNull().default("[]"),
+    googleRefreshSuspendedAt: timestamp("google_refresh_suspended_at"),
     logoUrl: text("logo_url"),
     heroImageUrl: text("hero_image_url"),
     thumbnailImageUrl: text("thumbnail_image_url"),
@@ -400,6 +427,8 @@ export const venues = pgTable(
   (table) => ({
     slugIdx: index("venues_slug_idx").on(table.slug),
     googlePlaceIdIdx: index("venues_google_place_id_idx").on(table.googlePlaceId),
+    googleRefreshStatusIdx: index("venues_google_refresh_status_idx").on(table.googleRefreshStatus),
+    googleDataExpiresAtIdx: index("venues_google_data_expires_at_idx").on(table.googleDataExpiresAt),
     publicationStatusIdx: index("venues_publication_status_idx").on(table.publicationStatus),
     nameIdx: index("venues_name_idx").on(table.name),
     neighborhoodIdx: index("venues_neighborhood_idx").on(table.neighborhood),
@@ -437,6 +466,88 @@ export const venueImages = pgTable("venue_images", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const venueGooglePhotoMetadata = pgTable(
+  "venue_google_photo_metadata",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    photoResourceName: text("photo_resource_name").notNull(),
+    widthPx: integer("width_px"),
+    heightPx: integer("height_px"),
+    authorAttributionsJson: text("author_attributions_json").notNull().default("[]"),
+    rankingPurpose: text("ranking_purpose"),
+    source: text("source").notNull().default("google_places"),
+    status: text("status").notNull().default("active"),
+    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    venueIdx: index("venue_google_photo_metadata_venue_id_idx").on(table.venueId),
+    venuePhotoUnique: unique("venue_google_photo_metadata_venue_photo_unique").on(
+      table.venueId,
+      table.photoResourceName
+    ),
+  })
+);
+
+export const venueDataRefreshRuns = pgTable(
+  "venue_data_refresh_runs",
+  {
+    id: serial("id").primaryKey(),
+    jobKey: text("job_key").notNull().default("venue_google_data_refresh"),
+    trigger: text("trigger").notNull().default("manual"),
+    status: text("status").notNull().default("queued"),
+    dryRun: boolean("dry_run").notNull().default(false),
+    force: boolean("force").notNull().default(false),
+    requestedByClerkUserId: text("requested_by_clerk_user_id"),
+    correlationId: text("correlation_id"),
+    requestEstimateCount: integer("request_estimate_count"),
+    selectedVenueCount: integer("selected_venue_count").notNull().default(0),
+    processedVenueCount: integer("processed_venue_count").notNull().default(0),
+    successCount: integer("success_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    startedAt: timestamp("started_at"),
+    finishedAt: timestamp("finished_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    jobIdx: index("venue_data_refresh_runs_job_key_idx").on(table.jobKey),
+    statusIdx: index("venue_data_refresh_runs_status_idx").on(table.status),
+    createdIdx: index("venue_data_refresh_runs_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const venueDataRefreshItems = pgTable(
+  "venue_data_refresh_items",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => venueDataRefreshRuns.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    requestCount: integer("request_count").notNull().default(0),
+    changedFieldsJson: text("changed_fields_json").notNull().default("[]"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at"),
+    finishedAt: timestamp("finished_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    runIdx: index("venue_data_refresh_items_run_id_idx").on(table.runId),
+    venueIdx: index("venue_data_refresh_items_venue_id_idx").on(table.venueId),
+    statusIdx: index("venue_data_refresh_items_status_idx").on(table.status),
+    runVenueUnique: unique("venue_data_refresh_items_run_venue_unique").on(table.runId, table.venueId),
+  })
+);
 
 export const events = pgTable(
   "events",
@@ -2561,6 +2672,468 @@ export const bookingAuditLog = pgTable(
     bookingIdx: index("booking_audit_log_booking_id_idx").on(table.bookingId),
     actorIdx: index("booking_audit_log_actor_clerk_user_id_idx").on(table.actorClerkUserId),
     actionIdx: index("booking_audit_log_action_idx").on(table.action),
+  })
+);
+
+export const venueTables = pgTable(
+  "venue_tables",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    floorObjectId: integer("floor_object_id").references(() => venueFloorPlanObjects.id, { onDelete: "set null" }),
+    tableCode: text("table_code").notNull(),
+    name: text("name").notNull(),
+    sectionName: text("section_name"),
+    minimumGuests: integer("minimum_guests").notNull().default(1),
+    maximumGuests: integer("maximum_guests").notNull().default(12),
+    minimumSpendCents: integer("minimum_spend_cents").notNull().default(0),
+    depositPercent: integer("deposit_percent").notNull().default(20),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("venue_tables_venue_id_idx").on(table.venueId),
+    floorObjectIdx: index("venue_tables_floor_object_id_idx").on(table.floorObjectId),
+    activeIdx: index("venue_tables_is_active_idx").on(table.isActive),
+    codeUnique: unique("venue_tables_venue_id_table_code_unique").on(table.venueId, table.tableCode),
+  })
+);
+
+export const venueServers = pgTable(
+  "venue_servers",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    staffProfileId: integer("staff_profile_id").references(() => venueStaffProfiles.id, { onDelete: "set null" }),
+    displayName: text("display_name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    isLead: boolean("is_lead").notNull().default(false),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("venue_servers_venue_id_idx").on(table.venueId),
+    staffIdx: index("venue_servers_staff_profile_id_idx").on(table.staffProfileId),
+    activeIdx: index("venue_servers_is_active_idx").on(table.isActive),
+  })
+);
+
+export const venueAddons = pgTable(
+  "venue_addons",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    category: text("category").notNull().default("service"),
+    description: text("description"),
+    unitPriceCents: integer("unit_price_cents").notNull().default(0),
+    isPerGuest: boolean("is_per_guest").notNull().default(false),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("venue_addons_venue_id_idx").on(table.venueId),
+    categoryIdx: index("venue_addons_category_idx").on(table.category),
+    activeIdx: index("venue_addons_is_active_idx").on(table.isActive),
+  })
+);
+
+export const tableBookings = pgTable(
+  "table_bookings",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" })
+      .unique(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    venueTableId: integer("venue_table_id").references(() => venueTables.id, { onDelete: "set null" }),
+    serverId: integer("server_id").references(() => venueServers.id, { onDelete: "set null" }),
+    bookingCategory: text("booking_category").notNull().default("vip_table"),
+    reservationName: text("reservation_name"),
+    partySize: integer("party_size").notNull().default(2),
+    reservationStartAt: timestamp("reservation_start_at"),
+    reservationEndAt: timestamp("reservation_end_at"),
+    status: text("status").notNull().default("pending"),
+    minimumSpendCents: integer("minimum_spend_cents").notNull().default(0),
+    depositAmountCents: integer("deposit_amount_cents").notNull().default(0),
+    notes: text("notes"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("table_bookings_booking_id_idx").on(table.bookingId),
+    venueIdx: index("table_bookings_venue_id_idx").on(table.venueId),
+    tableIdx: index("table_bookings_venue_table_id_idx").on(table.venueTableId),
+    serverIdx: index("table_bookings_server_id_idx").on(table.serverId),
+    statusIdx: index("table_bookings_status_idx").on(table.status),
+  })
+);
+
+export const bookingItems = pgTable(
+  "booking_items",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    itemType: text("item_type").notNull(),
+    referenceId: integer("reference_id"),
+    label: text("label").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceCents: integer("unit_price_cents").notNull().default(0),
+    totalPriceCents: integer("total_price_cents").notNull().default(0),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("booking_items_booking_id_idx").on(table.bookingId),
+    itemTypeIdx: index("booking_items_item_type_idx").on(table.itemType),
+  })
+);
+
+export const bookingBottles = pgTable(
+  "booking_bottles",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    bottlePackageId: integer("bottle_package_id").references(() => venueBottlePackages.id, { onDelete: "set null" }),
+    label: text("label").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceCents: integer("unit_price_cents").notNull().default(0),
+    mixersJson: text("mixers_json").notNull().default("[]"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("booking_bottles_booking_id_idx").on(table.bookingId),
+    packageIdx: index("booking_bottles_bottle_package_id_idx").on(table.bottlePackageId),
+  })
+);
+
+export const bookingAddons = pgTable(
+  "booking_addons",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    venueAddonId: integer("venue_addon_id").references(() => venueAddons.id, { onDelete: "set null" }),
+    label: text("label").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceCents: integer("unit_price_cents").notNull().default(0),
+    totalPriceCents: integer("total_price_cents").notNull().default(0),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("booking_addons_booking_id_idx").on(table.bookingId),
+    addonIdx: index("booking_addons_venue_addon_id_idx").on(table.venueAddonId),
+  })
+);
+
+export const billSplits = pgTable(
+  "bill_splits",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    payerClerkUserId: text("payer_clerk_user_id"),
+    payerDisplayName: text("payer_display_name").notNull(),
+    payerEmail: text("payer_email"),
+    payerPhone: text("payer_phone"),
+    splitPercent: real("split_percent"),
+    amountCents: integer("amount_cents").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    inviteToken: text("invite_token"),
+    invitedAt: timestamp("invited_at"),
+    paidAt: timestamp("paid_at"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("bill_splits_booking_id_idx").on(table.bookingId),
+    statusIdx: index("bill_splits_status_idx").on(table.status),
+    tokenIdx: index("bill_splits_invite_token_idx").on(table.inviteToken),
+  })
+);
+
+export const billSplitPayments = pgTable(
+  "bill_split_payments",
+  {
+    id: serial("id").primaryKey(),
+    billSplitId: integer("bill_split_id")
+      .notNull()
+      .references(() => billSplits.id, { onDelete: "cascade" }),
+    bookingPaymentId: integer("booking_payment_id")
+      .notNull()
+      .references(() => bookingPayments.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    splitIdx: index("bill_split_payments_bill_split_id_idx").on(table.billSplitId),
+    paymentIdx: index("bill_split_payments_booking_payment_id_idx").on(table.bookingPaymentId),
+  })
+);
+
+export const bookingActivity = pgTable(
+  "booking_activity",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    actorClerkUserId: text("actor_clerk_user_id"),
+    actorRole: text("actor_role"),
+    activityType: text("activity_type").notNull(),
+    details: text("details"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("booking_activity_booking_id_idx").on(table.bookingId),
+    typeIdx: index("booking_activity_activity_type_idx").on(table.activityType),
+    createdIdx: index("booking_activity_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const reservationStatusLog = pgTable(
+  "reservation_status_log",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    tableBookingId: integer("table_booking_id").references(() => tableBookings.id, { onDelete: "set null" }),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    actorClerkUserId: text("actor_clerk_user_id"),
+    actorRole: text("actor_role"),
+    note: text("note"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("reservation_status_log_booking_id_idx").on(table.bookingId),
+    tableBookingIdx: index("reservation_status_log_table_booking_id_idx").on(table.tableBookingId),
+    toStatusIdx: index("reservation_status_log_to_status_idx").on(table.toStatus),
+    createdIdx: index("reservation_status_log_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const tableStatusLog = pgTable(
+  "table_status_log",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    venueTableId: integer("venue_table_id")
+      .notNull()
+      .references(() => venueTables.id, { onDelete: "cascade" }),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    actorClerkUserId: text("actor_clerk_user_id"),
+    actorRole: text("actor_role"),
+    note: text("note"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("table_status_log_venue_id_idx").on(table.venueId),
+    tableIdx: index("table_status_log_venue_table_id_idx").on(table.venueTableId),
+    toStatusIdx: index("table_status_log_to_status_idx").on(table.toStatus),
+    createdIdx: index("table_status_log_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const serverAssignments = pgTable(
+  "server_assignments",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    tableBookingId: integer("table_booking_id").references(() => tableBookings.id, { onDelete: "set null" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => venueServers.id, { onDelete: "cascade" }),
+    assignedByClerkUserId: text("assigned_by_clerk_user_id"),
+    assignmentStatus: text("assignment_status").notNull().default("assigned"),
+    notes: text("notes"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("server_assignments_booking_id_idx").on(table.bookingId),
+    tableBookingIdx: index("server_assignments_table_booking_id_idx").on(table.tableBookingId),
+    venueIdx: index("server_assignments_venue_id_idx").on(table.venueId),
+    serverIdx: index("server_assignments_server_id_idx").on(table.serverId),
+    statusIdx: index("server_assignments_assignment_status_idx").on(table.assignmentStatus),
+  })
+);
+
+export const arrivalLog = pgTable(
+  "arrival_log",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    tableBookingId: integer("table_booking_id").references(() => tableBookings.id, { onDelete: "set null" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    expectedAt: timestamp("expected_at"),
+    arrivedAt: timestamp("arrived_at"),
+    seatedAt: timestamp("seated_at"),
+    noShowAt: timestamp("no_show_at"),
+    delayMinutes: integer("delay_minutes").notNull().default(0),
+    partySizeAtArrival: integer("party_size_at_arrival"),
+    recordedByClerkUserId: text("recorded_by_clerk_user_id"),
+    note: text("note"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("arrival_log_booking_id_idx").on(table.bookingId),
+    tableBookingIdx: index("arrival_log_table_booking_id_idx").on(table.tableBookingId),
+    venueIdx: index("arrival_log_venue_id_idx").on(table.venueId),
+    expectedIdx: index("arrival_log_expected_at_idx").on(table.expectedAt),
+  })
+);
+
+export const checkInLog = pgTable(
+  "check_in_log",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    tableBookingId: integer("table_booking_id").references(() => tableBookings.id, { onDelete: "set null" }),
+    checkInToken: text("check_in_token").notNull(),
+    scanNonce: text("scan_nonce").notNull().unique(),
+    scannedByClerkUserId: text("scanned_by_clerk_user_id"),
+    scannedByRole: text("scanned_by_role"),
+    scanMethod: text("scan_method").notNull().default("qr"),
+    decision: text("decision").notNull().default("accepted"),
+    reason: text("reason"),
+    scannedAt: timestamp("scanned_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("check_in_log_booking_id_idx").on(table.bookingId),
+    venueIdx: index("check_in_log_venue_id_idx").on(table.venueId),
+    tableBookingIdx: index("check_in_log_table_booking_id_idx").on(table.tableBookingId),
+    scannedAtIdx: index("check_in_log_scanned_at_idx").on(table.scannedAt),
+  })
+);
+
+export const reservationNotifications = pgTable(
+  "reservation_notifications",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    recipientClerkUserId: text("recipient_clerk_user_id"),
+    notificationType: text("notification_type").notNull(),
+    channel: text("channel").notNull().default("in_app"),
+    status: text("status").notNull().default("queued"),
+    payloadJson: text("payload_json").notNull().default("{}"),
+    scheduledAt: timestamp("scheduled_at").defaultNow().notNull(),
+    sentAt: timestamp("sent_at"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("reservation_notifications_booking_id_idx").on(table.bookingId),
+    venueIdx: index("reservation_notifications_venue_id_idx").on(table.venueId),
+    typeIdx: index("reservation_notifications_type_idx").on(table.notificationType),
+    statusIdx: index("reservation_notifications_status_idx").on(table.status),
+  })
+);
+
+export const waitlistEntries = pgTable(
+  "waitlist_entries",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    bookingId: integer("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+    clerkUserId: text("clerk_user_id"),
+    fullName: text("full_name").notNull(),
+    phone: text("phone"),
+    partySize: integer("party_size").notNull().default(2),
+    preferredSection: text("preferred_section"),
+    preferredTimeAt: timestamp("preferred_time_at"),
+    status: text("status").notNull().default("waiting"),
+    notifiedAt: timestamp("notified_at"),
+    expiresAt: timestamp("expires_at"),
+    acceptedAt: timestamp("accepted_at"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("waitlist_entries_venue_id_idx").on(table.venueId),
+    bookingIdx: index("waitlist_entries_booking_id_idx").on(table.bookingId),
+    statusIdx: index("waitlist_entries_status_idx").on(table.status),
+    preferredTimeIdx: index("waitlist_entries_preferred_time_at_idx").on(table.preferredTimeAt),
+  })
+);
+
+export const reservationHistory = pgTable(
+  "reservation_history",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    consumerClerkUserId: text("consumer_clerk_user_id"),
+    summaryType: text("summary_type").notNull().default("completed_reservation"),
+    summaryJson: text("summary_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    bookingIdx: index("reservation_history_booking_id_idx").on(table.bookingId),
+    venueIdx: index("reservation_history_venue_id_idx").on(table.venueId),
+    consumerIdx: index("reservation_history_consumer_clerk_user_id_idx").on(table.consumerClerkUserId),
   })
 );
 

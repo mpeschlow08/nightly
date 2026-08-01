@@ -39,6 +39,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "GOOGLE_PLACES_API_KEY is not configured." }, { status: 500 });
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     const upstream = await fetch(
       `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=${maxWidthPx}&key=${encodeURIComponent(apiKey)}`,
       {
@@ -46,8 +49,10 @@ export async function GET(request: Request) {
         headers: {
           "User-Agent": "NightlyBot/1.0 (+https://nightly.local)",
         },
+        signal: controller.signal,
       }
     );
+    clearTimeout(timeout);
 
     if (!upstream.ok) {
       return NextResponse.json({ error: "Failed to load Google Place photo." }, { status: 502 });
@@ -64,7 +69,14 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to proxy Google photo.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    if (error instanceof Error && error.message.includes("required")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    if (error instanceof Error && error.message.includes("invalid")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Failed to proxy Google photo." }, { status: 502 });
   }
 }

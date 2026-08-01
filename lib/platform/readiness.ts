@@ -1,6 +1,10 @@
 import { getEnvironmentConfigurationStatus } from "@/lib/platform/env";
 import { getDatabaseHealth } from "@/lib/platform/db-health";
 import { getProviderHealthChecks } from "@/lib/platform/provider-health";
+import { db } from "@/db";
+import { venueDataRefreshRuns, venues } from "@/db/schema";
+import { avg, count, desc, eq, isNotNull, lte, or, sql } from "drizzle-orm";
+import { getSchedulerState } from "@/lib/platform/venue-google-refresh";
 
 export type ReadinessReport = {
   status: "ready" | "degraded" | "not_ready";
@@ -13,11 +17,42 @@ export type ReadinessReport = {
 };
 
 export async function getReadinessReport(): Promise<ReadinessReport> {
-  const [environment, database, providers] = await Promise.all([
+  const [environment, database, providers, refreshRuns, staleRows, failedRows] = await Promise.all([
     Promise.resolve(getEnvironmentConfigurationStatus()),
     getDatabaseHealth(),
     getProviderHealthChecks(),
+    db
+      .select({
+        status: venueDataRefreshRuns.status,
+        startedAt: venueDataRefreshRuns.startedAt,
+        finishedAt: venueDataRefreshRuns.finishedAt,
+      })
+      .from(venueDataRefreshRuns)
+      .orderBy(desc(venueDataRefreshRuns.createdAt))
+      .limit(20),
+    db
+      .select({ count: count() })
+      .from(venues)
+      .where(or(sql`${venues.googleDataExpiresAt} is null`, lte(venues.googleDataExpiresAt, new Date()))),
+    db
+      .select({ count: count() })
+      .from(venues)
+      .where(isNotNull(venues.googleRefreshError)),
   ]);
+
+  const lastSuccessfulPlacesRequest = refreshRuns.find((run) => run.status === "succeeded");
+  const lastFailedPlacesRequest = refreshRuns.find((run) => run.status === "failed");
+  const queueDepth = refreshRuns.filter((run) => run.status === "queued" || run.status === "running").length;
+  const staleVenueCount = staleRows[0]?.count ?? 0;
+  const failedVenueCount = failedRows[0]?.count ?? 0;
+  const completedDurations = refreshRuns
+    .filter((run) => run.startedAt && run.finishedAt)
+    .map((run) => run.finishedAt!.getTime() - run.startedAt!.getTime());
+  const averageRefreshDurationMs =
+    completedDurations.length > 0
+      ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length)
+      : null;
+  const schedulerState = getSchedulerState();
 
   const checks: ReadinessReport["checks"] = [
     {
@@ -89,6 +124,27 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
         ? "not_configured"
         : "unknown",
       detail: "External image fetch protections active; probe adapter pending",
+    },
+    google_venue_data: {
+      status:
+        providers.some((provider) => provider.provider === "google_places" && provider.status === "not_configured")
+          ? "not_configured"
+          : failedVenueCount > 0
+            ? "degraded"
+            : "healthy",
+      detail: `queue=${queueDepth} stale=${staleVenueCount} failed=${failedVenueCount} avgDurationMs=${averageRefreshDurationMs ?? "n/a"}`,
+    },
+    google_venue_scheduler: {
+      status: schedulerState === "configured" ? "healthy" : "not_configured",
+      detail: `scheduler=${schedulerState}`,
+    },
+    google_venue_last_success: {
+      status: lastSuccessfulPlacesRequest ? "healthy" : "unknown",
+      detail: lastSuccessfulPlacesRequest?.finishedAt?.toISOString() ?? "No successful refresh recorded",
+    },
+    google_venue_last_failure: {
+      status: lastFailedPlacesRequest ? "degraded" : "healthy",
+      detail: lastFailedPlacesRequest?.finishedAt?.toISOString() ?? "No failed refresh recorded",
     },
     camera_live_adapter: {
       status: providers.find((provider) => provider.provider === "camera_live_adapter")?.status ?? "unknown",

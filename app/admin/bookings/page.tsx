@@ -27,7 +27,7 @@ export default async function AdminBookingsPage() {
 
         <div className="mt-6 grid gap-3">
           {dashboard.rows.map((booking) => (
-            <BookingListItem key={booking.id} booking={booking} detailHref={`/bookings/${booking.id}`} />
+            <BookingListItem key={booking.id} booking={booking} detailHref={`/admin/bookings/${booking.id}`} />
           ))}
         </div>
 

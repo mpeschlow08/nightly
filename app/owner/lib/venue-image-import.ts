@@ -49,18 +49,6 @@ function buildGooglePhotoProxyUrl(reference: string, maxWidthPx: number) {
   return `/api/venues/google-photo?${params.toString()}`;
 }
 
-function buildGooglePhotoProviderUrl(reference: string, maxWidthPx: number) {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
-
-  if (!apiKey) {
-    return null;
-  }
-
-  const normalized = normalizeReference(reference);
-
-  return `https://places.googleapis.com/v1/${normalized}/media?maxWidthPx=${maxWidthPx}&key=${encodeURIComponent(apiKey)}`;
-}
-
 function extensionForType(contentType: string) {
   const normalized = contentType.toLowerCase().split(";")[0].trim();
 
@@ -173,9 +161,7 @@ async function pickGoogleAssets(
         venueId,
         "hero",
         heroCandidate.reference,
-        blobImportEnabled()
-          ? (buildGooglePhotoProviderUrl(heroCandidate.reference, 1800) ?? buildGooglePhotoProxyUrl(heroCandidate.reference, 1800))
-          : buildGooglePhotoProxyUrl(heroCandidate.reference, 1800),
+        buildGooglePhotoProxyUrl(heroCandidate.reference, 1800),
         dryRun
       )
     : null;
@@ -184,9 +170,7 @@ async function pickGoogleAssets(
         venueId,
         "thumbnail",
         thumbnailCandidate.reference,
-        blobImportEnabled()
-          ? (buildGooglePhotoProviderUrl(thumbnailCandidate.reference, 1200) ?? buildGooglePhotoProxyUrl(thumbnailCandidate.reference, 1200))
-          : buildGooglePhotoProxyUrl(thumbnailCandidate.reference, 1200),
+        buildGooglePhotoProxyUrl(thumbnailCandidate.reference, 1200),
         dryRun
       )
     : null;
@@ -197,9 +181,7 @@ async function pickGoogleAssets(
         venueId,
         "gallery",
         reference,
-        blobImportEnabled()
-          ? (buildGooglePhotoProviderUrl(reference, 1600) ?? buildGooglePhotoProxyUrl(reference, 1600))
-          : buildGooglePhotoProxyUrl(reference, 1600),
+        buildGooglePhotoProxyUrl(reference, 1600),
         dryRun
       )
     )

@@ -59,6 +59,20 @@ npm run security:deps-audit
 npm run smoke:routes
 ```
 
+## Google Venue Data Operations
+
+```bash
+npm run venues:google:audit
+npm run venues:google:refresh -- --mode=stale_only --limit=25
+npm run venues:google:backfill -- --limit=15
+npm run venues:google:verify
+```
+
+- `venues:google:audit`: linked/unlinked/stale/failed venue data summary
+- `venues:google:refresh`: manual Google data sync (single, batch, stale_only, failed_only)
+- `venues:google:backfill`: candidate place matching for unlinked venues (confirmation still required)
+- `venues:google:verify`: attribution and metadata coverage checks
+
 ## Health Endpoints
 
 - `GET /api/health/live`: process liveness
@@ -75,3 +89,4 @@ npm run smoke:routes
 ## Runbooks
 
 Launch readiness checklist: `docs/operations/launch-readiness.md`.
+Google Places policy note: `docs/operations/google-places-policy.md`.

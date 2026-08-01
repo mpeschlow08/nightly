@@ -8,6 +8,26 @@ import { db } from "@/db";
 import { doorStaffAssignments, users } from "@/db/schema";
 import type { TicketRoleContext } from "@/lib/ticketing/types";
 
+function redirectToTicketRoleHome(role: TicketRoleContext["role"]) {
+  if (role === "door_staff") {
+    redirect("/door");
+  }
+
+  if (role === "owner") {
+    redirect("/owner");
+  }
+
+  if (role === "admin") {
+    redirect("/admin");
+  }
+
+  if (role === "dj") {
+    redirect("/dj/dashboard");
+  }
+
+  redirect("/tickets");
+}
+
 async function getAuthenticatedTicketUser() {
   const { userId } = await auth();
 
@@ -79,7 +99,7 @@ export async function requireConsumerTicketActor() {
   const actor = await getTicketActor();
 
   if (actor.role !== "consumer") {
-    redirect("/tickets");
+    redirectToTicketRoleHome(actor.role);
   }
 
   return actor;
