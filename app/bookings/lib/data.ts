@@ -21,18 +21,24 @@ import {
   bookingPricing,
   bookingRequirements,
   bookingReviews,
+  friends,
   bookingStatusHistory,
+  socialProfiles,
   bookingItems,
   bookings,
+  venueFloorPlanObjects,
+  venueFloorPlans,
   djProfiles,
   tableBookings,
   venueAddons,
   venueBottlePackages,
   venueServers,
   venueTables,
+  users,
   venues,
   bookingRefunds,
 } from "@/db/schema";
+import { getVenueTableOperationsSnapshot } from "@/lib/bookings/operations";
 import { canViewBooking } from "@/lib/bookings/permissions";
 import type { BookingLifecycleStatus, BookingRoleContext, BookingType } from "@/lib/bookings/types";
 import { BOOKING_LIFECYCLE_STATUSES } from "@/lib/bookings/types";
@@ -50,6 +56,108 @@ export type BookingCatalogOption = {
   label: string;
   subtitle: string;
   amountCents: number;
+};
+
+export type ReservationLocationStatus = "available" | "reserved" | "occupied" | "blocked" | "cleaning" | "pending";
+
+export type ReservationExperienceOption = {
+  id: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  requiresBottlePurchase: boolean;
+};
+
+export type ReservationFloorObject = {
+  id: number;
+  venueTableId: number | null;
+  objectType: string;
+  label: string;
+  tableNumber: string;
+  section: string | null;
+  capacity: number;
+  minimumSpendCents: number;
+  reservationFeeCents: number;
+  bottleMinimumCents: number;
+  assignedServerSection: string | null;
+  status: ReservationLocationStatus;
+  notes: string | null;
+  shape: "rect" | "circle" | "ellipse" | "polygon";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotationDegrees: number;
+  points: Array<{ x: number; y: number }>;
+  enabledExperienceIds: string[];
+  customExperiences: ReservationExperienceOption[];
+};
+
+export type ReservationFloor = {
+  id: number;
+  name: string;
+  width: number;
+  height: number;
+  backgroundImageUrl: string | null;
+  rotationDegrees: number;
+  objects: ReservationFloorObject[];
+};
+
+export type ReservationServerProfile = {
+  id: number;
+  label: string;
+  subtitle: string;
+  photoUrl: string | null;
+  nickname: string | null;
+  languages: string[];
+  bio: string | null;
+  yearsEmployed: number | null;
+  rating: number | null;
+  sectionAssignment: string | null;
+  availability: string;
+  isLead: boolean;
+};
+
+export type ReservationProductOption = {
+  id: number;
+  label: string;
+  subtitle: string;
+  amountCents: number;
+  category: string;
+  imageUrl: string | null;
+  description: string | null;
+  inventory: number | null;
+  featured: boolean;
+  recommended: boolean;
+  quantityLimit: number | null;
+  mixers: string[];
+};
+
+export type ReservationFriendOption = {
+  userId: number;
+  clerkUserId: string;
+  displayName: string;
+  handle: string;
+  avatarUrl: string | null;
+};
+
+export type ReservationVenueOption = BookingRequestOption & {
+  heroImageUrl: string | null;
+  googleAddress: string | null;
+  googleMapsUrl: string | null;
+  dressCode: string | null;
+  parkingInformation: string | null;
+  contactPhone: string | null;
+  reservationPolicies: {
+    allowDepositOnly: boolean;
+    allowFullPayment: boolean;
+    defaultDepositPercent: number;
+  };
+  experiences: ReservationExperienceOption[];
+  floors: ReservationFloor[];
+  servers: ReservationServerProfile[];
+  bottlePackages: ReservationProductOption[];
+  addons: ReservationProductOption[];
 };
 
 export type BookingDashboardRow = {
@@ -81,6 +189,12 @@ export type BookingDashboardRow = {
   venueId: number | null;
   venueName: string | null;
   venueSlug: string | null;
+  venueHeroImageUrl?: string | null;
+  venueGoogleAddress?: string | null;
+  venueGoogleMapsUrl?: string | null;
+  venueDressCode?: string | null;
+  venueParkingInformation?: string | null;
+  venuePhone?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -259,6 +373,7 @@ export type BookingDetailPayload = {
     minimumSpendCents: number;
     depositAmountCents: number;
     notes: string | null;
+    metadataJson?: string;
   } | null;
   bookingItems: Array<{
     id: number;
@@ -318,13 +433,113 @@ export type BookingDashboardData = {
 };
 
 export type BookingRequestOptions = {
-  venues: BookingRequestOption[];
+  venues: ReservationVenueOption[];
   djs: BookingRequestOption[];
   vipTables: BookingCatalogOption[];
   bottlePackages: BookingCatalogOption[];
   addons: BookingCatalogOption[];
   servers: BookingCatalogOption[];
+  friends: ReservationFriendOption[];
 };
+
+const DEFAULT_EXPERIENCES: ReservationExperienceOption[] = [
+  { id: "table_only", label: "Table Only", description: "Reserve the table and settle bottle choices later.", enabled: true, requiresBottlePurchase: false },
+  { id: "bottle_service", label: "Bottle Service", description: "Pre-order bottles and service for arrival.", enabled: true, requiresBottlePurchase: true },
+  { id: "standing_vip", label: "Standing VIP", description: "Premium standing reservation near the action.", enabled: true, requiresBottlePurchase: true },
+  { id: "cabana", label: "Cabana", description: "Large-format private cabana seating.", enabled: true, requiresBottlePurchase: true },
+  { id: "lounge", label: "Lounge", description: "Soft seating for smaller groups and hosted nights.", enabled: true, requiresBottlePurchase: true },
+];
+
+function parseJsonObject(value: string | null | undefined): Record<string, unknown> {
+  if (!value) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseJsonArray(value: string | null | undefined): unknown[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+}
+
+function toNumberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function toBool(value: unknown, fallback = false) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeLocationStatus(value: string | null | undefined): ReservationLocationStatus {
+  if (value === "reserved" || value === "occupied" || value === "cleaning" || value === "pending") {
+    return value;
+  }
+
+  if (value === "vip_hold" || value === "out_of_service" || value === "blocked") {
+    return "blocked";
+  }
+
+  return "available";
+}
+
+function inferExperienceOptions(objectType: string, metadata: Record<string, unknown>): ReservationExperienceOption[] {
+  const configured = parseJsonArray(JSON.stringify(metadata.experiences ?? [])).map((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    const id = typeof candidate.id === "string" ? candidate.id : null;
+    const label = typeof candidate.label === "string" ? candidate.label : null;
+    if (!id || !label) {
+      return null;
+    }
+
+    return {
+      id,
+      label,
+      description: typeof candidate.description === "string" ? candidate.description : "Custom venue experience.",
+      enabled: toBool(candidate.enabled, true),
+      requiresBottlePurchase: toBool(candidate.requiresBottlePurchase, true),
+    } satisfies ReservationExperienceOption;
+  }).filter((entry): entry is ReservationExperienceOption => Boolean(entry));
+
+  if (configured.length > 0) {
+    return configured;
+  }
+
+  if (objectType === "cabana") {
+    return DEFAULT_EXPERIENCES.filter((item) => item.id === "cabana" || item.id === "bottle_service");
+  }
+
+  if (objectType === "standing_vip") {
+    return DEFAULT_EXPERIENCES.filter((item) => item.id === "standing_vip" || item.id === "bottle_service");
+  }
+
+  if (objectType === "lounge") {
+    return DEFAULT_EXPERIENCES.filter((item) => item.id === "lounge" || item.id === "table_only");
+  }
+
+  return DEFAULT_EXPERIENCES;
+}
 
 function emptyCounts() {
   return BOOKING_LIFECYCLE_STATUSES.reduce((accumulator, status) => {
@@ -333,8 +548,15 @@ function emptyCounts() {
   }, {} as Record<BookingLifecycleStatus, number>);
 }
 
-export async function getBookingRequestOptions(): Promise<BookingRequestOptions> {
-  const [venueRows, djRows, vipTableRows, bottleRows, addonRows, serverRows] = await Promise.all([
+export async function getBookingRequestOptions(actor?: Pick<BookingRoleContext, "clerkUserId">): Promise<BookingRequestOptions> {
+  const actorUser = actor
+    ? await db.query.users.findFirst({
+        where: eq(users.clerkUserId, actor.clerkUserId),
+        columns: { id: true },
+      })
+    : null;
+
+  const [venueRows, djRows, vipTableRows, bottleRows, addonRows, serverRows, floorRows, floorObjectRows, friendRows] = await Promise.all([
     db
       .select({
         id: venues.id,
@@ -344,6 +566,11 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
         neighborhood: venues.neighborhood,
         heroImageUrl: venues.heroImageUrl,
         thumbnailImageUrl: venues.thumbnailImageUrl,
+        googleFormattedAddress: venues.googleFormattedAddress,
+        googleMapsUrl: venues.googleMapsUrl,
+        dressCode: venues.dressCode,
+        parkingInformation: venues.parkingInformation,
+        phone: venues.phone,
       })
       .from(venues)
       .where(eq(venues.publicationStatus, "published"))
@@ -365,10 +592,13 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
     db
       .select({
         id: venueTables.id,
+        venueId: venueTables.venueId,
+        floorObjectId: venueTables.floorObjectId,
         tableCode: venueTables.tableCode,
         name: venueTables.name,
         sectionName: venueTables.sectionName,
         minimumSpendCents: venueTables.minimumSpendCents,
+        metadataJson: venueTables.metadataJson,
       })
       .from(venueTables)
       .where(eq(venueTables.isActive, true))
@@ -377,9 +607,12 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
     db
       .select({
         id: venueBottlePackages.id,
+        venueId: venueBottlePackages.venueId,
         name: venueBottlePackages.name,
         description: venueBottlePackages.description,
         priceCents: venueBottlePackages.priceCents,
+        packageItemsJson: venueBottlePackages.packageItemsJson,
+        mixersJson: venueBottlePackages.mixersJson,
       })
       .from(venueBottlePackages)
       .where(eq(venueBottlePackages.isActive, true))
@@ -388,9 +621,12 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
     db
       .select({
         id: venueAddons.id,
+        venueId: venueAddons.venueId,
         name: venueAddons.name,
         category: venueAddons.category,
+        description: venueAddons.description,
         unitPriceCents: venueAddons.unitPriceCents,
+        metadataJson: venueAddons.metadataJson,
       })
       .from(venueAddons)
       .where(eq(venueAddons.isActive, true))
@@ -399,14 +635,199 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
     db
       .select({
         id: venueServers.id,
+        venueId: venueServers.venueId,
         displayName: venueServers.displayName,
         isLead: venueServers.isLead,
+        metadataJson: venueServers.metadataJson,
       })
       .from(venueServers)
       .where(eq(venueServers.isActive, true))
       .orderBy(desc(venueServers.isLead), asc(venueServers.displayName))
       .limit(40),
+    db
+      .select({
+        id: venueFloorPlans.id,
+        venueId: venueFloorPlans.venueId,
+        name: venueFloorPlans.name,
+        width: venueFloorPlans.width,
+        height: venueFloorPlans.height,
+        backgroundImageUrl: venueFloorPlans.backgroundImageUrl,
+        metadataJson: venueFloorPlans.metadataJson,
+      })
+      .from(venueFloorPlans)
+      .where(eq(venueFloorPlans.isActive, true))
+      .orderBy(asc(venueFloorPlans.name)),
+    db
+      .select({
+        id: venueFloorPlanObjects.id,
+        floorPlanId: venueFloorPlanObjects.floorPlanId,
+        objectType: venueFloorPlanObjects.objectType,
+        label: venueFloorPlanObjects.label,
+        sectionName: venueFloorPlanObjects.sectionName,
+        capacity: venueFloorPlanObjects.capacity,
+        coordinatesJson: venueFloorPlanObjects.coordinatesJson,
+        rotationDegrees: venueFloorPlanObjects.rotationDegrees,
+        metadataJson: venueFloorPlanObjects.metadataJson,
+      })
+      .from(venueFloorPlanObjects)
+      .where(eq(venueFloorPlanObjects.isActive, true))
+      .orderBy(asc(venueFloorPlanObjects.label)),
+    actorUser
+      ? db
+          .select({
+            userId: socialProfiles.userId,
+            clerkUserId: socialProfiles.clerkUserId,
+            displayName: socialProfiles.displayName,
+            handle: socialProfiles.handle,
+            avatarUrl: socialProfiles.avatarUrl,
+          })
+          .from(friends)
+          .innerJoin(socialProfiles, eq(friends.friendUserId, socialProfiles.userId))
+            .where(and(eq(friends.userId, actorUser.id), eq(friends.status, "active")))
+          .orderBy(asc(socialProfiles.displayName))
+          .limit(24)
+      : Promise.resolve([]),
   ]);
+
+  const tableSnapshotsByVenue = new Map<number, Awaited<ReturnType<typeof getVenueTableOperationsSnapshot>>>();
+  for (const venue of venueRows) {
+    tableSnapshotsByVenue.set(venue.id, await getVenueTableOperationsSnapshot(venue.id));
+  }
+
+  const tableRowsById = new Map(vipTableRows.map((row) => [row.id, row]));
+  const tableStatusByTableId = new Map<number, ReservationLocationStatus>();
+  for (const snapshotRows of tableSnapshotsByVenue.values()) {
+    for (const row of snapshotRows) {
+      tableStatusByTableId.set(row.id, normalizeLocationStatus(row.liveStatus));
+    }
+  }
+
+  const floorByVenue = new Map<number, ReservationFloor[]>();
+  for (const floor of floorRows) {
+    const floorMetadata = parseJsonObject(floor.metadataJson);
+    const objects = floorObjectRows
+      .filter((object) => object.floorPlanId === floor.id)
+      .map((object) => {
+        const metadata = parseJsonObject(object.metadataJson);
+        const coordinates = parseJsonObject(object.coordinatesJson);
+        const linkedTableId = toNumberOrNull(metadata.venueTableId) ?? null;
+        const linkedTable = linkedTableId ? tableRowsById.get(linkedTableId) ?? null : null;
+        const tableMetadata = linkedTable ? parseJsonObject(linkedTable.metadataJson) : {};
+        const liveStatus = linkedTableId ? tableStatusByTableId.get(linkedTableId) ?? normalizeLocationStatus(typeof metadata.status === "string" ? metadata.status : null) : normalizeLocationStatus(typeof metadata.status === "string" ? metadata.status : null);
+        const shape = typeof metadata.shape === "string" && ["rect", "circle", "ellipse", "polygon"].includes(metadata.shape)
+          ? metadata.shape as ReservationFloorObject["shape"]
+          : "rect";
+        const points = Array.isArray(coordinates.points)
+          ? coordinates.points.flatMap((point) => {
+              if (!point || typeof point !== "object") return [];
+              const candidate = point as Record<string, unknown>;
+              const x = toNumberOrNull(candidate.x);
+              const y = toNumberOrNull(candidate.y);
+              return x != null && y != null ? [{ x, y }] : [];
+            })
+          : [];
+
+        return {
+          id: object.id,
+          venueTableId: linkedTableId,
+          objectType: object.objectType,
+          label: object.label,
+          tableNumber: linkedTable?.tableCode ?? object.label,
+          section: object.sectionName,
+          capacity: object.capacity,
+          minimumSpendCents: linkedTable?.minimumSpendCents ?? 0,
+          reservationFeeCents: toNumberOrNull(tableMetadata.reservationFeeCents) ?? 0,
+          bottleMinimumCents: toNumberOrNull(tableMetadata.bottleMinimumCents) ?? 0,
+          assignedServerSection: typeof tableMetadata.serverSection === "string" ? tableMetadata.serverSection : object.sectionName,
+          status: liveStatus,
+          notes: typeof metadata.notes === "string" ? metadata.notes : typeof tableMetadata.notes === "string" ? tableMetadata.notes : null,
+          shape,
+          x: toNumberOrNull(coordinates.x) ?? 0,
+          y: toNumberOrNull(coordinates.y) ?? 0,
+          width: toNumberOrNull(coordinates.width) ?? 120,
+          height: toNumberOrNull(coordinates.height) ?? 80,
+          rotationDegrees: object.rotationDegrees,
+          points,
+          enabledExperienceIds: inferExperienceOptions(object.objectType, metadata).filter((item) => item.enabled).map((item) => item.id),
+          customExperiences: inferExperienceOptions(object.objectType, metadata).filter((item) => item.id.startsWith("custom:")),
+        } satisfies ReservationFloorObject;
+      });
+
+    const bucket = floorByVenue.get(floor.venueId) ?? [];
+    bucket.push({
+      id: floor.id,
+      name: floor.name,
+      width: floor.width,
+      height: floor.height,
+      backgroundImageUrl: floor.backgroundImageUrl,
+      rotationDegrees: toNumberOrNull(floorMetadata.rotationDegrees) ?? 0,
+      objects,
+    });
+    floorByVenue.set(floor.venueId, bucket);
+  }
+
+  const serversByVenue = new Map<number, ReservationServerProfile[]>();
+  for (const server of serverRows) {
+    const metadata = parseJsonObject(server.metadataJson);
+    const bucket = serversByVenue.get(server.venueId) ?? [];
+    bucket.push({
+      id: server.id,
+      label: server.displayName,
+      subtitle: server.isLead ? "Lead server" : "Bottle server",
+      photoUrl: typeof metadata.photoUrl === "string" ? metadata.photoUrl : null,
+      nickname: typeof metadata.nickname === "string" ? metadata.nickname : null,
+      languages: toStringArray(metadata.languages),
+      bio: typeof metadata.bio === "string" ? metadata.bio : null,
+      yearsEmployed: toNumberOrNull(metadata.yearsEmployed),
+      rating: toNumberOrNull(metadata.rating),
+      sectionAssignment: typeof metadata.sectionAssignment === "string" ? metadata.sectionAssignment : null,
+      availability: typeof metadata.availability === "string" ? metadata.availability : "available",
+      isLead: server.isLead,
+    });
+    serversByVenue.set(server.venueId, bucket);
+  }
+
+  const bottlesByVenue = new Map<number, ReservationProductOption[]>();
+  for (const bottle of bottleRows) {
+    const packageItems = parseJsonObject(bottle.packageItemsJson);
+    const bucket = bottlesByVenue.get(bottle.venueId) ?? [];
+    bucket.push({
+      id: bottle.id,
+      label: bottle.name,
+      subtitle: bottle.description ?? "Bottle package",
+      amountCents: bottle.priceCents,
+      category: typeof packageItems.category === "string" ? packageItems.category : "Bottle Service",
+      imageUrl: typeof packageItems.imageUrl === "string" ? packageItems.imageUrl : null,
+      description: bottle.description,
+      inventory: toNumberOrNull(packageItems.inventory),
+      featured: toBool(packageItems.featured),
+      recommended: toBool(packageItems.recommended),
+      quantityLimit: toNumberOrNull(packageItems.quantityLimit),
+      mixers: toStringArray(parseJsonArray(bottle.mixersJson)),
+    });
+    bottlesByVenue.set(bottle.venueId, bucket);
+  }
+
+  const addonsByVenue = new Map<number, ReservationProductOption[]>();
+  for (const addon of addonRows) {
+    const metadata = parseJsonObject(addon.metadataJson);
+    const bucket = addonsByVenue.get(addon.venueId) ?? [];
+    bucket.push({
+      id: addon.id,
+      label: addon.name,
+      subtitle: addon.category,
+      amountCents: addon.unitPriceCents,
+      category: addon.category,
+      imageUrl: typeof metadata.imageUrl === "string" ? metadata.imageUrl : null,
+      description: addon.description,
+      inventory: toNumberOrNull(metadata.inventory),
+      featured: toBool(metadata.featured),
+      recommended: toBool(metadata.recommended),
+      quantityLimit: toNumberOrNull(metadata.quantityLimit),
+      mixers: [],
+    });
+    addonsByVenue.set(addon.venueId, bucket);
+  }
 
   return {
     venues: venueRows.map((venue) => ({
@@ -415,6 +836,22 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
       subtitle: [venue.neighborhood, venue.city].filter(Boolean).join(" • "),
       imageUrl: venue.thumbnailImageUrl ?? venue.heroImageUrl ?? "/assets/nightly-fallback-image.svg",
       slug: venue.slug,
+      heroImageUrl: venue.heroImageUrl,
+      googleAddress: venue.googleFormattedAddress ?? null,
+      googleMapsUrl: venue.googleMapsUrl ?? null,
+      dressCode: venue.dressCode,
+      parkingInformation: venue.parkingInformation,
+      contactPhone: venue.phone,
+      reservationPolicies: {
+        allowDepositOnly: true,
+        allowFullPayment: true,
+        defaultDepositPercent: 20,
+      },
+      experiences: DEFAULT_EXPERIENCES,
+      floors: floorByVenue.get(venue.id) ?? [],
+      servers: serversByVenue.get(venue.id) ?? [],
+      bottlePackages: bottlesByVenue.get(venue.id) ?? [],
+      addons: addonsByVenue.get(venue.id) ?? [],
     })),
     djs: djRows.map((dj) => ({
       id: dj.id,
@@ -446,6 +883,13 @@ export async function getBookingRequestOptions(): Promise<BookingRequestOptions>
       label: server.displayName,
       subtitle: server.isLead ? "Lead server" : "Server",
       amountCents: 0,
+    })),
+    friends: friendRows.map((friend) => ({
+      userId: friend.userId,
+      clerkUserId: friend.clerkUserId,
+      displayName: friend.displayName,
+      handle: friend.handle,
+      avatarUrl: friend.avatarUrl,
     })),
   };
 }
@@ -526,6 +970,12 @@ export async function getBookingDashboardData(input: {
       venueId: bookings.venueId,
       venueName: venues.name,
       venueSlug: venues.slug,
+      venueHeroImageUrl: venues.heroImageUrl,
+      venueGoogleAddress: venues.googleFormattedAddress,
+      venueGoogleMapsUrl: venues.googleMapsUrl,
+      venueDressCode: venues.dressCode,
+      venueParkingInformation: venues.parkingInformation,
+      venuePhone: venues.phone,
       createdAt: bookings.createdAt,
       updatedAt: bookings.updatedAt,
     })
@@ -611,6 +1061,12 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
       venueId: bookings.venueId,
       venueName: venues.name,
       venueSlug: venues.slug,
+      venueHeroImageUrl: venues.heroImageUrl,
+      venueGoogleAddress: venues.googleFormattedAddress,
+      venueGoogleMapsUrl: venues.googleMapsUrl,
+      venueDressCode: venues.dressCode,
+      venueParkingInformation: venues.parkingInformation,
+      venuePhone: venues.phone,
       createdAt: bookings.createdAt,
       updatedAt: bookings.updatedAt,
     })
@@ -686,6 +1142,12 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
     venueId: booking.venueId,
     venueName: booking.venueName,
     venueSlug: booking.venueSlug,
+    venueHeroImageUrl: booking.venueHeroImageUrl,
+    venueGoogleAddress: booking.venueGoogleAddress,
+    venueGoogleMapsUrl: booking.venueGoogleMapsUrl,
+    venueDressCode: booking.venueDressCode,
+    venueParkingInformation: booking.venueParkingInformation,
+    venuePhone: booking.venuePhone,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
   };
@@ -776,6 +1238,7 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
         minimumSpendCents: tableBookings.minimumSpendCents,
         depositAmountCents: tableBookings.depositAmountCents,
         notes: tableBookings.notes,
+        metadataJson: tableBookings.metadataJson,
       })
       .from(tableBookings)
       .leftJoin(venueTables, eq(tableBookings.venueTableId, venueTables.id))
@@ -966,6 +1429,7 @@ export async function getBookingById(bookingId: number, actor: BookingRoleContex
           minimumSpendCents: tableBooking.minimumSpendCents,
           depositAmountCents: tableBooking.depositAmountCents,
           notes: tableBooking.notes,
+          metadataJson: tableBooking.metadataJson,
         }
       : null,
     bookingItems: itemRows.map((row) => ({

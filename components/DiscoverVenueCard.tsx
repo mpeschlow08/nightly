@@ -53,6 +53,7 @@ export default function DiscoverVenueCard({ venue, isSaved, onToggleSave }: Disc
         <div className="absolute bottom-4 left-4 rounded-full bg-black/45 px-3 py-1 text-sm text-white backdrop-blur-sm">
           {venue.distanceMiles.toFixed(1)} mi away
         </div>
+
       </div>
 
       <div className="space-y-4 p-5">

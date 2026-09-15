@@ -4,7 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { getReservationApiActor } from "@/app/api/bookings/_lib/access";
 import { db } from "@/db";
 import { waitlistEntries } from "@/db/schema";
-import { createWaitlistEntry, getWaitlistQueue, updateWaitlistStatus } from "@/lib/bookings/operations";
+import { createWaitlistEntry, getWaitlistQueue, processWaitlistAutomation, reservationLifecycleService, updateWaitlistStatus } from "@/lib/bookings/operations";
 import type { WaitlistStatus } from "@/lib/bookings/types";
 
 export async function GET(request: Request) {
@@ -33,6 +33,13 @@ export async function GET(request: Request) {
     status: statusParam,
     section: section?.trim() ? section.trim() : null,
     date: date ? new Date(date) : null,
+  });
+
+  await processWaitlistAutomation({
+    venueId: actor.venueId,
+    actorClerkUserId: actor.clerkUserId,
+    actorRole: actor.role,
+    sectionName: section?.trim() ? section.trim() : null,
   });
 
   return NextResponse.json({ venueId: actor.venueId, waitlist: rows }, { status: 200 });
@@ -88,8 +95,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const actor = await getReservationApiActor();
-  if (!actor?.venueId || (actor.role !== "owner" && actor.role !== "admin")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!actor) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -104,15 +111,74 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "entryId and nextStatus are required." }, { status: 400 });
   }
 
-  const entry = await updateWaitlistStatus({
+  if (actor.role === "consumer") {
+    const [entry] = await db
+      .select({ id: waitlistEntries.id, venueId: waitlistEntries.venueId, clerkUserId: waitlistEntries.clerkUserId })
+      .from(waitlistEntries)
+      .where(eq(waitlistEntries.id, body.entryId))
+      .limit(1);
+
+    if (!entry || entry.clerkUserId !== actor.clerkUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const updated = body.nextStatus === "accepted" || body.nextStatus === "converted"
+      ? await reservationLifecycleService.acceptWaitlistOffer({
+          venueId: entry.venueId,
+          entryId: body.entryId,
+          actorClerkUserId: actor.clerkUserId,
+          actorRole: actor.role,
+          note: body.note ?? null,
+          convertToTableId: body.convertToTableId ?? null,
+        })
+      : await updateWaitlistStatus({
+          venueId: entry.venueId,
+          entryId: body.entryId,
+          nextStatus: body.nextStatus,
+          actorClerkUserId: actor.clerkUserId,
+          actorRole: actor.role,
+          note: body.note ?? null,
+          offerExpiresMinutes: body.offerExpiresMinutes,
+          convertToTableId: body.convertToTableId ?? null,
+        });
+
+    await processWaitlistAutomation({
+      venueId: entry.venueId,
+      actorClerkUserId: actor.clerkUserId,
+      actorRole: actor.role,
+    });
+
+    return NextResponse.json({ entry: updated }, { status: 200 });
+  }
+
+  if (!actor.venueId || (actor.role !== "owner" && actor.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const entry = body.nextStatus === "accepted" || body.nextStatus === "converted"
+    ? await reservationLifecycleService.acceptWaitlistOffer({
+        venueId: actor.venueId,
+        entryId: body.entryId,
+        actorClerkUserId: actor.clerkUserId,
+        actorRole: actor.role,
+        note: body.note ?? null,
+        convertToTableId: body.convertToTableId ?? null,
+      })
+    : await updateWaitlistStatus({
+        venueId: actor.venueId,
+        entryId: body.entryId,
+        nextStatus: body.nextStatus,
+        actorClerkUserId: actor.clerkUserId,
+        actorRole: actor.role,
+        note: body.note ?? null,
+        offerExpiresMinutes: body.offerExpiresMinutes,
+        convertToTableId: body.convertToTableId ?? null,
+      });
+
+  await processWaitlistAutomation({
     venueId: actor.venueId,
-    entryId: body.entryId,
-    nextStatus: body.nextStatus,
     actorClerkUserId: actor.clerkUserId,
     actorRole: actor.role,
-    note: body.note ?? null,
-    offerExpiresMinutes: body.offerExpiresMinutes,
-    convertToTableId: body.convertToTableId ?? null,
   });
 
   return NextResponse.json({ entry }, { status: 200 });
@@ -159,6 +225,12 @@ export async function DELETE(request: Request) {
       note: "Left waitlist",
     });
   }
+
+  await processWaitlistAutomation({
+    venueId: entry.venueId,
+    actorClerkUserId: actor.clerkUserId,
+    actorRole: actor.role,
+  });
 
   return NextResponse.json({ ok: true }, { status: 200 });
 }

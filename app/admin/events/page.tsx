@@ -1,13 +1,30 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { desc, inArray, sql } from "drizzle-orm";
 
 import { requireAdminPermission } from "@/app/admin/lib/permissions";
 import { db } from "@/db";
-import { events } from "@/db/schema";
+import { events, specialGuests } from "@/db/schema";
 
 export default async function AdminEventsPage() {
   await requireAdminPermission("events:view");
   const rows = await db.select().from(events).orderBy(desc(events.createdAt)).limit(120);
+  const eventIds = rows.map((event) => event.id);
+
+  const specialGuestCounts =
+    eventIds.length > 0
+      ? await db
+          .select({ eventId: specialGuests.eventId, total: sql<number>`count(*)::int` })
+          .from(specialGuests)
+          .where(inArray(specialGuests.eventId, eventIds))
+          .groupBy(specialGuests.eventId)
+      : [];
+
+  const specialGuestCountByEventId = new Map<number, number>();
+  for (const row of specialGuestCounts) {
+    if (row.eventId) {
+      specialGuestCountByEventId.set(row.eventId, row.total);
+    }
+  }
 
   return (
     <main>
@@ -24,6 +41,7 @@ export default async function AdminEventsPage() {
               <th className="px-3 py-2">Approval</th>
               <th className="px-3 py-2">Publication</th>
               <th className="px-3 py-2">Start</th>
+              <th className="px-3 py-2">Special Guests</th>
             </tr>
           </thead>
           <tbody>
@@ -35,6 +53,15 @@ export default async function AdminEventsPage() {
                 <td className="px-3 py-2">{event.approvalStatus}</td>
                 <td className="px-3 py-2">{event.publicationStatus}</td>
                 <td className="px-3 py-2">{event.startsAt.toLocaleString()}</td>
+                <td className="px-3 py-2">
+                  {specialGuestCountByEventId.get(event.id) ? (
+                    <Link href={`/admin/special-guests?eventId=${event.id}`} className="text-cyan-300 hover:text-cyan-200">
+                      {specialGuestCountByEventId.get(event.id)} review
+                    </Link>
+                  ) : (
+                    <span className="text-zinc-500">0</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

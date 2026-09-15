@@ -23,6 +23,19 @@ function formatDate(date: Date | null | undefined) {
   return date ? date.toLocaleString() : "Not set";
 }
 
+function parseJsonObject(value: string | null | undefined) {
+  if (!value) {
+    return {} as Record<string, unknown>;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+}
+
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const bookingId = Number(id);
@@ -45,37 +58,62 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     payload.booking.venueId ? getOrCreateReservationPass(payload.booking.id, payload.booking.venueId) : Promise.resolve(null),
   ]);
   const timelineProgress = reservationTimeline ? reservationTimeline.progressIndex : 0;
+  const latestPricing = payload.pricing[0] ?? null;
+  const reservationMeta = parseJsonObject(payload.tableBooking?.metadataJson);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(167,139,250,0.14),_transparent_25%),linear-gradient(140deg,_#04070b_0%,_#090d18_55%,_#111326_100%)] px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_90px_rgba(34,211,238,0.1)] backdrop-blur-xl sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-zinc-400">Booking detail</p>
-              <h1 className="mt-3 text-3xl font-semibold text-white">{payload.booking.bookingNumber}</h1>
-              <p className="mt-2 text-sm text-zinc-300">{bookingTypeLabels(payload.booking.bookingType)} • {payload.booking.city ?? "City not set"}</p>
+        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_0_90px_rgba(34,211,238,0.1)] backdrop-blur-xl">
+          <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="relative min-h-[280px]">
+              {payload.booking.venueHeroImageUrl ? (
+                <Image src={payload.booking.venueHeroImageUrl} alt={payload.booking.venueName ?? "Venue image"} fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.25),_transparent_35%),radial-gradient(circle_at_85%_15%,_rgba(244,114,182,0.22),_transparent_30%),linear-gradient(150deg,_#08101c,_#111827,_#0f172a)]" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+                <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Reservation confirmed</p>
+                <h1 className="mt-3 text-3xl font-semibold text-white">{payload.booking.venueName ?? payload.booking.bookingNumber}</h1>
+                <p className="mt-2 text-sm text-zinc-200">{bookingTypeLabels(payload.booking.bookingType)} • {payload.booking.city ?? "City not set"}</p>
+              </div>
             </div>
-            <BookingStatusBadge status={payload.booking.lifecycleStatus} />
-          </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Start</p>
-              <p className="mt-2 text-base text-white">{formatDate(payload.booking.requestedStartAt)}</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">End</p>
-              <p className="mt-2 text-base text-white">{formatDate(payload.booking.requestedEndAt)}</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Budget</p>
-              <p className="mt-2 text-base text-white">{formatCurrency(payload.booking.budgetCents)}</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Total</p>
-              <p className="mt-2 text-base text-white">{formatCurrency(payload.booking.totalCents)}</p>
-            </article>
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.32em] text-zinc-400">Booking number</p>
+                  <h2 className="mt-3 text-3xl font-semibold text-white">{payload.booking.bookingNumber}</h2>
+                </div>
+                <BookingStatusBadge status={payload.booking.lifecycleStatus} />
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Arrival</p>
+                  <p className="mt-2 text-base text-white">{formatDate(payload.booking.requestedStartAt)}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Table</p>
+                  <p className="mt-2 text-base text-white">{payload.tableBooking?.tableName ?? payload.tableBooking?.reservationName ?? "Pending assignment"}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Bottle server</p>
+                  <p className="mt-2 text-base text-white">{payload.tableBooking?.serverName ?? "No preference"}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Google address</p>
+                  <p className="mt-2 text-base text-white">{payload.booking.venueGoogleAddress ?? "Address pending"}</p>
+                </article>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 border-t border-white/10 p-6 sm:grid-cols-2 xl:grid-cols-4 sm:p-8">
+            <article className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Budget</p><p className="mt-2 text-base text-white">{formatCurrency(payload.booking.budgetCents)}</p></article>
+            <article className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Deposit</p><p className="mt-2 text-base text-white">{formatCurrency(payload.booking.depositRequiredCents)}</p></article>
+            <article className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Total</p><p className="mt-2 text-base text-white">{formatCurrency(payload.booking.totalCents)}</p></article>
+            <article className="rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs uppercase tracking-[0.25em] text-zinc-400">Remaining balance</p><p className="mt-2 text-base text-white">{latestPricing ? formatCurrency(Math.max(latestPricing.totalAmountCents - latestPricing.depositAmountCents, 0)) : "Not set"}</p></article>
           </div>
         </section>
 
@@ -216,7 +254,15 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             ) : null}
 
             <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
-              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Payments</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Payment summary</p>
+              {latestPricing ? (
+                <div className="mt-4 grid gap-3 text-sm text-zinc-300 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4"><p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Reservation</p><p className="mt-2 text-white">{formatCurrency(latestPricing.baseAmountCents)}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4"><p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Deposit</p><p className="mt-2 text-white">{formatCurrency(latestPricing.depositAmountCents)}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4"><p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Fees</p><p className="mt-2 text-white">{formatCurrency(latestPricing.serviceFeeCents + latestPricing.platformFeeCents)}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4"><p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Taxes</p><p className="mt-2 text-white">{formatCurrency(latestPricing.taxCents)}</p></div>
+                </div>
+              ) : null}
               <div className="mt-4 space-y-3">
                 {payload.payments.length === 0 ? (
                   <p className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No payment records yet.</p>
@@ -232,7 +278,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             </article>
 
             <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
-              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Table & service</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">Arrival and service</p>
               {payload.tableBooking ? (
                 <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">
                   <p className="font-medium text-white">{payload.tableBooking.tableName ?? "Unassigned table"}</p>
@@ -240,6 +286,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                   <p>Status: {payload.tableBooking.status}</p>
                   <p>Minimum spend: {formatCurrency(payload.tableBooking.minimumSpendCents)}</p>
                   <p>Deposit: {formatCurrency(payload.tableBooking.depositAmountCents)}</p>
+                  <p>Experience: {String(reservationMeta.experienceType ?? payload.tableBooking.bookingCategory).replace(/_/g, " ")}</p>
+                  <p>Dress code: {payload.booking.venueDressCode ?? "Check venue guidance on arrival."}</p>
+                  <p>Parking: {payload.booking.venueParkingInformation ?? "Parking guidance available on arrival."}</p>
+                  <p>Contact venue: {payload.booking.venuePhone ?? "Venue contact pending."}</p>
+                  {payload.booking.venueGoogleMapsUrl ? <a href={payload.booking.venueGoogleMapsUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white">Navigate to venue</a> : null}
                 </div>
               ) : (
                 <p className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No table service selected.</p>

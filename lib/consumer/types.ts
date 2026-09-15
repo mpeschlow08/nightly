@@ -6,6 +6,30 @@ export type LiveStatusProvenance =
   | "demo"
   | "unavailable";
 
+export type ConsumerSpecialGuest = {
+  id: number;
+  displayName: string;
+  stageName: string | null;
+  typeLabel: string;
+  shortDescription: string | null;
+  appearanceStartAtIso: string;
+  appearanceEndAtIso: string;
+  verificationStatus: "unverified" | "pending_review" | "verified" | "rejected";
+  status: "scheduled" | "active" | "cancelled" | "expired" | "archived";
+  photoUrl: string | null;
+  logoUrl: string | null;
+};
+
+export type ConsumerSpecialGuestHighlight = {
+  id: number;
+  title: string;
+  subtitle: string;
+  badge: string;
+  typeLabel: string;
+  verificationBadge: string | null;
+  additionalCount: number;
+};
+
 export type ConsumerVenueCard = {
   id: number;
   slug: string;
@@ -24,6 +48,8 @@ export type ConsumerVenueCard = {
   logoImageUrl: string | null;
   galleryImageUrls: string[];
   imageSource: string;
+  specialGuestHighlight?: ConsumerSpecialGuestHighlight | null;
+  specialGuestSearchTerms?: string[];
   recommendationReason?: string;
   recommendationReasonCode?: string;
   recommendationBadges?: string[];
@@ -59,6 +85,8 @@ export type ConsumerEventCard = {
   isLive: boolean;
   imageUrl: string;
   distanceMiles: number | null;
+  specialGuestHighlight?: ConsumerSpecialGuestHighlight | null;
+  specialGuestSearchTerms?: string[];
   recommendationReason?: string;
   recommendationReasonCode?: string;
   recommendationBadges?: string[];
@@ -117,6 +145,8 @@ export type ConsumerVenueDetail = {
   isOpenNow: boolean;
   liveLabel: "OPEN NOW" | "EVENT LIVE" | "CAMERA LIVE" | "TRENDING" | null;
   liveStatusProvenance: LiveStatusProvenance;
+  specialGuests: ConsumerSpecialGuest[];
+  specialGuestHighlight: ConsumerSpecialGuestHighlight | null;
 };
 
 export type ConsumerEventDetail = {
@@ -156,6 +186,8 @@ export type ConsumerEventDetail = {
   transferPolicy: string;
   refundPolicy: string;
   reEntryPolicy: string;
+  specialGuests: ConsumerSpecialGuest[];
+  specialGuestHighlight: ConsumerSpecialGuestHighlight | null;
 };
 
 export type ConsumerDJCard = {

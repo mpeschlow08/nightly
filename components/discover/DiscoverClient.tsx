@@ -15,11 +15,32 @@ import VenueDiscoveryCard from "@/components/home/VenueDiscoveryCard";
 import type { ExploreDataPayload } from "@/lib/consumer/types";
 import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 
-const QUICK_FILTERS = ["Live Now", "Trending", "No Cover", "Hip-Hop", "House", "Afrobeats", "Downtown"];
+const QUICK_FILTERS = [
+  "Live Now",
+  "Trending",
+  "No Cover",
+  "Has Special Guest",
+  "Artists",
+  "Celebrities",
+  "Influencers",
+  "Athletes",
+  "Hosts",
+  "Tonight",
+  "This Weekend",
+  "Hip-Hop",
+  "House",
+  "Afrobeats",
+  "Downtown",
+];
 const SORT_OPTIONS = ["recommended", "trending", "distance", "rating", "starting-soon"] as const;
 
 function normalize(value: string) {
   return value.toLowerCase().trim();
+}
+
+function inGuestTerms(terms: string[] | undefined, value: string) {
+  const target = normalize(value);
+  return (terms ?? []).some((term) => normalize(term).includes(target));
 }
 
 type DiscoverClientProps = {
@@ -93,7 +114,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
 
     return initialData.venues.filter((venue) => {
       const venueSearch = normalize(
-        [venue.name, venue.neighborhood, venue.genre, ...venue.genres].join(" ")
+        [venue.name, venue.neighborhood, venue.genre, ...venue.genres, ...(venue.specialGuestSearchTerms ?? [])].join(" ")
       );
       const matchesQuery = queryValue.length === 0 || venueSearch.includes(queryValue);
 
@@ -110,6 +131,38 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
 
           if (chip === "no cover") {
             return false;
+          }
+
+          if (chip === "has special guest") {
+            return Boolean(venue.specialGuestHighlight);
+          }
+
+          if (chip === "artists") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "artist");
+          }
+
+          if (chip === "celebrities") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "celebrity");
+          }
+
+          if (chip === "influencers") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "influencer");
+          }
+
+          if (chip === "athletes") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "athlete");
+          }
+
+          if (chip === "hosts") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "host");
+          }
+
+          if (chip === "tonight") {
+            return normalize(venue.specialGuestHighlight?.badge ?? "") === "tonight";
+          }
+
+          if (chip === "this weekend") {
+            return inGuestTerms(venue.specialGuestSearchTerms, "friday") || inGuestTerms(venue.specialGuestSearchTerms, "saturday") || inGuestTerms(venue.specialGuestSearchTerms, "sunday");
           }
 
           return venueSearch.includes(chip);
@@ -142,7 +195,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
     const chips = selectedFilters.map(normalize);
 
     return initialData.events.filter((event) => {
-      const eventSearch = normalize([event.name, event.venueName, event.neighborhood, ...event.genres].join(" "));
+      const eventSearch = normalize([event.name, event.venueName, event.neighborhood, ...event.genres, ...(event.specialGuestSearchTerms ?? [])].join(" "));
       const matchesQuery =
         queryValue.length === 0 ||
         eventSearch.includes(queryValue) ||
@@ -161,6 +214,34 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
 
           if (chip === "trending") {
             return event.ticketStatus !== "Sold out";
+          }
+
+          if (chip === "has special guest") {
+            return Boolean(event.specialGuestHighlight);
+          }
+
+          if (chip === "artists") {
+            return inGuestTerms(event.specialGuestSearchTerms, "artist");
+          }
+
+          if (chip === "celebrities") {
+            return inGuestTerms(event.specialGuestSearchTerms, "celebrity");
+          }
+
+          if (chip === "influencers") {
+            return inGuestTerms(event.specialGuestSearchTerms, "influencer");
+          }
+
+          if (chip === "athletes") {
+            return inGuestTerms(event.specialGuestSearchTerms, "athlete");
+          }
+
+          if (chip === "hosts") {
+            return inGuestTerms(event.specialGuestSearchTerms, "host");
+          }
+
+          if (chip === "tonight") {
+            return normalize(event.specialGuestHighlight?.badge ?? "") === "tonight";
           }
 
           return eventSearch.includes(chip);
@@ -344,6 +425,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
                   ticketStatus={event.ticketStatus}
                   imageUrl={event.imageUrl}
                   isLive={event.isLive}
+                  specialGuestHighlight={event.specialGuestHighlight ?? null}
                   reason={event.recommendationReason}
                   animationDelayMs={index * 45}
                 />

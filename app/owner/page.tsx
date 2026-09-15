@@ -165,6 +165,10 @@ export default async function OwnerDashboardPage() {
           <p className="text-sm font-semibold text-white">Events</p>
           <p className="mt-2 text-sm text-zinc-300">Create and manage venue event schedule.</p>
         </Link>
+        <Link href="/owner/special-guests" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
+          <p className="text-sm font-semibold text-white">Special Guests</p>
+          <p className="mt-2 text-sm text-zinc-300">Create, verify, schedule, cancel, and archive guest appearances.</p>
+        </Link>
         {liveCamerasEnabled ? (
           <Link href="/owner/cameras" className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-cyan-400/40 hover:bg-cyan-400/10">
             <p className="text-sm font-semibold text-white">Cameras</p>

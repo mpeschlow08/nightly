@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import VenueImage from "@/components/media/VenueImage";
 import type { ConsumerVenueCard } from "@/lib/consumer/types";
@@ -10,6 +10,7 @@ import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 type VenueDiscoveryCardProps = {
   venue: ConsumerVenueCard;
   animationDelayMs?: number;
+  className?: string;
 };
 
 const crowdToneByLevel: Record<string, string> = {
@@ -22,12 +23,31 @@ const crowdToneByLevel: Record<string, string> = {
 export default function VenueDiscoveryCard({
   venue,
   animationDelayMs = 0,
+  className,
 }: VenueDiscoveryCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
 
+  useEffect(() => {
+    if (!venue.specialGuestHighlight) {
+      return;
+    }
+
+    void fetch("/api/discovery/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "special_guest_view",
+        recommendationType: "venue",
+        itemId: venue.id,
+        specialGuestId: venue.specialGuestHighlight.id,
+        trafficSource: "discover_venue_card",
+      }),
+    });
+  }, [venue.id, venue.specialGuestHighlight]);
+
   return (
     <article
-      className="nightly-card nightly-card-interactive nightly-fade-in group relative min-h-[18.8rem] min-w-[17.2rem] snap-start overflow-hidden rounded-[1.25rem] border border-white/10 bg-[#050912] shadow-[0_20px_54px_rgba(0,0,0,0.42)] active:scale-[0.99] sm:min-w-[18.2rem]"
+      className={`nightly-card nightly-card-interactive nightly-fade-in group relative min-h-[18.8rem] min-w-[17.2rem] snap-start overflow-hidden rounded-[1.25rem] border border-white/10 bg-[#050912] shadow-[0_20px_54px_rgba(0,0,0,0.42)] active:scale-[0.99] sm:min-w-[18.2rem] ${className ?? ""}`}
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
       <div className="relative overflow-hidden">
@@ -42,6 +62,30 @@ export default function VenueDiscoveryCard({
               itemId: venue.id,
               explanationCategory: venue.recommendationReasonCode,
             });
+            if (venue.specialGuestHighlight) {
+              void fetch("/api/discovery/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event: "special_guest_click",
+                  recommendationType: "venue",
+                  itemId: venue.id,
+                  specialGuestId: venue.specialGuestHighlight.id,
+                  trafficSource: "discover_venue_card",
+                }),
+              });
+              void fetch("/api/discovery/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event: "special_guest_venue_conversion",
+                  recommendationType: "venue",
+                  itemId: venue.id,
+                  specialGuestId: venue.specialGuestHighlight.id,
+                  trafficSource: "discover_venue_card",
+                }),
+              });
+            }
           }}
         >
           <VenueImage src={venue.thumbnailImageUrl || venue.heroImageUrl} alt={`${venue.name} nightlife scene`} orientation="portrait" className="rounded-none" />
@@ -71,6 +115,25 @@ export default function VenueDiscoveryCard({
         >
           {isFavorite ? "♥" : "♡"}
         </button>
+
+        {venue.specialGuestHighlight ? (
+          <div className="absolute inset-x-3 bottom-3 rounded-xl border border-amber-300/45 bg-black/70 px-3 py-2 backdrop-blur">
+            <div className="flex items-center justify-between gap-2">
+              <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+                {venue.specialGuestHighlight.badge} · {venue.specialGuestHighlight.title}
+              </p>
+              {venue.specialGuestHighlight.additionalCount > 0 ? (
+                <span className="rounded-full border border-amber-300/40 bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-100">
+                  +{venue.specialGuestHighlight.additionalCount} more
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 line-clamp-1 text-[11px] text-amber-50/90">
+              {venue.specialGuestHighlight.verificationBadge ? `${venue.specialGuestHighlight.verificationBadge} · ` : ""}
+              {venue.specialGuestHighlight.subtitle}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-2.5 p-3.5">
@@ -86,6 +149,30 @@ export default function VenueDiscoveryCard({
                   itemId: venue.id,
                   explanationCategory: venue.recommendationReasonCode,
                 });
+                if (venue.specialGuestHighlight) {
+                  void fetch("/api/discovery/track", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      event: "special_guest_click",
+                      recommendationType: "venue",
+                      itemId: venue.id,
+                      specialGuestId: venue.specialGuestHighlight.id,
+                      trafficSource: "discover_venue_card",
+                    }),
+                  });
+                  void fetch("/api/discovery/track", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      event: "special_guest_venue_conversion",
+                      recommendationType: "venue",
+                      itemId: venue.id,
+                      specialGuestId: venue.specialGuestHighlight.id,
+                      trafficSource: "discover_venue_card",
+                    }),
+                  });
+                }
               }}
             >
               {venue.name}

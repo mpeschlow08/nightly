@@ -31,7 +31,13 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
   const [age, setAge] = useState("any");
   const [openNowOnly, setOpenNowOnly] = useState(false);
   const [ticketAvailableOnly, setTicketAvailableOnly] = useState(false);
+  const [hasSpecialGuestOnly, setHasSpecialGuestOnly] = useState(false);
+  const [guestTypes, setGuestTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>("recommended");
+
+  const toggleGuestType = (value: string) => {
+    setGuestTypes((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
+  };
 
   const genres = useMemo(() => {
     const set = new Set<string>();
@@ -59,6 +65,8 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
     setAge("any");
     setOpenNowOnly(false);
     setTicketAvailableOnly(false);
+    setHasSpecialGuestOnly(false);
+    setGuestTypes([]);
     setSortBy("recommended");
   };
 
@@ -67,7 +75,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
       const query = search.trim().toLowerCase();
       const matchesQuery =
         query.length === 0 ||
-        [event.name, event.venueName, event.neighborhood, event.genres.join(" ")]
+        [event.name, event.venueName, event.neighborhood, event.genres.join(" "), ...(event.specialGuestSearchTerms ?? [])]
           .join(" ")
           .toLowerCase()
           .includes(query);
@@ -89,8 +97,12 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
       const matchesAge = age === "any" || event.ageRequirementLabel === age;
       const matchesOpenNow = !openNowOnly || event.isLive;
       const matchesTicket = !ticketAvailableOnly || event.ticketStatus !== "Sold out";
+      const matchesSpecialGuest = !hasSpecialGuestOnly || Boolean(event.specialGuestHighlight);
+      const matchesGuestType =
+        guestTypes.length === 0 ||
+        guestTypes.some((type) => (event.specialGuestSearchTerms ?? []).some((term) => term.toLowerCase().includes(type.toLowerCase())));
 
-      return matchesQuery && matchesDate && matchesGenres && matchesCover && matchesDistance && matchesCrowd && matchesAge && matchesOpenNow && matchesTicket;
+      return matchesQuery && matchesDate && matchesGenres && matchesCover && matchesDistance && matchesCrowd && matchesAge && matchesOpenNow && matchesTicket && matchesSpecialGuest && matchesGuestType;
     });
 
     const sorted = [...matches];
@@ -112,7 +124,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
     }
 
     return sorted;
-  }, [age, cover, crowd, distance, initialEvents, openNowOnly, search, selectedDate, selectedGenres, sortBy, ticketAvailableOnly]);
+  }, [age, cover, crowd, distance, guestTypes, hasSpecialGuestOnly, initialEvents, openNowOnly, search, selectedDate, selectedGenres, sortBy, ticketAvailableOnly]);
 
   return (
     <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
@@ -219,6 +231,24 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
                   <input type="checkbox" checked={ticketAvailableOnly} onChange={() => setTicketAvailableOnly((value) => !value)} className="h-4 w-4 rounded border-white/25 bg-transparent accent-violet-500" />
                   Ticket available
                 </label>
+                <label className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-200">
+                  <input type="checkbox" checked={hasSpecialGuestOnly} onChange={() => setHasSpecialGuestOnly((value) => !value)} className="h-4 w-4 rounded border-white/25 bg-transparent accent-amber-500" />
+                  Has Special Guest
+                </label>
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium text-zinc-300">Special Guest Types</p>
+                <div className="flex flex-wrap gap-2">
+                  {["artist", "celebrity", "athlete", "influencer", "host"].map((type) => {
+                    const active = guestTypes.includes(type);
+                    return (
+                      <button key={type} type="button" onClick={() => toggleGuestType(type)} className={`rounded-full px-3 py-2 text-sm transition ${active ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white" : "border border-white/10 bg-white/10 text-zinc-300 hover:border-amber-300/40 hover:text-white"}`}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>

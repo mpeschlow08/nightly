@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { writeAuditLog } from "@/app/lib/audit-log";
 import { getCurrentOwnerVenue } from "@/app/owner/lib/ownership";
 import { db } from "@/db";
+import { acquireAdvisoryLock, RESERVATION_LOCK_SCOPE } from "@/lib/bookings/reservation-locks";
 import {
   bookingActivity,
   billSplits,
@@ -332,7 +333,11 @@ export async function createVenueFloorPlanAction(formData: FormData) {
     width: toOptionalInt(formData.get("width")) ?? 1200,
     height: toOptionalInt(formData.get("height")) ?? 800,
     backgroundImageUrl: toTrimmedString(formData.get("backgroundImageUrl")) || null,
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      floorOrder: toOptionalInt(formData.get("floorOrder")) ?? 0,
+      rotationDegrees: toOptionalInt(formData.get("rotationDegrees")) ?? 0,
+    }),
     isActive: true,
   });
 
@@ -352,9 +357,26 @@ export async function createVenueFloorObjectAction(formData: FormData) {
     label: toTrimmedString(formData.get("label")),
     sectionName: toTrimmedString(formData.get("sectionName")) || null,
     capacity: toOptionalInt(formData.get("capacity")) ?? 0,
-    coordinatesJson: toJson({ x: toOptionalInt(formData.get("x")) ?? 0, y: toOptionalInt(formData.get("y")) ?? 0, width: toOptionalInt(formData.get("width")) ?? 120, height: toOptionalInt(formData.get("height")) ?? 80 }),
+    coordinatesJson: toJson({
+      x: toOptionalInt(formData.get("x")) ?? 0,
+      y: toOptionalInt(formData.get("y")) ?? 0,
+      width: toOptionalInt(formData.get("width")) ?? 120,
+      height: toOptionalInt(formData.get("height")) ?? 80,
+      points: toLines(formData.get("polygonPoints")).map((line) => {
+        const [x, y] = line.split(",").map((value) => Number(value.trim()));
+        return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 };
+      }),
+    }),
     rotationDegrees: Number(toTrimmedString(formData.get("rotationDegrees")) || "0"),
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      shape: toTrimmedString(formData.get("shape")) || "rect",
+      status: toTrimmedString(formData.get("status")) || "available",
+      experiences: toLines(formData.get("experienceDefinitions")).map((line) => {
+        const [id, label, description, requiresBottlePurchase] = line.split("|").map((part) => part.trim());
+        return { id, label, description, requiresBottlePurchase: requiresBottlePurchase === "true", enabled: true };
+      }),
+    }),
   });
 
   revalidateVenueOsRoutes();
@@ -392,7 +414,19 @@ export async function createVenueBottlePackageAction(formData: FormData) {
     name: toTrimmedString(formData.get("name")),
     description: toTrimmedString(formData.get("description")) || null,
     priceCents: toOptionalInt(formData.get("priceCents")) ?? 0,
-    packageItemsJson: toJson(toLines(formData.get("packageItems"))),
+    packageItemsJson: toJson({
+      items: toLines(formData.get("packageItems")),
+      category: toTrimmedString(formData.get("category")) || "Bottle Service",
+      imageUrl: toTrimmedString(formData.get("imageUrl")) || null,
+      inventory: toOptionalInt(formData.get("inventory")),
+      featured: toBoolean(formData.get("featured")),
+      recommended: toBoolean(formData.get("recommended")),
+      quantityLimit: toOptionalInt(formData.get("quantityLimit")),
+      inventoryBindings: toLines(formData.get("inventoryBindings")).map((line) => {
+        const [inventoryItemId, quantityPerPackage] = line.split("|").map((part) => Number(part.trim()));
+        return { inventoryItemId: Number.isFinite(inventoryItemId) ? inventoryItemId : 0, quantityPerPackage: Number.isFinite(quantityPerPackage) ? quantityPerPackage : 0 };
+      }).filter((binding) => binding.inventoryItemId > 0 && binding.quantityPerPackage > 0),
+    }),
     mixersJson: toJson(toLines(formData.get("mixers"))),
     addOnsJson: toJson(toLines(formData.get("addOns"))),
     isActive: true,
@@ -433,7 +467,15 @@ export async function createVenueInventoryItemAction(formData: FormData) {
     parQuantity: toOptionalInt(formData.get("parQuantity")) ?? 0,
     unitCostCents: toOptionalInt(formData.get("unitCostCents")) ?? 0,
     sellPriceCents: toOptionalInt(formData.get("sellPriceCents")) ?? 0,
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      reservedQuantity: 0,
+      availableQuantity: toOptionalInt(formData.get("onHandQuantity")) ?? 0,
+      hidden: toBoolean(formData.get("hidden")),
+      outOfStock: toBoolean(formData.get("outOfStock")),
+      autoRestockEnabled: toBoolean(formData.get("autoRestockEnabled")),
+      autoRestockQuantity: toOptionalInt(formData.get("autoRestockQuantity")),
+    }),
     isActive: true,
   });
 
@@ -443,11 +485,66 @@ export async function createVenueInventoryItemAction(formData: FormData) {
 
 export async function createVenueInventoryMovementAction(formData: FormData) {
   const membership = await getCurrentOwnerVenue();
+  const itemId = toOptionalInt(formData.get("itemId")) ?? 0;
+  const quantity = toOptionalInt(formData.get("quantity")) ?? 0;
+  const movementType = (toTrimmedString(formData.get("movementType")) as never) || "adjust";
+  const [item] = await db.select().from(venueInventoryItems).where(eq(venueInventoryItems.id, itemId)).limit(1);
+  if (!item) {
+    throw new Error("Inventory item not found.");
+  }
+
+  const metadata = JSON.parse(item.metadataJson || "{}") as Record<string, unknown>;
+  const reservedQuantity = Math.max(Number(metadata.reservedQuantity ?? 0), 0);
+  let onHandQuantity = item.onHandQuantity;
+
+  if (["receive", "count"].includes(movementType)) {
+    onHandQuantity += quantity;
+  } else if (["consume", "waste", "damage", "transfer"].includes(movementType)) {
+    onHandQuantity = Math.max(onHandQuantity - quantity, 0);
+  } else if (movementType === "adjust") {
+    onHandQuantity = Math.max(onHandQuantity + quantity, 0);
+  }
+
+  let nextMetadata: Record<string, unknown> = {
+    ...metadata,
+    outOfStock: onHandQuantity <= 0,
+    availableQuantity: Math.max(onHandQuantity - reservedQuantity, 0),
+  };
+
+  if (Boolean(metadata.autoRestockEnabled) && onHandQuantity <= item.reorderThreshold) {
+    const autoRestockQuantity = Math.max(Number(metadata.autoRestockQuantity ?? item.parQuantity), 0);
+    if (autoRestockQuantity > 0) {
+      onHandQuantity += autoRestockQuantity;
+      nextMetadata = {
+        ...nextMetadata,
+        availableQuantity: Math.max(onHandQuantity - reservedQuantity, 0),
+        outOfStock: false,
+        autoRestockedAt: new Date().toISOString(),
+      };
+      await db.insert(venueInventoryMovements).values({
+        venueId: membership.venueId,
+        itemId,
+        movementType: "receive",
+        quantity: autoRestockQuantity,
+        referenceType: "auto_restock",
+        referenceId: null,
+        staffProfileId: toOptionalInt(formData.get("staffProfileId")),
+        notes: "Automatic restock triggered.",
+      });
+    }
+  }
+
+  await db.update(venueInventoryItems).set({
+    onHandQuantity,
+    metadataJson: JSON.stringify(nextMetadata),
+    updatedAt: new Date(),
+  }).where(eq(venueInventoryItems.id, itemId));
+
   await db.insert(venueInventoryMovements).values({
     venueId: membership.venueId,
-    itemId: toOptionalInt(formData.get("itemId")) ?? 0,
-    movementType: (toTrimmedString(formData.get("movementType")) as never) || "adjust",
-    quantity: toOptionalInt(formData.get("quantity")) ?? 0,
+    itemId,
+    movementType,
+    quantity,
     referenceType: toTrimmedString(formData.get("referenceType")) || null,
     referenceId: toOptionalInt(formData.get("referenceId")),
     staffProfileId: toOptionalInt(formData.get("staffProfileId")),
@@ -616,7 +713,14 @@ export async function createVenueTableAction(formData: FormData) {
     maximumGuests: toOptionalInt(formData.get("maximumGuests")) ?? 12,
     minimumSpendCents: toOptionalInt(formData.get("minimumSpendCents")) ?? 0,
     depositPercent: toOptionalInt(formData.get("depositPercent")) ?? 20,
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      reservationFeeCents: toOptionalInt(formData.get("reservationFeeCents")) ?? 0,
+      bottleMinimumCents: toOptionalInt(formData.get("bottleMinimumCents")) ?? 0,
+      serverSection: toTrimmedString(formData.get("serverSection")) || null,
+      status: toTrimmedString(formData.get("status")) || "available",
+      enabledExperiences: toLines(formData.get("enabledExperiences")),
+    }),
     isActive: true,
   });
 
@@ -633,7 +737,22 @@ export async function createVenueServerAction(formData: FormData) {
     email: toTrimmedString(formData.get("email")) || null,
     phone: toTrimmedString(formData.get("phone")) || null,
     isLead: toBoolean(formData.get("isLead")),
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      photoUrl: toTrimmedString(formData.get("photoUrl")) || null,
+      nickname: toTrimmedString(formData.get("nickname")) || null,
+      languages: toLines(formData.get("languages")),
+      bio: toTrimmedString(formData.get("bio")) || null,
+      yearsEmployed: toOptionalInt(formData.get("yearsEmployed")),
+      rating: toOptionalInt(formData.get("rating")),
+      sectionAssignment: toTrimmedString(formData.get("sectionAssignment")) || null,
+      availability: toTrimmedString(formData.get("availability")) || "available",
+      maxTables: toOptionalInt(formData.get("maxTables")),
+      maxGuests: toOptionalInt(formData.get("maxGuests")),
+      priority: toOptionalInt(formData.get("priority")) ?? 0,
+      manualOnly: toBoolean(formData.get("manualOnly")),
+      imageMode: toTrimmedString(formData.get("imageMode")) || "show_image",
+    }),
     isActive: true,
   });
 
@@ -650,7 +769,14 @@ export async function createVenueAddonAction(formData: FormData) {
     description: toTrimmedString(formData.get("description")) || null,
     unitPriceCents: toOptionalInt(formData.get("unitPriceCents")) ?? 0,
     isPerGuest: toBoolean(formData.get("isPerGuest")),
-    metadataJson: toJson({ notes: toTrimmedString(formData.get("notes")) || null }),
+    metadataJson: toJson({
+      notes: toTrimmedString(formData.get("notes")) || null,
+      imageUrl: toTrimmedString(formData.get("imageUrl")) || null,
+      inventory: toOptionalInt(formData.get("inventory")),
+      featured: toBoolean(formData.get("featured")),
+      recommended: toBoolean(formData.get("recommended")),
+      quantityLimit: toOptionalInt(formData.get("quantityLimit")),
+    }),
     isActive: true,
   });
 
@@ -667,34 +793,52 @@ export async function checkInVipReservationAction(formData: FormData) {
     throw new Error("Reservation ID is required.");
   }
 
-  const now = new Date();
-  await db.update(venueVipReservations).set({
-    status: status as never,
-    ...(status === "arrived" ? { arrivalAt: now } : {}),
-    ...(status === "seated" ? { seatedAt: now } : {}),
-    updatedAt: now,
-  }).where(eq(venueVipReservations.id, reservationId));
+  await db.transaction(async (tx) => {
+    const now = new Date();
+    await acquireAdvisoryLock(tx, RESERVATION_LOCK_SCOPE.booking, reservationId);
 
-  if (bookingId) {
-    await db.insert(bookingActivity).values({
-      bookingId,
-      activityType: status === "seated" ? "vip_seated" : "vip_arrived",
-      details: `VIP reservation marked ${status}.`,
-      metadataJson: JSON.stringify({ reservationId }),
-      createdAt: now,
-    });
+    const [current] = await tx
+      .select({ status: venueVipReservations.status })
+      .from(venueVipReservations)
+      .where(eq(venueVipReservations.id, reservationId))
+      .limit(1);
 
-    await db.update(billSplits).set({
-      status: status === "seated" ? "ready_to_collect" : "pending",
+    if (!current) {
+      throw new Error("Reservation not found.");
+    }
+
+    if (current.status === status) {
+      return;
+    }
+
+    await tx.update(venueVipReservations).set({
+      status: status as never,
+      ...(status === "arrived" ? { arrivalAt: now } : {}),
+      ...(status === "seated" ? { seatedAt: now } : {}),
       updatedAt: now,
-    }).where(eq(billSplits.bookingId, bookingId));
+    }).where(eq(venueVipReservations.id, reservationId));
 
-    await db.update(bookingPayments).set({
-      status: status === "seated" ? "due" : "pending",
-      ...(status === "seated" ? { dueAt: now } : {}),
-      updatedAt: now,
-    }).where(eq(bookingPayments.bookingId, bookingId));
-  }
+    if (bookingId) {
+      await tx.insert(bookingActivity).values({
+        bookingId,
+        activityType: status === "seated" ? "vip_seated" : "vip_arrived",
+        details: `VIP reservation marked ${status}.`,
+        metadataJson: JSON.stringify({ reservationId }),
+        createdAt: now,
+      });
+
+      await tx.update(billSplits).set({
+        status: status === "seated" ? "ready_to_collect" : "pending",
+        updatedAt: now,
+      }).where(eq(billSplits.bookingId, bookingId));
+
+      await tx.update(bookingPayments).set({
+        status: status === "seated" ? "due" : "pending",
+        ...(status === "seated" ? { dueAt: now } : {}),
+        updatedAt: now,
+      }).where(eq(bookingPayments.bookingId, bookingId));
+    }
+  });
 
   revalidateVenueOsRoutes();
   redirectWithStatus("/owner/vip", "vipCheckinUpdated");

@@ -143,6 +143,7 @@ export default function OwnerArrivalBoardClient() {
               <p>Server: {row.serverName ?? "Not assigned"}</p>
               <p>Deposit: {row.depositStatus} ({formatMoney(row.depositRequiredCents)})</p>
             </div>
+            {row.splitStatuses.length > 0 ? <p className="mt-2 text-sm text-zinc-300">Share bill: {row.splitStatuses.map((item) => item.status).join(", ")}</p> : null}
             <p className="mt-2 text-sm text-zinc-300">Bottles: {row.bottles.length > 0 ? row.bottles.map((item) => `${item.label} x${item.quantity}`).join(", ") : "None"}</p>
             <p className="mt-1 text-sm text-zinc-400">Special requests: {row.specialRequests ?? row.notes ?? "None"}</p>
             <div className="mt-3 flex flex-wrap gap-2">

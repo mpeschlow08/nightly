@@ -217,7 +217,7 @@ function RecommendationShelf({
 
                   return (
                     <div key={venue.id} className="space-y-2">
-                      <VenueDiscoveryCard venue={venue} animationDelayMs={index * 40} />
+                      <VenueDiscoveryCard venue={venue} animationDelayMs={index * 40} className="w-full min-w-0 sm:min-w-0" />
                       <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.03] px-3 py-3">
                         <div className="flex items-center justify-between gap-2">
                           <button
@@ -293,6 +293,7 @@ function RecommendationShelf({
                         isLive={event.isLive}
                         reason={event.recommendationReason}
                         animationDelayMs={index * 40}
+                        className="w-full min-w-0 sm:min-w-0"
                       />
                       <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.03] px-3 py-3">
                         <div className="flex items-center justify-between gap-2">

@@ -7,6 +7,8 @@ import { db } from "@/db";
 import {
   platformFeatureFlagHistory,
   platformFeatureFlags,
+  specialGuestHistory,
+  specialGuests,
   users,
   venues,
 } from "@/db/schema";
@@ -14,6 +16,7 @@ import {
 import { writeAdminAuditEvent } from "@/app/admin/lib/audit";
 import { requireAdminPermission } from "@/app/admin/lib/permissions";
 import { runVenueGoogleDataRefresh } from "@/lib/platform/venue-google-refresh";
+import { normalizeSpecialGuestStatus, normalizeSpecialGuestVerificationStatus } from "@/lib/special-guests/service";
 
 function getRequiredText(formData: FormData, key: string, label: string) {
   const value = formData.get(key);
@@ -398,4 +401,99 @@ export async function setVenueGoogleRefreshSuspendedAction(formData: FormData) {
 
   revalidatePath(`/admin/venues/${venueId}`);
   revalidatePath("/admin/venues");
+}
+
+export async function reviewSpecialGuestAction(formData: FormData) {
+  const actor = await requireAdminPermission("events:moderate");
+  const specialGuestId = getInt(formData, "specialGuestId", "Special guest ID");
+  const reason = getRequiredText(formData, "reason", "Reason");
+
+  const reviewStatusRaw = formData.get("verificationStatus");
+  const statusRaw = formData.get("status");
+  const verificationStatus = normalizeSpecialGuestVerificationStatus(
+    typeof reviewStatusRaw === "string" ? reviewStatusRaw : null,
+    "pending_review"
+  );
+  const status = normalizeSpecialGuestStatus(typeof statusRaw === "string" ? statusRaw : null, "scheduled");
+
+  const reviewNotesRaw = formData.get("reviewNotes");
+  const reviewNotes = typeof reviewNotesRaw === "string" && reviewNotesRaw.trim().length > 0 ? reviewNotesRaw.trim() : null;
+
+  const [current] = await db
+    .select()
+    .from(specialGuests)
+    .where(eq(specialGuests.id, specialGuestId))
+    .limit(1);
+
+  if (!current) {
+    throw new Error("Special guest not found.");
+  }
+
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(specialGuests)
+      .set({
+        verificationStatus,
+        status,
+        reviewedByClerkUserId: actor.clerkUserId,
+        reviewedAt: now,
+        reviewNotes,
+        updatedByClerkUserId: actor.clerkUserId,
+        updatedAt: now,
+        cancelledAt: status === "cancelled" ? (current.cancelledAt ?? now) : current.cancelledAt,
+        expiredAt: status === "expired" ? (current.expiredAt ?? now) : current.expiredAt,
+        archivedAt: status === "archived" ? (current.archivedAt ?? now) : current.archivedAt,
+        isArchived: status === "archived" ? true : current.isArchived,
+      })
+      .where(eq(specialGuests.id, specialGuestId));
+
+    await tx.insert(specialGuestHistory).values({
+      specialGuestId,
+      venueId: current.venueId,
+      eventId: current.eventId,
+      action: "verification_updated",
+      actorClerkUserId: actor.clerkUserId,
+      payloadJson: JSON.stringify({
+        previousVerificationStatus: current.verificationStatus,
+        nextVerificationStatus: verificationStatus,
+        previousStatus: current.status,
+        nextStatus: status,
+        reason,
+        reviewNotes,
+      }),
+    });
+  });
+
+  await writeAdminAuditEvent({
+    actorClerkUserId: actor.clerkUserId,
+    action: "admin_special_guest_reviewed",
+    resourceType: "special_guest",
+    resourceId: specialGuestId,
+    scope: "events",
+    reason,
+    before: {
+      verificationStatus: current.verificationStatus,
+      status: current.status,
+      reviewedByClerkUserId: current.reviewedByClerkUserId,
+      reviewedAt: current.reviewedAt?.toISOString() ?? null,
+    },
+    after: {
+      verificationStatus,
+      status,
+      reviewedByClerkUserId: actor.clerkUserId,
+      reviewedAt: now.toISOString(),
+      reviewNotes,
+    },
+    metadata: {
+      venueId: current.venueId,
+      eventId: current.eventId,
+    },
+  });
+
+  revalidatePath("/admin/special-guests");
+  revalidatePath("/admin/events");
+  revalidatePath("/discover");
+  revalidatePath("/events");
 }

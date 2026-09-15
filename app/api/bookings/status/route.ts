@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { canAccessBooking, getReservationApiActor } from "@/app/api/bookings/_lib/access";
-import { setReservationStatus } from "@/lib/bookings/operations";
+import { reservationLifecycleService } from "@/lib/bookings/operations";
 import type { CustomerReservationStatus } from "@/lib/bookings/types";
 
 export async function POST(request: Request) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await setReservationStatus({
+  await reservationLifecycleService.transitionReservationStatus({
     bookingId: body.bookingId,
     actorClerkUserId: actor!.clerkUserId,
     actorRole: actor!.role,

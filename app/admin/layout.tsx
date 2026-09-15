@@ -34,6 +34,7 @@ const NAV_GROUPS: Array<{ title: string; items: Array<{ href: string; label: str
     title: "Content",
     items: [
       { href: "/admin/events", label: "Events" },
+      { href: "/admin/special-guests", label: "Special Guests" },
       { href: "/admin/moderation", label: "Moderation" },
       { href: "/admin/social", label: "Social Safety" },
       { href: "/admin/concierge", label: "Concierge" },

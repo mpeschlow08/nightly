@@ -29,6 +29,17 @@ export default function EventCard({ event }: EventCardProps) {
             Sold Out
           </span>
         ) : null}
+        {event.specialGuestHighlight ? (
+          <div className="absolute inset-x-3 bottom-3 rounded-xl border border-amber-300/45 bg-black/70 px-3 py-2 text-amber-50 backdrop-blur">
+            <p className="line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+              {event.specialGuestHighlight.badge} · {event.specialGuestHighlight.title}
+            </p>
+            <p className="mt-1 line-clamp-1 text-[11px]">
+              {event.specialGuestHighlight.verificationBadge ? `${event.specialGuestHighlight.verificationBadge} · ` : ""}
+              {event.specialGuestHighlight.subtitle}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">

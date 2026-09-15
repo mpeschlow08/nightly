@@ -3,6 +3,8 @@ import { auditLogs } from "@/db/schema";
 
 type JsonValue = Record<string, unknown> | Array<unknown> | string | number | boolean | null;
 
+type AuditLogDbClient = Pick<typeof db, "insert">;
+
 type AuditLogInput = {
   actorClerkUserId: string;
   actorRole?: string | null;
@@ -22,8 +24,8 @@ function toJsonText(value: JsonValue | undefined) {
   return JSON.stringify(value);
 }
 
-export async function writeAuditLog(input: AuditLogInput) {
-  await db.insert(auditLogs).values({
+export async function writeAuditLog(input: AuditLogInput, dbClient: AuditLogDbClient = db) {
+  await dbClient.insert(auditLogs).values({
     actorClerkUserId: input.actorClerkUserId,
     actorRole: input.actorRole ?? null,
     entityType: input.entityType,

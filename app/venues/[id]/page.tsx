@@ -108,6 +108,7 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
 
   const crowdLevel = venue.liveLabel ? "Buzzing" : "Steady";
   const isLive = Boolean(venue.liveLabel);
+  const specialGuests = venue.specialGuests;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#04070b] text-zinc-100 antialiased">
@@ -220,6 +221,27 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
               </article>
             </div>
           </section>
+
+          {specialGuests.length > 0 ? (
+            <section className="mt-5 rounded-[1.2rem] border border-amber-300/25 bg-amber-500/10 p-4 shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
+              <VenueSectionHeading title="Special Guests" />
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {specialGuests.map((guest) => (
+                  <article key={guest.id} className="rounded-[0.9rem] border border-white/10 bg-black/25 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-amber-100">
+                      {guest.typeLabel}
+                      {guest.verificationStatus === "verified" ? " • VERIFIED" : ""}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-white">{guest.stageName ?? guest.displayName}</p>
+                    <p className="mt-1 text-xs text-zinc-300">
+                      {new Date(guest.appearanceStartAtIso).toLocaleString()} - {new Date(guest.appearanceEndAtIso).toLocaleString()}
+                    </p>
+                    {guest.shortDescription ? <p className="mt-2 text-xs text-zinc-400">{guest.shortDescription}</p> : null}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <VenueImageGallery
             imageClass={null}

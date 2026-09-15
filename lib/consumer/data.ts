@@ -4,7 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { resolveVenueImages } from "@/app/lib/venue-images";
 import { db } from "@/db";
-import { djProfiles, eventAnalyticsDaily, events, venueCameras, venueImages, venues } from "@/db/schema";
+import { djProfiles, eventAnalyticsDaily, events, specialGuests, venueCameras, venueImages, venues } from "@/db/schema";
 import { formatDistanceMiles, distanceMilesBetween } from "@/lib/consumer/distance";
 import {
   buildHomeSections,
@@ -32,11 +32,17 @@ import {
   isEventLive,
   isInTonightWindow,
 } from "@/lib/consumer/time";
+import {
+  toSpecialGuestHighlight,
+  toSpecialGuestTypeLabel,
+  type SpecialGuestRecord,
+} from "@/lib/special-guests/service";
 import type {
   ConsumerDJCard,
   ConsumerEventCard,
   ConsumerEventDetail,
   ConsumerCityPulse,
+  ConsumerSpecialGuest,
   ConsumerVenueCard,
   ConsumerVenueDetail,
   ExploreDataPayload,
@@ -129,7 +135,100 @@ type VenueWithImages = {
   imageRows: Array<{ imageUrl: string }>;
   hasCameraLive: boolean;
   hasLiveEvent: boolean;
+  specialGuests?: ConsumerSpecialGuest[];
 };
+
+function specialGuestSearchTerms(guests: ConsumerSpecialGuest[]) {
+  return guests
+    .flatMap((guest) => {
+      const dayLabel = new Date(guest.appearanceStartAtIso)
+        .toLocaleDateString("en-US", { weekday: "long" })
+        .toLowerCase();
+      return [guest.displayName, guest.stageName, guest.typeLabel, dayLabel];
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function toSpecialGuestModel(row: typeof specialGuests.$inferSelect): ConsumerSpecialGuest {
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    stageName: row.stageName,
+    typeLabel: toSpecialGuestTypeLabel(row.guestType, row.customGuestType),
+    shortDescription: row.shortDescription,
+    appearanceStartAtIso: row.appearanceStartAt.toISOString(),
+    appearanceEndAtIso: row.appearanceEndAt.toISOString(),
+    verificationStatus: row.verificationStatus,
+    status: row.status,
+    photoUrl: row.photoUrl,
+    logoUrl: row.logoUrl,
+  };
+}
+
+function toSpecialGuestRecord(row: typeof specialGuests.$inferSelect): SpecialGuestRecord {
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    stageName: row.stageName,
+    guestType: row.guestType,
+    customGuestType: row.customGuestType,
+    shortDescription: row.shortDescription,
+    appearanceStartAt: row.appearanceStartAt,
+    appearanceEndAt: row.appearanceEndAt,
+    visibilityStartAt: row.visibilityStartAt,
+    visibilityEndAt: row.visibilityEndAt,
+    verificationStatus: row.verificationStatus,
+    status: row.status,
+    isActive: row.isActive,
+    isArchived: row.isArchived,
+    cancelledAt: row.cancelledAt,
+  };
+}
+
+async function getSpecialGuestsByVenueIds(venueIds: number[]) {
+  if (venueIds.length === 0) {
+    return new Map<number, ConsumerSpecialGuest[]>();
+  }
+
+  const rows = await db
+    .select()
+    .from(specialGuests)
+    .where(and(inArray(specialGuests.venueId, venueIds), eq(specialGuests.isArchived, false)))
+    .orderBy(asc(specialGuests.appearanceStartAt), asc(specialGuests.id));
+
+  const map = new Map<number, ConsumerSpecialGuest[]>();
+  for (const row of rows) {
+    const current = map.get(row.venueId) ?? [];
+    current.push(toSpecialGuestModel(row));
+    map.set(row.venueId, current);
+  }
+
+  return map;
+}
+
+async function getSpecialGuestsByEventIds(eventIds: number[]) {
+  if (eventIds.length === 0) {
+    return new Map<number, ConsumerSpecialGuest[]>();
+  }
+
+  const rows = await db
+    .select()
+    .from(specialGuests)
+    .where(and(inArray(specialGuests.eventId, eventIds), eq(specialGuests.isArchived, false)))
+    .orderBy(asc(specialGuests.appearanceStartAt), asc(specialGuests.id));
+
+  const map = new Map<number, ConsumerSpecialGuest[]>();
+  for (const row of rows) {
+    if (!row.eventId) {
+      continue;
+    }
+    const current = map.get(row.eventId) ?? [];
+    current.push(toSpecialGuestModel(row));
+    map.set(row.eventId, current);
+  }
+
+  return map;
+}
 
 async function getPublicVenueRows() {
   const rows = await db.select().from(venues);
@@ -281,6 +380,27 @@ function toVenueCardModel(
 
   const trending = source.venue.isFeatured || (source.venue.vibeScore ?? 0) >= 90;
   const live = liveLabelForVenue(source.venue, source.hasLiveEvent, source.hasCameraLive, trending);
+  const now = new Date();
+  const specialGuestHighlight = toSpecialGuestHighlight(
+    (source.specialGuests ?? []).map((guest) => ({
+      id: guest.id,
+      displayName: guest.displayName,
+      stageName: guest.stageName,
+      guestType: toSpecialGuestRecordFromConsumer(guest).guestType,
+      customGuestType: toSpecialGuestRecordFromConsumer(guest).customGuestType,
+      shortDescription: guest.shortDescription,
+      appearanceStartAt: new Date(guest.appearanceStartAtIso),
+      appearanceEndAt: new Date(guest.appearanceEndAtIso),
+      visibilityStartAt: null,
+      visibilityEndAt: null,
+      verificationStatus: guest.verificationStatus,
+      status: guest.status,
+      isActive: guest.status !== "archived",
+      isArchived: guest.status === "archived",
+      cancelledAt: guest.status === "cancelled" ? new Date(guest.appearanceEndAtIso) : null,
+    })),
+    now
+  );
 
   return {
     id: source.venue.id,
@@ -300,6 +420,52 @@ function toVenueCardModel(
     logoImageUrl: resolvedImages.logoImageUrl,
     galleryImageUrls: resolvedImages.galleryImageUrls,
     imageSource: source.venue.imageSource ?? "existing",
+    specialGuestSearchTerms: specialGuestSearchTerms(source.specialGuests ?? []),
+    specialGuestHighlight: specialGuestHighlight
+      ? {
+          id: specialGuestHighlight.primary.id,
+          title: specialGuestHighlight.primary.title,
+          subtitle: specialGuestHighlight.primary.subtitle,
+          badge: specialGuestHighlight.primary.badge,
+          typeLabel: specialGuestHighlight.primary.typeLabel,
+          verificationBadge: specialGuestHighlight.primary.verificationBadge,
+          additionalCount: specialGuestHighlight.additionalCount,
+        }
+      : null,
+  };
+}
+
+function toSpecialGuestRecordFromConsumer(guest: ConsumerSpecialGuest): SpecialGuestRecord {
+  const typeLabel = guest.typeLabel.toLowerCase();
+  let guestType: SpecialGuestRecord["guestType"] = "artist";
+  let customGuestType: string | null = null;
+
+  if (typeLabel === "celebrity") guestType = "celebrity";
+  else if (typeLabel === "athlete") guestType = "athlete";
+  else if (typeLabel === "influencer") guestType = "influencer";
+  else if (typeLabel === "host") guestType = "host";
+  else if (typeLabel === "special appearance") guestType = "special_appearance";
+  else if (typeLabel !== "artist") {
+    guestType = "custom";
+    customGuestType = guest.typeLabel;
+  }
+
+  return {
+    id: guest.id,
+    displayName: guest.displayName,
+    stageName: guest.stageName,
+    guestType,
+    customGuestType,
+    shortDescription: guest.shortDescription,
+    appearanceStartAt: new Date(guest.appearanceStartAtIso),
+    appearanceEndAt: new Date(guest.appearanceEndAtIso),
+    visibilityStartAt: null,
+    visibilityEndAt: null,
+    verificationStatus: guest.verificationStatus,
+    status: guest.status,
+    isActive: guest.status !== "archived" && guest.status !== "cancelled",
+    isArchived: guest.status === "archived",
+    cancelledAt: guest.status === "cancelled" ? new Date(guest.appearanceEndAtIso) : null,
   };
 }
 
@@ -475,10 +641,11 @@ async function buildDiscoveryDataset(now: Date): Promise<DiscoveryDataset> {
   const venueRows = await getPublicVenueRows();
   const venueIds = venueRows.map((venue) => venue.id);
 
-  const [imageMap, liveFlags, eventRows] = await Promise.all([
+  const [imageMap, liveFlags, eventRows, specialGuestsByVenue] = await Promise.all([
     getVenueImageRows(venueIds),
     getLiveFlags(venueIds, now),
     getPublicEventRows(now),
+    getSpecialGuestsByVenueIds(venueIds),
   ]);
 
   const venueCards = venueRows.map((venue) =>
@@ -487,10 +654,31 @@ async function buildDiscoveryDataset(now: Date): Promise<DiscoveryDataset> {
       imageRows: imageMap.get(venue.id) ?? [],
       hasCameraLive: liveFlags.cameraLive.has(venue.id),
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
+      specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })
   );
 
-  const eventsForCards = eventRows.map((row) => toEventCardModel(row.event, row.venue, now));
+  const specialGuestsByEvent = await getSpecialGuestsByEventIds(eventRows.map((row) => row.event.id));
+  const eventsForCards = eventRows.map((row) => {
+    const model = toEventCardModel(row.event, row.venue, now);
+    const guestRows = specialGuestsByEvent.get(row.event.id) ?? [];
+    const highlight = toSpecialGuestHighlight(guestRows.map(toSpecialGuestRecordFromConsumer), now);
+    return {
+      ...model,
+      specialGuestSearchTerms: specialGuestSearchTerms(guestRows),
+      specialGuestHighlight: highlight
+        ? {
+            id: highlight.primary.id,
+            title: highlight.primary.title,
+            subtitle: highlight.primary.subtitle,
+            badge: highlight.primary.badge,
+            typeLabel: highlight.primary.typeLabel,
+            verificationBadge: highlight.primary.verificationBadge,
+            additionalCount: highlight.additionalCount,
+          }
+        : null,
+    };
+  });
   const eventSignalMap = await getEventPopularitySignals(eventsForCards.map((event) => event.id));
   const venueCardById = new Map(venueCards.map((venue) => [venue.id, venue]));
 
@@ -787,7 +975,11 @@ export async function searchVenues(query: string) {
     .limit(40);
 
   const ids = rows.map((venue) => venue.id);
-  const [images, liveFlags] = await Promise.all([getVenueImageRows(ids), getLiveFlags(ids, new Date())]);
+  const [images, liveFlags, specialGuestsByVenue] = await Promise.all([
+    getVenueImageRows(ids),
+    getLiveFlags(ids, new Date()),
+    getSpecialGuestsByVenueIds(ids),
+  ]);
 
   const cards = rows.map((venue) =>
     toVenueCardModel({
@@ -795,6 +987,7 @@ export async function searchVenues(query: string) {
       imageRows: images.get(venue.id) ?? [],
       hasCameraLive: liveFlags.cameraLive.has(venue.id),
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
+      specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })
   );
 
@@ -804,7 +997,16 @@ export async function searchVenues(query: string) {
   return [...cards]
     .sort((a, b) => {
       const score = (venue: ConsumerVenueCard) => {
-        const haystack = [venue.name, venue.neighborhood, venue.genre, ...venue.genres].join(" ").toLowerCase();
+        const haystack = [
+          venue.name,
+          venue.neighborhood,
+          venue.genre,
+          ...venue.genres,
+          venue.specialGuestHighlight?.title ?? "",
+          venue.specialGuestHighlight?.subtitle ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
         const exact = venue.name.toLowerCase().startsWith(search) ? 1.2 : 0;
         const full = haystack.includes(search) ? 1 : 0;
         const partial = terms.reduce((count, token) => count + Number(haystack.includes(token)), 0) * 0.2;
@@ -833,16 +1035,25 @@ export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDet
     return null;
   }
 
-  const [images, liveFlags] = await Promise.all([
+  const [images, liveFlags, venueSpecialGuestsRows] = await Promise.all([
     getVenueImageRows([row.id]),
     getLiveFlags([row.id], new Date()),
+    db
+      .select()
+      .from(specialGuests)
+      .where(and(eq(specialGuests.venueId, row.id), eq(specialGuests.isArchived, false)))
+      .orderBy(asc(specialGuests.appearanceStartAt), asc(specialGuests.id)),
   ]);
+
+  const venueSpecialGuests = venueSpecialGuestsRows.map(toSpecialGuestModel);
+  const venueSpecialGuestHighlight = toSpecialGuestHighlight(venueSpecialGuestsRows.map(toSpecialGuestRecord), new Date());
 
   const card = toVenueCardModel({
     venue: row,
     imageRows: images.get(row.id) ?? [],
     hasCameraLive: liveFlags.cameraLive.has(row.id),
     hasLiveEvent: liveFlags.eventLive.has(row.id),
+    specialGuests: venueSpecialGuests,
   });
 
   return {
@@ -889,6 +1100,18 @@ export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDet
     isOpenNow: Boolean(row.isOpenNow),
     liveLabel: card.liveLabel,
     liveStatusProvenance: card.liveStatusProvenance,
+    specialGuests: venueSpecialGuests,
+    specialGuestHighlight: venueSpecialGuestHighlight
+      ? {
+          id: venueSpecialGuestHighlight.primary.id,
+          title: venueSpecialGuestHighlight.primary.title,
+          subtitle: venueSpecialGuestHighlight.primary.subtitle,
+          badge: venueSpecialGuestHighlight.primary.badge,
+          typeLabel: venueSpecialGuestHighlight.primary.typeLabel,
+          verificationBadge: venueSpecialGuestHighlight.primary.verificationBadge,
+          additionalCount: venueSpecialGuestHighlight.additionalCount,
+        }
+      : null,
   };
 }
 
@@ -901,9 +1124,31 @@ export async function getEventsForVenue(venueId: number) {
     .where(eq(events.venueId, venueId))
     .orderBy(asc(events.startsAt));
 
-  return rows
-    .filter((row) => isEventPublic(row.event, row.venue, now))
-    .map((row) => toEventCardModel(row.event, row.venue, now));
+  const publicRows = rows.filter((row) => isEventPublic(row.event, row.venue, now));
+  const eventGuests = await getSpecialGuestsByEventIds(publicRows.map((row) => row.event.id));
+
+  return publicRows.map((row) => {
+    const card = toEventCardModel(row.event, row.venue, now);
+    const highlight = toSpecialGuestHighlight(
+      (eventGuests.get(row.event.id) ?? []).map(toSpecialGuestRecordFromConsumer),
+      now
+    );
+    return {
+      ...card,
+      specialGuestSearchTerms: specialGuestSearchTerms(eventGuests.get(row.event.id) ?? []),
+      specialGuestHighlight: highlight
+        ? {
+            id: highlight.primary.id,
+            title: highlight.primary.title,
+            subtitle: highlight.primary.subtitle,
+            badge: highlight.primary.badge,
+            typeLabel: highlight.primary.typeLabel,
+            verificationBadge: highlight.primary.verificationBadge,
+            additionalCount: highlight.additionalCount,
+          }
+        : null,
+    };
+  });
 }
 
 export async function getEventBySlug(slugOrId: string): Promise<ConsumerEventDetail | null> {
@@ -919,7 +1164,25 @@ export async function getEventBySlug(slugOrId: string): Promise<ConsumerEventDet
     return null;
   }
 
+  const [eventSpecialGuestRows, venueSpecialGuestRows] = await Promise.all([
+    db
+      .select()
+      .from(specialGuests)
+      .where(and(eq(specialGuests.eventId, row.event.id), eq(specialGuests.isArchived, false)))
+      .orderBy(asc(specialGuests.appearanceStartAt), asc(specialGuests.id)),
+    db
+      .select()
+      .from(specialGuests)
+      .where(and(eq(specialGuests.venueId, row.venue.id), eq(specialGuests.isArchived, false)))
+      .orderBy(asc(specialGuests.appearanceStartAt), asc(specialGuests.id)),
+  ]);
+
   const model = toEventCardModel(row.event, row.venue, new Date());
+  const detailGuests = (eventSpecialGuestRows.length > 0 ? eventSpecialGuestRows : venueSpecialGuestRows).map(toSpecialGuestModel);
+  const detailHighlight = toSpecialGuestHighlight(
+    (eventSpecialGuestRows.length > 0 ? eventSpecialGuestRows : venueSpecialGuestRows).map(toSpecialGuestRecord),
+    new Date()
+  );
 
   return {
     id: row.event.id,
@@ -958,6 +1221,18 @@ export async function getEventBySlug(slugOrId: string): Promise<ConsumerEventDet
     transferPolicy: row.event.ticketTransferPolicy ?? "allowed",
     refundPolicy: row.event.refundPolicy ?? "standard",
     reEntryPolicy: row.event.reEntryPolicy ?? "no_reentry",
+    specialGuests: detailGuests,
+    specialGuestHighlight: detailHighlight
+      ? {
+          id: detailHighlight.primary.id,
+          title: detailHighlight.primary.title,
+          subtitle: detailHighlight.primary.subtitle,
+          badge: detailHighlight.primary.badge,
+          typeLabel: detailHighlight.primary.typeLabel,
+          verificationBadge: detailHighlight.primary.verificationBadge,
+          additionalCount: detailHighlight.additionalCount,
+        }
+      : null,
   };
 }
 
@@ -974,10 +1249,28 @@ export async function getUpcomingEvents(limit = 24) {
   const now = new Date();
   const rows = await getPublicEventRows(now);
 
-  return rows
-    .filter((row) => row.event.startsAt >= now)
-    .slice(0, limit)
-    .map((row) => toEventCardModel(row.event, row.venue, now));
+  const upcomingRows = rows.filter((row) => row.event.startsAt >= now).slice(0, limit);
+  const eventGuests = await getSpecialGuestsByEventIds(upcomingRows.map((row) => row.event.id));
+
+  return upcomingRows.map((row) => {
+    const eventCard = toEventCardModel(row.event, row.venue, now);
+    const highlight = toSpecialGuestHighlight((eventGuests.get(row.event.id) ?? []).map(toSpecialGuestRecordFromConsumer), now);
+    return {
+      ...eventCard,
+      specialGuestSearchTerms: specialGuestSearchTerms(eventGuests.get(row.event.id) ?? []),
+      specialGuestHighlight: highlight
+        ? {
+            id: highlight.primary.id,
+            title: highlight.primary.title,
+            subtitle: highlight.primary.subtitle,
+            badge: highlight.primary.badge,
+            typeLabel: highlight.primary.typeLabel,
+            verificationBadge: highlight.primary.verificationBadge,
+            additionalCount: highlight.additionalCount,
+          }
+        : null,
+    };
+  });
 }
 
 export async function getSimilarVenues(venueId: number) {
@@ -999,7 +1292,11 @@ export async function getSimilarVenues(venueId: number) {
     .slice(0, 8);
 
   const ids = related.map((venue) => venue.id);
-  const [images, liveFlags] = await Promise.all([getVenueImageRows(ids), getLiveFlags(ids, new Date())]);
+  const [images, liveFlags, specialGuestsByVenue] = await Promise.all([
+    getVenueImageRows(ids),
+    getLiveFlags(ids, new Date()),
+    getSpecialGuestsByVenueIds(ids),
+  ]);
 
   return related.map((venue) =>
     toVenueCardModel({
@@ -1007,6 +1304,7 @@ export async function getSimilarVenues(venueId: number) {
       imageRows: images.get(venue.id) ?? [],
       hasCameraLive: liveFlags.cameraLive.has(venue.id),
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
+      specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })
   );
 }

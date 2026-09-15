@@ -15,7 +15,7 @@ export default async function BookingsPage() {
   const actor = await requireConsumerBookingActor();
   const [dashboard, requestOptions] = await Promise.all([
     getBookingDashboardData({ actor, pageSize: 8 }),
-    getBookingRequestOptions(),
+    getBookingRequestOptions(actor),
   ]);
 
   return (

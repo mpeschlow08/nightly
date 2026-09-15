@@ -9,30 +9,19 @@ import { redirect } from "next/navigation";
 import { writeAuditLog } from "@/app/lib/audit-log";
 import { db } from "@/db";
 import {
-  bookingAuditLog,
-  bookingActivity,
-  bookingAddons,
-  bookingBottles,
-  bookingContracts,
-  bookingContractVersions,
   bookingMessages,
-  bookingNotifications,
-  bookingParticipants,
-  bookingPayments,
   bookingPricing,
-  bookingCheckins,
-  bookingItems,
-  bookingRequirements,
-  bookingStatusHistory,
-  billSplits,
   bookings,
-  tableBookings,
   venueAddons,
   venueBottlePackages,
   venueServers,
   venueTables,
 } from "@/db/schema";
-import { getAllowedBookingTransitions, bookingNotificationTypeForStatus } from "@/lib/bookings/lifecycle";
+import { assertTableAvailability, getVenueTableOperationsSnapshot, selectBestAvailableServer, transitionBookingLifecycleStatus } from "@/lib/bookings/operations";
+import { createBookingWithinTransaction } from "@/lib/bookings/booking-creation";
+import { acquireAdvisoryLock, RESERVATION_LOCK_SCOPE, stableIntHash } from "@/lib/bookings/reservation-locks";
+import { buildReservationPaymentSummary, type ReservationPaymentOption } from "@/lib/bookings/payment-summary";
+import { assertSplitShareTotalMatches } from "@/lib/bookings/split-shares";
 import { requireConsumerBookingActor, getBookingActor } from "./lib/auth";
 import { getBookingById } from "./lib/data";
 import type { BookingLifecycleStatus } from "@/lib/bookings/types";
@@ -104,6 +93,32 @@ function parseSplitLines(raw: string, fallbackTotalCents: number) {
   }));
 }
 
+function parseJsonRecord(value: FormDataEntryValue | null | undefined) {
+  if (typeof value !== "string" || !value.trim()) {
+    return {} as Record<string, unknown>;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+}
+
+function parseJsonArray(value: FormDataEntryValue | null | undefined) {
+  if (typeof value !== "string" || !value.trim()) {
+    return [] as unknown[];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [] as unknown[];
+  }
+}
+
 function buildStatusPatch(status: BookingLifecycleStatus, now: Date) {
   switch (status) {
     case "draft":
@@ -145,54 +160,6 @@ function buildStatusPatch(status: BookingLifecycleStatus, now: Date) {
   }
 }
 
-async function addBookingHistory(input: {
-  bookingId: number;
-  fromStatus: BookingLifecycleStatus | null;
-  toStatus: BookingLifecycleStatus;
-  actorClerkUserId: string;
-  actorRole: string | null;
-  note?: string | null;
-  metadata?: Record<string, unknown>;
-}) {
-  const payload = {
-    bookingId: input.bookingId,
-    fromStatus: input.fromStatus,
-    toStatus: input.toStatus,
-    actorClerkUserId: input.actorClerkUserId,
-    actorRole: input.actorRole,
-    note: input.note ?? null,
-    metadataJson: JSON.stringify(input.metadata ?? {}),
-  };
-
-  await Promise.all([
-    db.insert(bookingStatusHistory).values(payload),
-    db.insert(bookingAuditLog).values({
-      bookingId: input.bookingId,
-      actorClerkUserId: input.actorClerkUserId,
-      actorRole: input.actorRole,
-      action: `status:${input.toStatus}`,
-      previousValuesJson: JSON.stringify({ status: input.fromStatus }),
-      nextValuesJson: JSON.stringify({ status: input.toStatus }),
-      metadataJson: JSON.stringify(input.metadata ?? {}),
-    }),
-  ]);
-}
-
-async function queueBookingNotification(input: {
-  bookingId: number;
-  notificationType: string;
-  recipientClerkUserId?: string | null;
-  payload: Record<string, unknown>;
-}) {
-  await db.insert(bookingNotifications).values({
-    bookingId: input.bookingId,
-    recipientClerkUserId: input.recipientClerkUserId ?? null,
-    notificationType: input.notificationType,
-    payloadJson: JSON.stringify(input.payload),
-    channel: "in_app",
-  });
-}
-
 function bookingNumberForNow(now: Date) {
   const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
   return `BK-${datePart}-${randomUUID().slice(0, 8).toUpperCase()}`;
@@ -228,48 +195,198 @@ export async function createBookingRequestAction(formData: FormData) {
   const inspirationText = toStringValue(formData.get("inspirationText"));
   const specialRequests = toStringValue(formData.get("specialRequests"));
   const city = toStringValue(formData.get("city"));
-  const bookingNumber = bookingNumberForNow(now);
   const tableId = toNumber(formData.get("tableId"));
   const serverId = toNumber(formData.get("serverId"));
   const reservationName = toStringValue(formData.get("reservationName"));
   const minimumSpendInputCents = Math.max(toNumber(formData.get("minimumSpendCents")) ?? 0, 0);
   const bottlePackageIds = toIdList(formData.get("bottlePackageIds"));
   const addonIds = toIdList(formData.get("addonIds"));
-  const splitLines = parseSplitLines(toStringValue(formData.get("splitBillLines")), budgetCents);
+  const reservationConfig = parseJsonRecord(formData.get("reservationConfigJson"));
+  const bottleSelectionsInput = parseJsonArray(formData.get("bottleSelectionsJson"));
+  const addonSelectionsInput = parseJsonArray(formData.get("addonSelectionsJson"));
+  const splitSharesInput = parseJsonArray(formData.get("splitSharesJson"));
+  const paymentOption = (toStringValue(formData.get("paymentOption")) || "deposit_only") as ReservationPaymentOption;
+  const bookingRequestKey = toStringValue(formData.get("idempotencyKey"));
 
-  const [tableRow, serverRow, bottleRows, addonRows] = await Promise.all([
-    tableId
-      ? db.query.venueTables.findFirst({ where: eq(venueTables.id, tableId) })
+  if (!bookingRequestKey) {
+    throw new Error("Missing reservation request key.");
+  }
+
+  let splitLines = parseSplitLines(toStringValue(formData.get("splitBillLines")), budgetCents);
+
+  const selectedBottleIds = bottleSelectionsInput
+    .map((entry) => (entry && typeof entry === "object" ? Number((entry as Record<string, unknown>).id) : NaN))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const selectedAddonIds = addonSelectionsInput
+    .map((entry) => (entry && typeof entry === "object" ? Number((entry as Record<string, unknown>).id) : NaN))
+    .filter((id) => Number.isFinite(id) && id > 0);
+  const effectiveBottleIds = selectedBottleIds.length > 0 ? selectedBottleIds : bottlePackageIds;
+  const effectiveAddonIds = selectedAddonIds.length > 0 ? selectedAddonIds : addonIds;
+
+  let resolvedTableId = tableId;
+  let createdBookingId = 0;
+  let successMessage = status === "draft" ? "Draft saved." : "Booking request submitted.";
+
+  await db.transaction(async (tx) => {
+    const db = tx;
+
+    await acquireAdvisoryLock(db, RESERVATION_LOCK_SCOPE.bookingRequest, stableIntHash(bookingRequestKey));
+
+    const existingBooking = await db
+      .select({ id: bookings.id, lifecycleStatus: bookings.lifecycleStatus })
+      .from(bookings)
+      .where(eq(bookings.idempotencyKey, bookingRequestKey))
+      .limit(1);
+
+    if (existingBooking[0]) {
+      createdBookingId = existingBooking[0].id;
+      successMessage = status === "draft" ? "Draft saved." : "Booking request submitted.";
+      return;
+    }
+
+    const bookingNumber = bookingNumberForNow(now);
+
+  const [initialTableRow, serverRow] = await Promise.all([
+    resolvedTableId
+      ? db.query.venueTables.findFirst({ where: eq(venueTables.id, resolvedTableId) })
       : Promise.resolve(null),
     serverId
       ? db.query.venueServers.findFirst({ where: eq(venueServers.id, serverId) })
       : Promise.resolve(null),
-    bottlePackageIds.length > 0
-      ? db.select().from(venueBottlePackages).where(inArray(venueBottlePackages.id, bottlePackageIds))
+  ]);
+  let tableRow = initialTableRow;
+  const [bottleRows, addonRows] = await Promise.all([
+    effectiveBottleIds.length > 0
+      ? db.select().from(venueBottlePackages).where(inArray(venueBottlePackages.id, effectiveBottleIds))
       : Promise.resolve([]),
-    addonIds.length > 0
-      ? db.select().from(venueAddons).where(inArray(venueAddons.id, addonIds))
+    effectiveAddonIds.length > 0
+      ? db.select().from(venueAddons).where(inArray(venueAddons.id, effectiveAddonIds))
       : Promise.resolve([]),
   ]);
 
-  const selectedBottles = bottleRows.filter((row) => bottlePackageIds.includes(row.id));
-  const selectedAddons = addonRows.filter((row) => addonIds.includes(row.id));
-  const catalogBottleTotalCents = selectedBottles.reduce((sum, row) => sum + row.priceCents, 0);
-  const catalogAddonTotalCents = selectedAddons.reduce((sum, row) => sum + row.unitPriceCents, 0);
-  const minimumSpendCents = Math.max(minimumSpendInputCents, tableRow?.minimumSpendCents ?? 0);
-  const computedVipTotalCents = minimumSpendCents + catalogBottleTotalCents + catalogAddonTotalCents;
-  const totalCents = Math.max(budgetCents, computedVipTotalCents, 0);
-  const depositPercent = Math.min(Math.max(tableRow?.depositPercent ?? 20, 0), 100);
-  const depositRequiredCents = Math.max(Math.round(totalCents * (depositPercent / 100)), 0);
-  const platformFeeCents = Math.round(totalCents * 0.12);
-  const payoutCents = Math.max(totalCents - platformFeeCents - depositRequiredCents, 0);
+  let effectiveServer = serverRow;
+  let serverMetadata = effectiveServer ? parseJsonRecord(effectiveServer.metadataJson) : {};
+  let serverSectionAssignment = typeof serverMetadata.sectionAssignment === "string" ? serverMetadata.sectionAssignment : null;
+  if (venueId && effectiveServer && serverSectionAssignment && (!tableRow || tableRow.sectionName !== serverSectionAssignment)) {
+    const snapshot = await getVenueTableOperationsSnapshot(venueId, db);
+    const matchedTable = snapshot.find((row) => row.liveStatus === "available" && row.sectionName === serverSectionAssignment);
+    if (matchedTable) {
+      resolvedTableId = matchedTable.id;
+      tableRow = await db.query.venueTables.findFirst({ where: eq(venueTables.id, matchedTable.id) });
+    }
+  }
 
-  const [booking] = await db
-    .insert(bookings)
-    .values({
+  const requestedExperienceType = typeof reservationConfig.experienceType === "string" ? reservationConfig.experienceType : null;
+  const selectedBottles = bottleRows
+    .filter((row) => effectiveBottleIds.includes(row.id))
+    .map((row) => {
+      const input = bottleSelectionsInput.find((entry) => entry && typeof entry === "object" && Number((entry as Record<string, unknown>).id) === row.id) as Record<string, unknown> | undefined;
+      return { ...row, quantity: Math.max(Number(input?.quantity ?? 1), 1) };
+    });
+  const selectedAddons = addonRows
+    .filter((row) => effectiveAddonIds.includes(row.id))
+    .map((row) => {
+      const input = addonSelectionsInput.find((entry) => entry && typeof entry === "object" && Number((entry as Record<string, unknown>).id) === row.id) as Record<string, unknown> | undefined;
+      return { ...row, quantity: Math.max(Number(input?.quantity ?? 1), 1) };
+    });
+
+  if (requestedExperienceType && requestedExperienceType !== "table_only" && selectedBottles.length === 0) {
+    throw new Error("Bottle selections are required for this reservation experience.");
+  }
+
+  if (venueId && resolvedTableId) {
+    await assertTableAvailability({
+      venueId,
+      venueTableId: resolvedTableId,
+      requestedStartAt,
+      requestedEndAt,
+    }, db)
+  }
+
+  const tableMetadata = tableRow ? parseJsonRecord(tableRow.metadataJson) : {};
+  if (venueId && tableRow) {
+    effectiveServer = await selectBestAvailableServer({
+      venueId,
+      requestedStartAt,
+      requestedEndAt,
+      sectionName: tableRow.sectionName,
+      partySize: Math.max(guestCount, 1),
+      preferredServerId: effectiveServer?.id ?? null,
+    }, db)
+    serverMetadata = effectiveServer ? parseJsonRecord(effectiveServer.metadataJson) : {};
+    serverSectionAssignment = typeof serverMetadata.sectionAssignment === "string" ? serverMetadata.sectionAssignment : null;
+  }
+
+  const catalogBottleTotalCents = selectedBottles.reduce((sum, row) => sum + row.priceCents * row.quantity, 0);
+  const catalogAddonTotalCents = selectedAddons.reduce((sum, row) => sum + row.unitPriceCents * row.quantity, 0);
+  const minimumSpendCents = Math.max(minimumSpendInputCents, tableRow?.minimumSpendCents ?? 0);
+  const reservationFeeCents = Number(tableMetadata.reservationFeeCents ?? 0) || 0;
+  const bottleMinimumCents = Number(tableMetadata.bottleMinimumCents ?? 0) || 0;
+  const paymentSummary = buildReservationPaymentSummary({
+    minimumSpendCents,
+    bottleMinimumCents,
+    reservationFeeCents,
+    bottleSubtotalCents: catalogBottleTotalCents,
+    addonSubtotalCents: catalogAddonTotalCents,
+    depositPercent: Math.min(Math.max(tableRow?.depositPercent ?? 20, 0), 100),
+    paymentOption,
+  });
+  const totalCents = Math.max(paymentSummary.totalCents, 0);
+  const depositRequiredCents = Math.max(paymentSummary.depositCents, 0);
+  const platformFeeCents = Math.round(totalCents * 0.12);
+  const payoutCents = Math.max(totalCents - platformFeeCents, 0);
+
+  if (splitSharesInput.length > 0) {
+    splitLines = splitSharesInput
+      .filter((entry) => entry && typeof entry === "object")
+      .map((entry) => {
+        const candidate = entry as Record<string, unknown>;
+        const amountCents = Math.max(Number(candidate.amountCents ?? 0), 0);
+        return {
+          name: typeof candidate.displayName === "string" ? candidate.displayName : "Guest",
+          email: typeof candidate.handle === "string" ? `${candidate.handle}@nightly.social` : null,
+          amountCents,
+          splitPercent: totalCents > 0 ? Number(((amountCents / totalCents) * 100).toFixed(2)) : null,
+        };
+      })
+      .filter((entry) => entry.amountCents > 0);
+  }
+
+  assertSplitShareTotalMatches(splitLines, totalCents);
+
+  const tableBookingPayload = tableRow
+    ? {
+        venueId: tableRow.venueId,
+        venueTableId: tableRow.id,
+        serverId: effectiveServer?.id ?? null,
+        bookingCategory: requestedExperienceType || (bookingType === "bottle_service_reservation" ? "bottle_service" : "vip_table"),
+        reservationName: reservationName || null,
+        partySize: Math.max(guestCount, 1),
+        reservationStartAt: requestedStartAt,
+        reservationEndAt: requestedEndAt,
+        status: status === "draft" ? "draft" : "pending",
+        minimumSpendCents,
+        depositAmountCents: depositRequiredCents,
+        notes: notes || null,
+        metadataJson: JSON.stringify({
+          floorObjectId: Number(reservationConfig.floorObjectId ?? tableRow.floorObjectId ?? 0) || tableRow.floorObjectId,
+          sectionName: tableRow.sectionName,
+          paymentOption,
+          reservationFeeCents,
+          bottleMinimumCents,
+          assignedServerSection: serverSectionAssignment,
+          experienceType: requestedExperienceType,
+        }),
+        createdAt: now,
+        updatedAt: now,
+      }
+    : null;
+  const created = await createBookingWithinTransaction({
+    bookingValues: {
       bookingNumber,
       bookingType,
       lifecycleStatus: status,
+      idempotencyKey: bookingRequestKey,
       requesterClerkUserId: actor.clerkUserId,
       consumerClerkUserId: actor.clerkUserId,
       djProfileId: djProfileId || null,
@@ -291,19 +408,8 @@ export async function createBookingRequestAction(formData: FormData) {
       platformFeeCents,
       payoutCents,
       ...buildStatusPatch(status, now),
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
-
-  if (!booking) {
-    throw new Error("Failed to create booking.");
-  }
-
-  const [bookingContract] = await db
-    .insert(bookingContracts)
-    .values({
-      bookingId: booking.id,
+    },
+    contractValues: {
       versionNumber: 1,
       status: status === "draft" ? "draft" : "sent",
       title: `Nightly booking ${bookingNumber}`,
@@ -314,218 +420,15 @@ export async function createBookingRequestAction(formData: FormData) {
         totalCents,
         platformFeeCents,
         payoutCents,
+        paymentOption,
         requestedStartAt: requestedStartAt.toISOString(),
         requestedEndAt: requestedEndAt.toISOString(),
         timezone,
       }),
       generatedAt: now,
       sentAt: status === "draft" ? null : now,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning({ id: bookingContracts.id });
-
-  if (!bookingContract) {
-    throw new Error("Failed to create booking contract.");
-  }
-
-  const tableBookingPayload = tableRow
-    ? {
-        bookingId: booking.id,
-        venueId: tableRow.venueId,
-        venueTableId: tableRow.id,
-        serverId: serverRow?.id ?? null,
-        bookingCategory: bookingType === "bottle_service_reservation" ? "bottle_service" : "vip_table",
-        reservationName: reservationName || null,
-        partySize: Math.max(guestCount, 1),
-        reservationStartAt: requestedStartAt,
-        reservationEndAt: requestedEndAt,
-        status: status === "draft" ? "draft" : "pending",
-        minimumSpendCents,
-        depositAmountCents: depositRequiredCents,
-        notes: notes || null,
-        metadataJson: JSON.stringify({ floorObjectId: tableRow.floorObjectId, sectionName: tableRow.sectionName }),
-        createdAt: now,
-        updatedAt: now,
-      }
-    : null;
-
-  await Promise.all([
-    addBookingHistory({
-      bookingId: booking.id,
-      fromStatus: null,
-      toStatus: status,
-      actorClerkUserId: actor.clerkUserId,
-      actorRole: actor.role,
-      note: status === "draft" ? "Booking draft created." : "Booking request submitted.",
-      metadata: { bookingType, venueId, djProfileId, durationMinutes, guestCount },
-    }),
-    db.insert(bookingParticipants).values([
-      {
-        bookingId: booking.id,
-        participantRole: "consumer",
-        clerkUserId: actor.clerkUserId,
-        displayName: "Consumer",
-        isPrimary: true,
-        responseStatus: "confirmed",
-        createdAt: now,
-        updatedAt: now,
-      },
-      ...(djProfileId
-        ? [
-            {
-              bookingId: booking.id,
-              participantRole: "dj" as const,
-              clerkUserId: `dj-profile-${djProfileId}`,
-              djProfileId,
-              displayName: "DJ",
-              isPrimary: false,
-              responseStatus: "invited",
-              createdAt: now,
-              updatedAt: now,
-            },
-          ]
-        : []),
-      ...(venueId
-        ? [
-            {
-              bookingId: booking.id,
-              participantRole: "venue" as const,
-              clerkUserId: `venue-${venueId}`,
-              venueId,
-              displayName: "Venue",
-              isPrimary: false,
-              responseStatus: "invited",
-              createdAt: now,
-              updatedAt: now,
-            },
-          ]
-        : []),
-    ]),
-    db.insert(bookingPricing).values({
-      bookingId: booking.id,
-      pricingKind: "quote",
-      quoteVersion: 1,
-      baseAmountCents: totalCents,
-      depositAmountCents: depositRequiredCents,
-      serviceFeeCents: Math.round(totalCents * 0.08),
-      taxCents: Math.round(totalCents * 0.07),
-      platformFeeCents,
-      travelFeeCents: 0,
-      surgeFeeCents: 0,
-      discountCents: 0,
-      totalAmountCents: totalCents,
-      currency: "USD",
-      quoteNotes: "Initial consumer request quote.",
-      createdAt: now,
-      updatedAt: now,
-    }),
-    ...(tableBookingPayload ? [db.insert(tableBookings).values(tableBookingPayload)] : []),
-    db.insert(bookingItems).values([
-      {
-        bookingId: booking.id,
-        itemType: "reservation_base",
-        referenceId: tableRow?.id ?? null,
-        label: bookingType === "bottle_service_reservation" ? "Bottle Service Reservation" : "VIP Table Reservation",
-        quantity: 1,
-        unitPriceCents: minimumSpendCents > 0 ? minimumSpendCents : totalCents,
-        totalPriceCents: minimumSpendCents > 0 ? minimumSpendCents : totalCents,
-        metadataJson: JSON.stringify({ bookingType }),
-        createdAt: now,
-      },
-      ...selectedBottles.map((bottle) => ({
-        bookingId: booking.id,
-        itemType: "bottle_package",
-        referenceId: bottle.id,
-        label: bottle.name,
-        quantity: 1,
-        unitPriceCents: bottle.priceCents,
-        totalPriceCents: bottle.priceCents,
-        metadataJson: JSON.stringify({ description: bottle.description }),
-        createdAt: now,
-      })),
-      ...selectedAddons.map((addon) => ({
-        bookingId: booking.id,
-        itemType: "addon",
-        referenceId: addon.id,
-        label: addon.name,
-        quantity: 1,
-        unitPriceCents: addon.unitPriceCents,
-        totalPriceCents: addon.unitPriceCents,
-        metadataJson: JSON.stringify({ category: addon.category }),
-        createdAt: now,
-      })),
-    ]),
-    ...(selectedBottles.length > 0
-      ? [
-          db.insert(bookingBottles).values(
-            selectedBottles.map((bottle) => ({
-              bookingId: booking.id,
-              bottlePackageId: bottle.id,
-              label: bottle.name,
-              quantity: 1,
-              unitPriceCents: bottle.priceCents,
-              mixersJson: bottle.mixersJson,
-              notes: bottle.description,
-              createdAt: now,
-              updatedAt: now,
-            }))
-          ),
-        ]
-      : []),
-    ...(selectedAddons.length > 0
-      ? [
-          db.insert(bookingAddons).values(
-            selectedAddons.map((addon) => ({
-              bookingId: booking.id,
-              venueAddonId: addon.id,
-              label: addon.name,
-              quantity: 1,
-              unitPriceCents: addon.unitPriceCents,
-              totalPriceCents: addon.unitPriceCents,
-              notes: addon.description,
-              createdAt: now,
-              updatedAt: now,
-            }))
-          ),
-        ]
-      : []),
-    ...(splitLines.length > 0
-      ? [
-          db.insert(billSplits).values(
-            splitLines.map((split) => ({
-              bookingId: booking.id,
-              payerDisplayName: split.name,
-              payerEmail: split.email,
-              splitPercent: split.splitPercent,
-              amountCents: split.amountCents,
-              status: "pending",
-              inviteToken: randomUUID(),
-              invitedAt: now,
-              metadataJson: JSON.stringify({ source: "consumer_request" }),
-              createdAt: now,
-              updatedAt: now,
-            }))
-          ),
-        ]
-      : []),
-    db.insert(bookingActivity).values({
-      bookingId: booking.id,
-      actorClerkUserId: actor.clerkUserId,
-      actorRole: actor.role,
-      activityType: "booking_created",
-      details: status === "draft" ? "Draft booking created with VIP preferences." : "Booking request submitted with VIP preferences.",
-      metadataJson: JSON.stringify({
-        tableId: tableRow?.id ?? null,
-        serverId: serverRow?.id ?? null,
-        bottlePackageIds,
-        addonIds,
-        splitCount: splitLines.length,
-      }),
-      createdAt: now,
-    }),
-    db.insert(bookingContractVersions).values({
-      bookingContractId: bookingContract.id,
+    },
+    contractVersionValues: {
       versionNumber: 1,
       contentJson: JSON.stringify({
         title: `Nightly booking ${bookingNumber}`,
@@ -535,63 +438,228 @@ export async function createBookingRequestAction(formData: FormData) {
         specialRequests,
       }),
       createdByClerkUserId: actor.clerkUserId,
-      createdAt: now,
-    }),
-    db.insert(bookingRequirements).values(
-      [notes, specialRequests]
-        .filter((value): value is string => Boolean(value))
-        .map((value, index) => ({
-          bookingId: booking.id,
-          requirementType: index === 0 ? "booking_notes" : "special_requests",
-          title: index === 0 ? "Booking notes" : "Special requests",
-          details: value,
-          isRequired: index === 1,
-          isMet: false,
-          status: "open",
-          createdAt: now,
-          updatedAt: now,
-        }))
-    ),
-    db.insert(bookingMessages).values({
-      bookingId: booking.id,
+    },
+    tableBookingValues: tableBookingPayload,
+    participantValues: [
+      {
+        participantRole: "consumer",
+        clerkUserId: actor.clerkUserId,
+        displayName: "Consumer",
+        isPrimary: true,
+        responseStatus: "confirmed",
+      },
+      ...(djProfileId
+        ? [
+            {
+              participantRole: "dj" as const,
+              clerkUserId: `dj-profile-${djProfileId}`,
+              djProfileId,
+              displayName: "DJ",
+              isPrimary: false,
+              responseStatus: "invited",
+            },
+          ]
+        : []),
+      ...(venueId
+        ? [
+            {
+              participantRole: "venue" as const,
+              clerkUserId: `venue-${venueId}`,
+              venueId,
+              displayName: "Venue",
+              isPrimary: false,
+              responseStatus: "invited",
+            },
+          ]
+        : []),
+      ...splitSharesInput
+        .filter((entry) => entry && typeof entry === "object")
+        .flatMap((entry) => {
+          const candidate = entry as Record<string, unknown>;
+          const clerkUserId = typeof candidate.clerkUserId === "string" ? candidate.clerkUserId : null;
+          const displayName = typeof candidate.displayName === "string" ? candidate.displayName : "Guest";
+          const isHost = Boolean(candidate.isHost);
+          if (!clerkUserId || isHost || clerkUserId === actor.clerkUserId) {
+            return [];
+          }
+
+          return [{
+            participantRole: "consumer" as const,
+            clerkUserId,
+            displayName,
+            isPrimary: false,
+            responseStatus: "invited",
+          }];
+        }),
+    ],
+    pricingValues: {
+      pricingKind: "quote",
+      quoteVersion: 1,
+      baseAmountCents: paymentSummary.spendTargetCents + reservationFeeCents,
+      depositAmountCents: depositRequiredCents,
+      serviceFeeCents: paymentSummary.serviceFeeCents,
+      taxCents: paymentSummary.taxCents,
+      platformFeeCents,
+      travelFeeCents: 0,
+      surgeFeeCents: 0,
+      discountCents: 0,
+      totalAmountCents: totalCents,
+      currency: "USD",
+      quoteNotes: `Initial consumer request quote (${paymentOption}).`,
+    },
+    paymentValues: [
+      {
+        provider: "nightly_manual",
+        status: "due",
+        amountCents: paymentSummary.dueNowCents,
+        currency: "USD",
+        platformFeeCents,
+        payoutCents,
+        paymentMethod: paymentOption,
+        dueAt: now,
+      },
+      ...(paymentSummary.remainingBalanceCents > 0
+        ? [{
+            provider: "nightly_manual_balance",
+            status: "pending" as const,
+            amountCents: paymentSummary.remainingBalanceCents,
+            currency: "USD",
+            platformFeeCents: 0,
+            payoutCents: paymentSummary.remainingBalanceCents,
+            paymentMethod: "venue_settlement",
+            dueAt: requestedStartAt,
+          }]
+        : []),
+    ],
+    itemValues: [
+      {
+        itemType: "reservation_base",
+        referenceId: tableRow?.id ?? null,
+        label: requestedExperienceType ? requestedExperienceType.replace(/_/g, " ") : bookingType === "bottle_service_reservation" ? "Bottle Service Reservation" : "VIP Table Reservation",
+        quantity: 1,
+        unitPriceCents: paymentSummary.spendTargetCents + reservationFeeCents,
+        totalPriceCents: paymentSummary.spendTargetCents + reservationFeeCents,
+        metadataJson: JSON.stringify({ bookingType, experienceType: requestedExperienceType, paymentOption }),
+      },
+      ...selectedBottles.map((bottle) => ({
+        itemType: "bottle_package",
+        referenceId: bottle.id,
+        label: bottle.name,
+        quantity: bottle.quantity,
+        unitPriceCents: bottle.priceCents,
+        totalPriceCents: bottle.priceCents * bottle.quantity,
+        metadataJson: JSON.stringify({ description: bottle.description }),
+      })),
+      ...selectedAddons.map((addon) => ({
+        itemType: "addon",
+        referenceId: addon.id,
+        label: addon.name,
+        quantity: addon.quantity,
+        unitPriceCents: addon.unitPriceCents,
+        totalPriceCents: addon.unitPriceCents * addon.quantity,
+        metadataJson: JSON.stringify({ category: addon.category }),
+      })),
+    ],
+    bottleValues: selectedBottles.map((bottle) => ({
+      bottlePackageId: bottle.id,
+      label: bottle.name,
+      quantity: bottle.quantity,
+      unitPriceCents: bottle.priceCents,
+      mixersJson: bottle.mixersJson,
+      notes: bottle.description,
+    })),
+    addonValues: selectedAddons.map((addon) => ({
+      venueAddonId: addon.id,
+      label: addon.name,
+      quantity: addon.quantity,
+      unitPriceCents: addon.unitPriceCents,
+      totalPriceCents: addon.unitPriceCents * addon.quantity,
+      notes: addon.description,
+    })),
+    splitValues: splitLines.map((split) => ({
+      payerClerkUserId: null,
+      payerDisplayName: split.name,
+      payerEmail: split.email,
+      splitPercent: split.splitPercent,
+      amountCents: split.amountCents,
+      status: "pending",
+      inviteToken: randomUUID(),
+      invitedAt: now,
+      metadataJson: JSON.stringify({ source: "consumer_request" }),
+    })),
+    requirementValues: [notes, specialRequests]
+      .filter((value): value is string => Boolean(value))
+      .map((value, index) => ({
+        requirementType: index === 0 ? "booking_notes" : "special_requests",
+        title: index === 0 ? "Booking notes" : "Special requests",
+        details: value,
+        isRequired: index === 1,
+        isMet: false,
+        status: "open",
+      })),
+    checkinValues: {
+      status: "pending",
+    },
+    messageValues: {
       senderRole: "system",
       senderClerkUserId: "system",
       messageType: "timeline",
       body: status === "draft" ? "A draft booking was created." : "A booking request was submitted.",
       isSystem: true,
-      createdAt: now,
-    }),
-    db.insert(bookingCheckins).values({
-      bookingId: booking.id,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    }),
-    db.insert(bookingNotifications).values({
-      bookingId: booking.id,
+    },
+    activityValues: {
+      actorClerkUserId: actor.clerkUserId,
+      actorRole: actor.role,
+      activityType: "booking_created",
+      details: status === "draft" ? "Draft booking created with VIP preferences." : "Booking request submitted with VIP preferences.",
+      metadataJson: JSON.stringify({
+        tableId: tableRow?.id ?? null,
+        serverId: effectiveServer?.id ?? null,
+        bottlePackageIds: effectiveBottleIds,
+        addonIds: effectiveAddonIds,
+        splitCount: splitLines.length,
+        paymentOption,
+        experienceType: requestedExperienceType,
+      }),
+    },
+    notificationValues: {
       recipientClerkUserId: actor.clerkUserId,
       notificationType: status === "draft" ? "booking_created" : "booking_requested",
-      payloadJson: JSON.stringify({ bookingId: booking.id, bookingNumber, bookingType }),
+      payloadJson: JSON.stringify({ bookingNumber, bookingType }),
       status: "queued",
       scheduledAt: now,
-      createdAt: now,
-      updatedAt: now,
-    }),
-    writeAuditLog({
+    },
+    historyValues: {
+      fromStatus: null,
+      toStatus: status,
+      actorClerkUserId: actor.clerkUserId,
+      actorRole: actor.role,
+      note: status === "draft" ? "Booking draft created." : "Booking request submitted.",
+      metadata: { bookingType, venueId, djProfileId, durationMinutes, guestCount },
+    },
+  }, db);
+
+  createdBookingId = created.bookingId;
+
+  if (created.created) {
+    await writeAuditLog({
       actorClerkUserId: actor.clerkUserId,
       actorRole: actor.role,
       entityType: "booking",
-      entityId: booking.id,
+      entityId: created.bookingId,
       action: status === "draft" ? "booking_draft_created" : "booking_requested",
       metadata: { bookingNumber, bookingType, venueId, djProfileId },
-    }),
-  ]);
+    }, db);
+  }
+
+    successMessage = status === "draft" ? "Draft saved." : "Booking request submitted.";
+  });
 
   revalidateTag("bookings:consumer", "max");
   revalidateTag("bookings:admin", "max");
   revalidateTag("bookings:dashboard", "max");
 
-  redirect(`/bookings/${booking.id}?success=${encodeURIComponent(status === "draft" ? "Draft saved." : "Booking request submitted.")}`);
+  redirect(`/bookings/${createdBookingId}?success=${encodeURIComponent(successMessage)}`);
 }
 
 export async function submitBookingCounterOfferAction(formData: FormData) {
@@ -603,106 +671,104 @@ export async function submitBookingCounterOfferAction(formData: FormData) {
     throw new Error("Booking not found or inaccessible.");
   }
 
+  const bookingRecord = booking.booking;
+
   if (actor.role === "consumer") {
     throw new Error("Only vendors can submit counter offers.");
   }
 
   const now = new Date();
-  const nextPrice = Math.max(toNumber(formData.get("counterOfferAmountCents")) ?? booking.booking.totalCents, 0);
+  const nextPrice = Math.max(toNumber(formData.get("counterOfferAmountCents")) ?? bookingRecord.totalCents, 0);
   const nextDeposit = Math.max(toNumber(formData.get("counterOfferDepositCents")) ?? Math.round(nextPrice * 0.2), 0);
   const baseDuration =
-    booking.booking.requestedStartAt && booking.booking.requestedEndAt
-      ? Math.max(Math.round((booking.booking.requestedEndAt.getTime() - booking.booking.requestedStartAt.getTime()) / 60000), 30)
+    bookingRecord.requestedStartAt && bookingRecord.requestedEndAt
+      ? Math.max(Math.round((bookingRecord.requestedEndAt.getTime() - bookingRecord.requestedStartAt.getTime()) / 60000), 30)
       : 60;
   const nextDuration = Math.max(toNumber(formData.get("counterOfferDurationMinutes")) ?? baseDuration, 15);
   const counterNote = toStringValue(formData.get("note")) || "A counter offer was submitted.";
   const expirationHours = Math.max(toNumber(formData.get("counterOfferExpirationHours")) ?? 24, 1);
-  const startAt = booking.booking.requestedStartAt ?? null;
-  const endAt = booking.booking.requestedEndAt ?? null;
+  const startAt = bookingRecord.requestedStartAt ?? null;
+  const endAt = bookingRecord.requestedEndAt ?? null;
 
-  await db
-    .update(bookings)
-    .set({
-      lifecycleStatus: "counter_offered",
-      counterOfferAmountCents: nextPrice,
-      counterOfferDepositCents: nextDeposit,
-      counterOfferDurationMinutes: nextDuration,
-      counterOfferPackage: toStringValue(formData.get("counterOfferPackage")) || null,
-      counterOfferStartAt: startAt,
-      counterOfferEndAt: endAt,
-      counterOfferRequirementsJson: toStringValue(formData.get("counterOfferRequirementsJson")) || null,
-      counterOfferExpiresAt: new Date(now.getTime() + expirationHours * 60 * 60 * 1000),
-      ...buildStatusPatch("counter_offered", now),
-      updatedAt: now,
-    })
-    .where(eq(bookings.id, bookingId));
+  await db.transaction(async (tx) => {
+    await acquireAdvisoryLock(tx, RESERVATION_LOCK_SCOPE.booking, bookingId);
 
-  await Promise.all([
-    addBookingHistory({
+    const [currentBooking] = await tx
+      .select({ lifecycleStatus: bookings.lifecycleStatus, consumerClerkUserId: bookings.consumerClerkUserId, totalCents: bookings.totalCents, venueId: bookings.venueId })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!currentBooking) {
+      throw new Error("Booking not found or inaccessible.");
+    }
+
+    if (currentBooking.lifecycleStatus === "counter_offered") {
+      return;
+    }
+
+    await tx
+      .update(bookings)
+      .set({
+        counterOfferAmountCents: nextPrice,
+        counterOfferDepositCents: nextDeposit,
+        counterOfferDurationMinutes: nextDuration,
+        counterOfferPackage: toStringValue(formData.get("counterOfferPackage")) || null,
+        counterOfferStartAt: startAt,
+        counterOfferEndAt: endAt,
+        counterOfferRequirementsJson: toStringValue(formData.get("counterOfferRequirementsJson")) || null,
+        counterOfferExpiresAt: new Date(now.getTime() + expirationHours * 60 * 60 * 1000),
+        updatedAt: now,
+      })
+      .where(eq(bookings.id, bookingId));
+
+    await transitionBookingLifecycleStatus({
       bookingId,
-      fromStatus: booking.booking.lifecycleStatus,
-      toStatus: "counter_offered",
       actorClerkUserId: actor.clerkUserId,
       actorRole: actor.role,
+      nextStatus: "counter_offered",
       note: counterNote,
-      metadata: {
-        nextPrice,
-        nextDeposit,
-        nextDuration,
-      },
-    }),
-    db.insert(bookingPricing).values({
-      bookingId,
-      pricingKind: "counter_offer",
-      quoteVersion: booking.pricing.length + 1,
-      baseAmountCents: nextPrice,
-      depositAmountCents: nextDeposit,
-      serviceFeeCents: booking.pricing[0]?.serviceFeeCents ?? 0,
-      taxCents: booking.pricing[0]?.taxCents ?? 0,
-      platformFeeCents: booking.pricing[0]?.platformFeeCents ?? 0,
-      travelFeeCents: booking.pricing[0]?.travelFeeCents ?? 0,
-      surgeFeeCents: 0,
-      discountCents: 0,
-      totalAmountCents: nextPrice,
-      currency: booking.pricing[0]?.currency ?? "USD",
-      quoteExpiresAt: new Date(now.getTime() + expirationHours * 60 * 60 * 1000),
-      quoteNotes: counterNote,
-      createdAt: now,
-      updatedAt: now,
-    }),
-    db.insert(bookingMessages).values({
-      bookingId,
-      senderRole: actor.role === "owner" ? "venue" : actor.role === "dj" ? "dj" : "admin",
-      senderClerkUserId: actor.clerkUserId,
-      messageType: "counter_offer",
-      body: counterNote,
-      isSystem: false,
-      createdAt: now,
-    }),
-    db.insert(bookingActivity).values({
-      bookingId,
-      actorClerkUserId: actor.clerkUserId,
-      actorRole: actor.role,
-      activityType: "counter_offer",
-      details: counterNote,
-      metadataJson: JSON.stringify({ nextPrice, nextDeposit, nextDuration }),
-      createdAt: now,
-    }),
-    queueBookingNotification({
-      bookingId,
-      notificationType: "booking_countered",
-      recipientClerkUserId: booking.booking.consumerClerkUserId,
-      payload: { bookingId, nextPrice, nextDeposit },
-    }),
-    writeAuditLog({
-      actorClerkUserId: actor.clerkUserId,
-      actorRole: actor.role,
-      entityType: "booking",
-      entityId: bookingId,
-      action: "booking_counter_offered",
-      metadata: { nextPrice, nextDeposit, nextDuration },
-    }),
-  ]);
+    }, tx);
+
+    await Promise.all([
+      tx.insert(bookingPricing).values({
+        bookingId,
+        pricingKind: "counter_offer",
+        quoteVersion: booking.pricing.length + 1,
+        baseAmountCents: nextPrice,
+        depositAmountCents: nextDeposit,
+        serviceFeeCents: booking.pricing[0]?.serviceFeeCents ?? 0,
+        taxCents: booking.pricing[0]?.taxCents ?? 0,
+        platformFeeCents: booking.pricing[0]?.platformFeeCents ?? 0,
+        travelFeeCents: booking.pricing[0]?.travelFeeCents ?? 0,
+        surgeFeeCents: 0,
+        discountCents: 0,
+        totalAmountCents: nextPrice,
+        currency: booking.pricing[0]?.currency ?? "USD",
+        quoteExpiresAt: new Date(now.getTime() + expirationHours * 60 * 60 * 1000),
+        quoteNotes: counterNote,
+        createdAt: now,
+        updatedAt: now,
+      }),
+      tx.insert(bookingMessages).values({
+        bookingId,
+        senderRole: actor.role === "owner" ? "venue" : actor.role === "dj" ? "dj" : "admin",
+        senderClerkUserId: actor.clerkUserId,
+        messageType: "counter_offer",
+        body: counterNote,
+        isSystem: false,
+        createdAt: now,
+      }),
+      writeAuditLog({
+        actorClerkUserId: actor.clerkUserId,
+        actorRole: actor.role,
+        entityType: "booking",
+        entityId: bookingId,
+        action: "booking_counter_offered",
+        metadata: { nextPrice, nextDeposit, nextDuration },
+      }, tx),
+    ]);
+  });
 
   revalidateTag("bookings:consumer", "max");
   revalidateTag("bookings:dashboard", "max");
@@ -720,72 +786,13 @@ export async function transitionBookingStatusAction(formData: FormData) {
     throw new Error("Booking not found or inaccessible.");
   }
 
-  const allowed = getAllowedBookingTransitions(booking.booking.lifecycleStatus);
-  if (!allowed.includes(nextStatus)) {
-    throw new Error("That booking transition is not allowed.");
-  }
-
-  const now = new Date();
-  await db
-    .update(bookings)
-    .set({
-      lifecycleStatus: nextStatus,
-      cancellationReason: nextStatus.startsWith("cancelled") ? note : booking.booking.cancellationReason,
-      refundReason: nextStatus === "refund_pending" ? note : booking.booking.refundReason,
-      disputeReason: nextStatus === "disputed" ? note : booking.booking.disputeReason,
-      ...buildStatusPatch(nextStatus, now),
-      updatedAt: now,
-    })
-    .where(eq(bookings.id, bookingId));
-
-  await addBookingHistory({
+  await transitionBookingLifecycleStatus({
     bookingId,
-    fromStatus: booking.booking.lifecycleStatus,
-    toStatus: nextStatus,
     actorClerkUserId: actor.clerkUserId,
     actorRole: actor.role,
+    nextStatus,
     note,
-    metadata: { nextStatus },
   });
-
-  await db.insert(bookingActivity).values({
-    bookingId,
-    actorClerkUserId: actor.clerkUserId,
-    actorRole: actor.role,
-    activityType: "status_transition",
-    details: note,
-    metadataJson: JSON.stringify({ fromStatus: booking.booking.lifecycleStatus, toStatus: nextStatus }),
-    createdAt: now,
-  });
-
-  const notificationType = bookingNotificationTypeForStatus(nextStatus);
-  if (notificationType) {
-    await queueBookingNotification({
-      bookingId,
-      notificationType,
-      recipientClerkUserId: booking.booking.consumerClerkUserId,
-      payload: { bookingId, nextStatus },
-    });
-  }
-
-  if (nextStatus === "deposit_required" && booking.booking.totalCents > 0) {
-    await db.insert(bookingPayments).values({
-      bookingId,
-      provider: "stripe",
-      status: "due",
-      amountCents: booking.booking.counterOfferDepositCents ?? Math.round(booking.booking.totalCents * 0.2),
-      currency: "USD",
-      platformFeeCents: Math.round(booking.booking.totalCents * 0.12),
-      payoutCents: booking.booking.payoutCents,
-      dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  if (nextStatus === "accepted") {
-    await db.update(bookingContracts).set({ status: "sent", sentAt: now, updatedAt: now }).where(eq(bookingContracts.bookingId, bookingId));
-  }
 
   await writeAuditLog({
     actorClerkUserId: actor.clerkUserId,
