@@ -19,22 +19,22 @@ export default function ExploreSearchBar({
 
   return (
     <div className="px-4 sm:px-5 lg:px-6">
-      <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-[1.1rem] border border-white/12 bg-white/6 p-2 backdrop-blur-xl">
-        <div className="flex min-h-10 w-10 items-center justify-center rounded-full bg-black/30 text-zinc-300" aria-hidden="true">
+      <div className="nightly-surface mx-auto flex max-w-6xl items-center gap-2 rounded-[1.1rem] p-2.5">
+        <div className="flex min-h-10 w-10 items-center justify-center rounded-full bg-black/36 text-[color:var(--text-secondary)]" aria-hidden="true">
           <span className="text-sm">⌕</span>
         </div>
 
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Search venues, DJs, events, neighborhoods, genres"
-          className="min-h-10 min-w-0 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-zinc-500"
+          placeholder="Search venues, events, special guests"
+          className="min-h-10 min-w-0 flex-1 bg-transparent px-1 text-sm text-[color:var(--text-primary)] outline-none placeholder:text-[color:var(--text-muted)]"
           aria-label="Search explore"
         />
 
         <button
           type="button"
-          className="nightly-btn-secondary min-h-10 rounded-full border border-white/15 bg-white/5 px-3 text-xs font-medium text-zinc-300"
+          className="nightly-btn-secondary min-h-10 rounded-full border border-[color:var(--border)] bg-white/[0.03] px-3 text-xs font-medium text-[color:var(--text-secondary)]"
           aria-label="Voice search coming soon"
           title="Voice search coming soon"
         >
@@ -45,7 +45,7 @@ export default function ExploreSearchBar({
           <button
             type="button"
             onClick={onClear}
-            className="nightly-btn-secondary min-h-10 rounded-full border border-white/15 bg-white/5 px-3 text-xs font-medium text-zinc-300"
+            className="nightly-btn-secondary min-h-10 rounded-full border border-[color:var(--border)] bg-white/[0.03] px-3 text-xs font-medium text-[color:var(--text-secondary)]"
             aria-label="Clear search"
           >
             Clear
@@ -55,7 +55,7 @@ export default function ExploreSearchBar({
         <button
           type="button"
           onClick={onOpenFilters}
-          className="nightly-btn-secondary min-h-10 rounded-full border border-violet-300/35 bg-violet-500/15 px-3 text-xs font-medium text-violet-100"
+          className="nightly-btn-secondary min-h-10 rounded-full border border-violet-300/45 bg-violet-500/20 px-3 text-xs font-medium text-violet-100"
           aria-label="Open filters"
         >
           Filters

@@ -6,6 +6,8 @@ import { events, venueCameras, venueImages } from "@/db/schema";
 
 import { isTableMissingError } from "./events-support";
 import { getCurrentOwnerVenue } from "./ownership";
+import { maskCameraSourceUrl } from "@/lib/live/source-sanitizer";
+import { mapNightlyStreamState } from "@/lib/live/stream-state";
 
 export type OwnerEventRecord = {
   id: number;
@@ -108,10 +110,16 @@ export type OwnerCameraRecord = {
   id: number;
   venueId: number;
   name: string;
-  streamUrl: string;
+  maskedStreamUrl: string;
   streamType: string;
   status: string;
   isPrimary: boolean;
+  liveProvider: string | null;
+  providerLiveInputId: string | null;
+  provisioningStatus: string;
+  publicPlaybackEnabled: boolean;
+  lastKnownStreamStatus: string | null;
+  streamState: "provisioning" | "ready" | "live" | "offline" | "error" | "disabled";
   createdAt: Date;
 };
 
@@ -125,7 +133,28 @@ export async function getOwnerCameras() {
       .where(eq(venueCameras.venueId, venueId))
       .orderBy(desc(venueCameras.isPrimary), asc(venueCameras.createdAt));
 
-    return { cameras: cameras as OwnerCameraRecord[], unavailable: false };
+    const mapped = cameras.map((camera) => ({
+      id: camera.id,
+      venueId: camera.venueId,
+      name: camera.name,
+      maskedStreamUrl: maskCameraSourceUrl(camera.streamUrl),
+      streamType: camera.streamType,
+      status: camera.status,
+      isPrimary: camera.isPrimary,
+      liveProvider: camera.liveProvider,
+      providerLiveInputId: camera.providerLiveInputId,
+      provisioningStatus: camera.provisioningStatus,
+      publicPlaybackEnabled: camera.publicPlaybackEnabled,
+      lastKnownStreamStatus: camera.lastKnownStreamStatus,
+      streamState: mapNightlyStreamState({
+        cameraEnabled: camera.status === "enabled",
+        provisioningStatus: camera.provisioningStatus,
+        providerStatus: camera.lastKnownStreamStatus,
+      }),
+      createdAt: camera.createdAt,
+    })) as OwnerCameraRecord[];
+
+    return { cameras: mapped, unavailable: false };
   } catch (error) {
     if (isTableMissingError(error)) {
       return { cameras: [] as OwnerCameraRecord[], unavailable: true };

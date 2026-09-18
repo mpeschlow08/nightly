@@ -37,7 +37,9 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://images.unsplash.com https://places.googleapis.com https://maps.gstatic.com https://*.basemaps.cartocdn.com https://*.public.blob.vercel-storage.com https://img.clerk.com",
       "font-src 'self' data:",
-      `connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://places.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://*.public.blob.vercel-storage.com ${isProduction ? "" : "https://clerk-telemetry.com"}`.trim(),
+      `connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://places.googleapis.com https://maps.googleapis.com https://maps.gstatic.com https://*.public.blob.vercel-storage.com https://stream.mux.com https://*.mux.com https://*.cloudflarestream.com ${isProduction ? "" : "https://clerk-telemetry.com"}`.trim(),
+      // Mux serves manifests from stream.mux.com but redirects renditions/segments to regional *.mux.com CDN hosts.
+      "media-src 'self' blob: https://stream.mux.com https://*.mux.com https://*.cloudflarestream.com",
       "frame-src 'self' https://*.clerk.accounts.dev",
       "form-action 'self'",
       "upgrade-insecure-requests",

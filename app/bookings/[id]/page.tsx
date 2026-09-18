@@ -36,8 +36,38 @@ function parseJsonObject(value: string | null | undefined) {
   }
 }
 
-export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function statusEyebrow(status: string) {
+  if (status === "draft") return "Reservation draft";
+  if (status === "requested" || status === "pending_review") return "Reservation pending";
+  if (status === "counter_offered") return "Counter offer pending";
+  if (status === "accepted" || status === "deposit_required" || status === "deposit_paid" || status === "confirmed") return "Reservation confirmed";
+  if (status === "checked_in") return "Checked in";
+  if (status === "completed") return "Reservation completed";
+  if (status.startsWith("cancelled") || status === "expired") return "Reservation closed";
+  return "Reservation status";
+}
+
+function nextStepSummary(status: string) {
+  if (status === "draft") return "Complete remaining selections and submit your request when ready.";
+  if (status === "requested" || status === "pending_review") return "The venue team is reviewing your request. We will update your timeline when they respond.";
+  if (status === "counter_offered") return "Review the counter offer and accept or decline before it expires.";
+  if (status === "accepted" || status === "deposit_required") return "Your reservation is accepted. Complete payment requirements to lock your table.";
+  if (status === "deposit_paid" || status === "confirmed") return "Bring your reservation pass at arrival and follow venue entry guidance.";
+  if (status === "checked_in") return "Enjoy your night. Your service team is now handling your table.";
+  if (status === "completed") return "Your reservation is complete. You can review details and rebook anytime.";
+  if (status.startsWith("cancelled") || status === "expired") return "This reservation is no longer active. Start a new request if you still plan to go out.";
+  return "Track timeline updates and messages for the latest status.";
+}
+
+export default async function BookingDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ success?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const bookingId = Number(id);
 
   if (!Number.isFinite(bookingId)) {
@@ -60,6 +90,8 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const timelineProgress = reservationTimeline ? reservationTimeline.progressIndex : 0;
   const latestPricing = payload.pricing[0] ?? null;
   const reservationMeta = parseJsonObject(payload.tableBooking?.metadataJson);
+  const successMessage = query.success ?? null;
+  const heroEyebrow = statusEyebrow(payload.booking.lifecycleStatus);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(167,139,250,0.14),_transparent_25%),linear-gradient(140deg,_#04070b_0%,_#090d18_55%,_#111326_100%)] px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
@@ -74,7 +106,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Reservation confirmed</p>
+                <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">{heroEyebrow}</p>
                 <h1 className="mt-3 text-3xl font-semibold text-white">{payload.booking.venueName ?? payload.booking.bookingNumber}</h1>
                 <p className="mt-2 text-sm text-zinc-200">{bookingTypeLabels(payload.booking.bookingType)} • {payload.booking.city ?? "City not set"}</p>
               </div>
@@ -117,6 +149,13 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           </div>
         </section>
 
+        {successMessage ? (
+          <section className="rounded-[1.4rem] border border-emerald-300/30 bg-emerald-500/10 p-4 text-emerald-100">
+            <p className="text-xs uppercase tracking-[0.22em] text-emerald-100/85">Checkout status</p>
+            <p className="mt-2 text-sm">{successMessage} Your reservation timeline, pass token, and payment summary are now synced.</p>
+          </section>
+        ) : null}
+
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
             <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-5">
@@ -147,6 +186,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Payout</p>
                   <p className="mt-2 text-white">{formatCurrency(payload.booking.payoutCents)}</p>
                 </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+                <p className="text-xs uppercase tracking-[0.18em] text-cyan-100/85">What happens next</p>
+                <p className="mt-2">{nextStepSummary(payload.booking.lifecycleStatus)}</p>
               </div>
 
               {payload.booking.notes ? <p className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-300">{payload.booking.notes}</p> : null}
@@ -290,15 +334,16 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                   <p>Dress code: {payload.booking.venueDressCode ?? "Check venue guidance on arrival."}</p>
                   <p>Parking: {payload.booking.venueParkingInformation ?? "Parking guidance available on arrival."}</p>
                   <p>Contact venue: {payload.booking.venuePhone ?? "Venue contact pending."}</p>
-                  {payload.booking.venueGoogleMapsUrl ? <a href={payload.booking.venueGoogleMapsUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white">Navigate to venue</a> : null}
+                  {payload.booking.venueGoogleMapsUrl ? <a href={payload.booking.venueGoogleMapsUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100">Get directions</a> : null}
                 </div>
               ) : (
                 <p className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm text-zinc-400">No table service selected.</p>
               )}
               {reservationPass ? (
                 <div className="mt-4 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-100">Dynamic reservation pass</p>
-                  <p className="mt-2 break-all text-xs text-cyan-50/90">{reservationPass.checkInToken}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-100">Reservation pass</p>
+                  <p className="mt-1 text-sm text-cyan-50">Use this pass for arrival check-in.</p>
+                  <p className="mt-2 rounded-lg border border-cyan-200/20 bg-black/20 px-3 py-2 text-xs text-cyan-50/90">Ref: {payload.booking.bookingNumber}</p>
                   <Image
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(JSON.stringify({ type: "nightly_reservation", token: reservationPass.checkInToken, bookingId: payload.booking.id }))}`}
                     alt="Reservation QR pass"

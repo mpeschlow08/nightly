@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import ComingSoonFeatureCard from "@/components/live/ComingSoonFeatureCard";
@@ -10,6 +11,7 @@ import LiveEventCard from "@/components/live/LiveEventCard";
 import LivePreviewCard from "@/components/live/LivePreviewCard";
 import LiveSectionHeader from "@/components/live/LiveSectionHeader";
 import LiveVenueCard from "@/components/live/LiveVenueCard";
+import NightlyButton from "@/components/nightly/NightlyButton";
 import {
   comingSoonFeatures,
 } from "@/data/nightly-live";
@@ -22,6 +24,26 @@ type NightlyLiveClientProps = {
 export default function NightlyLiveClient({ data }: NightlyLiveClientProps) {
   const [activeTrendIndex, setActiveTrendIndex] = useState(0);
   const [selectedFeatureId, setSelectedFeatureId] = useState<number | null>(null);
+
+  const liveVenues = useMemo(() => data.venues.filter((venue) => venue.isLive), [data.venues]);
+  const featuredVenue = liveVenues[0] ?? data.venues[0] ?? null;
+
+  const featuredVenueEvents = useMemo(() => {
+    if (!featuredVenue) {
+      return [];
+    }
+
+    return data.events.filter((event) => event.venueId === featuredVenue.id).slice(0, 3);
+  }, [data.events, featuredVenue]);
+
+  const cameraLiveCount = useMemo(
+    () => data.venues.filter((venue) => venue.liveLabel === "CAMERA LIVE").length,
+    [data.venues]
+  );
+  const eventLiveCount = useMemo(
+    () => data.venues.filter((venue) => venue.liveLabel === "EVENT LIVE").length,
+    [data.venues]
+  );
 
   const trendingNowChips = useMemo(() => {
     const genres = new Set<string>();
@@ -80,24 +102,90 @@ export default function NightlyLiveClient({ data }: NightlyLiveClientProps) {
         </section>
 
         <div className="space-y-7 px-4 pt-4 sm:px-5 lg:px-6">
-          <section className="nightly-card nightly-fade-in rounded-[1.35rem] border border-white/12 bg-white/[0.04] p-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">AI Tonight Summary</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-200">{data.summary}</p>
+          <section className="nightly-card nightly-fade-in overflow-hidden rounded-[1.35rem] border border-white/12 bg-[#0a0f1d]">
+            {featuredVenue ? (
+              <>
+                <div className="relative">
+                  <div
+                    className="h-[15.5rem] w-full bg-cover bg-center"
+                    style={{ backgroundImage: `url(${featuredVenue.heroImageUrl})` }}
+                    role="img"
+                    aria-label={`${featuredVenue.name} live scene`}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#060b16] via-[#060b16]/45 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">See The Vibe Before You Go</p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">{featuredVenue.name}</h2>
+                    <p className="mt-1 text-sm text-zinc-200">
+                      {featuredVenue.liveLabel ?? "LIVE"} in {featuredVenue.neighborhood}
+                      {featuredVenue.distanceLabel ? ` • ${featuredVenue.distanceLabel}` : ""}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                      <span className="rounded-full border border-white/20 bg-black/35 px-2.5 py-1">{featuredVenue.genre}</span>
+                      {featuredVenue.crowdLevel ? <span className="rounded-full border border-white/20 bg-black/35 px-2.5 py-1">{featuredVenue.crowdLevel} crowd</span> : null}
+                      <span className="rounded-full border border-white/20 bg-black/35 px-2.5 py-1">{featuredVenue.liveStatusProvenance.replaceAll("_", " ")}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4 p-4">
+                  <p className="text-sm leading-6 text-zinc-200">{data.summary}</p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <NightlyButton href={featuredVenue.liveHref} variant="primary" className="w-full">Watch Live</NightlyButton>
+                    <NightlyButton href="/bookings" variant="secondary" className="w-full">Reserve Tonight</NightlyButton>
+                    <NightlyButton href="/events" variant="secondary" className="w-full">Browse Events</NightlyButton>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">Camera Live Signals</p>
+                      <p className="mt-1 text-base font-semibold text-white">{cameraLiveCount} venues</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">Event Live Signals</p>
+                      <p className="mt-1 text-base font-semibold text-white">{eventLiveCount} venues</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    Live indicators come from provider-backed stream state and active event windows.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="p-4">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/80">Nightly Live</h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-200">Live venues will appear here as clubs and events go active.</p>
+                <NightlyButton href="/discover" variant="primary" className="mt-3">Explore Venues</NightlyButton>
+              </div>
+            )}
           </section>
 
+          {featuredVenueEvents.length > 0 ? (
+            <section className="space-y-3">
+              <LiveSectionHeader
+                title="Happening At This Venue"
+                subtitle={`What is live at ${featuredVenue?.name ?? "this venue"} right now.`}
+                action={<Link href="/events" className="text-xs font-semibold uppercase tracking-[0.12em] text-fuchsia-200">All events</Link>}
+              />
+              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none]">
+                {featuredVenueEvents.map((event) => (
+                  <LiveEventCard key={`featured-${event.id}`} event={event} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="space-y-3">
-            <LiveSectionHeader title="Featured Live Venues" subtitle="Where the city is moving right now." />
+            <LiveSectionHeader title="Choose Your Next Stop" subtitle="Fast scans for where to go in the next 30 minutes." />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none]">
-              {data.venues.map((venue) => (
+              {(liveVenues.length > 0 ? liveVenues : data.venues).map((venue) => (
                 <LiveVenueCard key={venue.id} venue={venue} />
               ))}
             </div>
           </section>
 
           <section className="space-y-3">
-            <LiveSectionHeader title="Live Now Carousel" subtitle="Preview-ready camera surfaces for launch." />
+            <LiveSectionHeader title="Live Signal Board" subtitle="Quick context before you tap into venue or event details." />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none]">
-              {data.venues.map((venue) => (
+              {(liveVenues.length > 0 ? liveVenues : data.venues).map((venue) => (
                 <LivePreviewCard key={`preview-${venue.id}`} venue={venue} />
               ))}
             </div>

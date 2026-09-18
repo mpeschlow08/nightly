@@ -197,6 +197,13 @@
       "when": 1792400000000,
       "tag": "0027_reservation_atomicity_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0028_live_streaming_foundation",
+      "breakpoints": true
     }
   ]
 }

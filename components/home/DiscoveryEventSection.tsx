@@ -1,29 +1,30 @@
-import Link from "next/link";
-
 import EventDiscoveryCard from "@/components/home/EventDiscoveryCard";
+import NightlySectionHeader from "@/components/nightly/NightlySectionHeader";
 import type { ConsumerEventCard } from "@/lib/consumer/types";
 
 type DiscoveryEventSectionProps = {
   title: string;
   href: string;
   items: ConsumerEventCard[];
+  eyebrow?: string;
+  subtitle?: string;
 };
 
-export default function DiscoveryEventSection({ title, href, items }: DiscoveryEventSectionProps) {
+export default function DiscoveryEventSection({ title, href, items, eyebrow, subtitle }: DiscoveryEventSectionProps) {
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <section className="mx-auto mt-7 max-w-3xl px-4 sm:px-5 lg:px-6">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <Link href={href} className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300">
-          See All
-        </Link>
-      </div>
+    <section className="mx-auto mt-8 max-w-6xl px-4 sm:px-5 lg:px-8">
+      <NightlySectionHeader
+        eyebrow={eyebrow}
+        title={title}
+        subtitle={subtitle}
+        href={href}
+      />
 
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 [scrollbar-width:none]">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8 [scrollbar-width:none]">
         {items.map((event, index) => (
           <EventDiscoveryCard
             key={event.id}

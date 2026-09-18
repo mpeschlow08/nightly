@@ -3409,11 +3409,21 @@ export const venueCameras = pgTable(
     streamType: text("stream_type").notNull(),
     status: text("status").notNull().default("enabled"),
     isPrimary: boolean("is_primary").notNull().default(false),
+    liveProvider: text("live_provider"),
+    providerLiveInputId: text("provider_live_input_id"),
+    providerPlaybackId: text("provider_playback_id"),
+    provisioningStatus: text("provisioning_status").notNull().default("unprovisioned"),
+    publicPlaybackEnabled: boolean("public_playback_enabled").notNull().default(false),
+    lastKnownStreamStatus: text("last_known_stream_status"),
+    lastHealthCheckAt: timestamp("last_health_check_at"),
+    lastProvisionedAt: timestamp("last_provisioned_at"),
+    lastProvisioningError: text("last_provisioning_error"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
     venueIdIdx: index("venue_cameras_venue_id_idx").on(table.venueId),
     isPrimaryIdx: index("venue_cameras_is_primary_idx").on(table.isPrimary),
+    providerLiveInputIdIdx: index("venue_cameras_provider_live_input_id_idx").on(table.providerLiveInputId),
   })
 );
 

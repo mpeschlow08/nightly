@@ -22,8 +22,10 @@ export default function BookingTimeline({ entries }: BookingTimelineProps) {
 
   return (
     <ol className="space-y-3">
-      {entries.map((entry) => (
-        <li key={entry.id} className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+      {entries.map((entry, index) => (
+        <li key={entry.id} className="relative rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3 pl-10">
+          <span className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-cyan-300" />
+          {index < entries.length - 1 ? <span className="absolute left-[1.15rem] top-7 h-[calc(100%-1.4rem)] w-px bg-white/15" /> : null}
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-white">{getBookingStatusLabel(entry.toStatus)}</p>
             <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">

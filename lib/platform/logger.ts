@@ -13,6 +13,9 @@ const SECRET_KEYS = [
   "database_url",
   "stripe",
   "svix",
+  "stream_url",
+  "streamurl",
+  "rtsp",
 ];
 
 function isSecretKey(key: string) {
@@ -37,6 +40,10 @@ function redact(value: unknown): unknown {
 
   if (typeof value === "string" && value.includes("postgresql://")) {
     return "[REDACTED_DATABASE_URL]";
+  }
+
+  if (typeof value === "string" && value.toLowerCase().includes("rtsp://")) {
+    return "[REDACTED_STREAM_SOURCE]";
   }
 
   return value;

@@ -6,6 +6,8 @@ export type LiveStatusProvenance =
   | "demo"
   | "unavailable";
 
+export type CameraStreamState = "provisioning" | "ready" | "live" | "offline" | "error" | "disabled";
+
 export type ConsumerSpecialGuest = {
   id: number;
   displayName: string;
@@ -34,6 +36,7 @@ export type ConsumerVenueCard = {
   id: number;
   slug: string;
   href: string;
+  liveHref: string;
   name: string;
   neighborhood: string;
   genre: string;
@@ -41,6 +44,7 @@ export type ConsumerVenueCard = {
   distanceLabel: string | null;
   isLive: boolean;
   liveLabel: "OPEN NOW" | "EVENT LIVE" | "CAMERA LIVE" | "TRENDING" | null;
+  cameraStreamState: CameraStreamState;
   liveStatusProvenance: LiveStatusProvenance;
   crowdLevel: string | null;
   heroImageUrl: string;
@@ -144,6 +148,7 @@ export type ConsumerVenueDetail = {
   galleryImageUrls: string[];
   isOpenNow: boolean;
   liveLabel: "OPEN NOW" | "EVENT LIVE" | "CAMERA LIVE" | "TRENDING" | null;
+  cameraStreamState: CameraStreamState;
   liveStatusProvenance: LiveStatusProvenance;
   specialGuests: ConsumerSpecialGuest[];
   specialGuestHighlight: ConsumerSpecialGuestHighlight | null;

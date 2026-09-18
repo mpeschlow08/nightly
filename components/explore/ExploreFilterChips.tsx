@@ -1,5 +1,7 @@
 "use client";
 
+import NightlyChip from "@/components/nightly/NightlyChip";
+
 type ExploreFilterChipsProps = {
   chips: readonly string[];
   selected: string[];
@@ -17,18 +19,13 @@ export default function ExploreFilterChips({
         const isSelected = selected.includes(chip);
 
         return (
-          <button
+          <NightlyChip
             key={chip}
-            type="button"
             onClick={() => onToggle(chip)}
-            className={`min-h-10 shrink-0 snap-start rounded-full border px-4 text-xs font-medium transition ${
-              isSelected
-                ? "border-violet-300/45 bg-violet-500/80 text-white"
-                : "border-white/12 bg-white/5 text-zinc-300"
-            }`}
-          >
-            {chip}
-          </button>
+            label={chip}
+            active={isSelected}
+            className="snap-start"
+          />
         );
       })}
     </div>

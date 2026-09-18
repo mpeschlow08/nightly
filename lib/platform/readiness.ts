@@ -2,9 +2,11 @@ import { getEnvironmentConfigurationStatus } from "@/lib/platform/env";
 import { getDatabaseHealth } from "@/lib/platform/db-health";
 import { getProviderHealthChecks } from "@/lib/platform/provider-health";
 import { db } from "@/db";
-import { venueDataRefreshRuns, venues } from "@/db/schema";
-import { avg, count, desc, eq, isNotNull, lte, or, sql } from "drizzle-orm";
+import { venueCameras, venueDataRefreshRuns, venues } from "@/db/schema";
+import { count, desc, isNotNull, lte, or, sql } from "drizzle-orm";
 import { getSchedulerState } from "@/lib/platform/venue-google-refresh";
+import { mapNightlyStreamState } from "@/lib/live/stream-state";
+import { getLiveStreamProvider } from "@/lib/live/provider";
 
 export type ReadinessReport = {
   status: "ready" | "degraded" | "not_ready";
@@ -17,7 +19,7 @@ export type ReadinessReport = {
 };
 
 export async function getReadinessReport(): Promise<ReadinessReport> {
-  const [environment, database, providers, refreshRuns, staleRows, failedRows] = await Promise.all([
+  const [environment, database, providers, refreshRuns, staleRows, failedRows, cameraRows] = await Promise.all([
     Promise.resolve(getEnvironmentConfigurationStatus()),
     getDatabaseHealth(),
     getProviderHealthChecks(),
@@ -38,6 +40,14 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
       .select({ count: count() })
       .from(venues)
       .where(isNotNull(venues.googleRefreshError)),
+    db
+      .select({
+        id: venueCameras.id,
+        status: venueCameras.status,
+        provisioningStatus: venueCameras.provisioningStatus,
+        providerStatus: venueCameras.lastKnownStreamStatus,
+      })
+      .from(venueCameras),
   ]);
 
   const lastSuccessfulPlacesRequest = refreshRuns.find((run) => run.status === "succeeded");
@@ -53,6 +63,29 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
       ? Math.round(completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length)
       : null;
   const schedulerState = getSchedulerState();
+  const provider = getLiveStreamProvider();
+  const providerConfigured = provider.isConfigured();
+
+  const cameraStateCounts = {
+    provisioning: 0,
+    ready: 0,
+    live: 0,
+    offline: 0,
+    error: 0,
+    disabled: 0,
+  };
+
+  for (const camera of cameraRows) {
+    const state = mapNightlyStreamState({
+      cameraEnabled: camera.status === "enabled",
+      provisioningStatus: camera.provisioningStatus,
+      providerStatus: camera.providerStatus,
+    });
+    cameraStateCounts[state] += 1;
+  }
+
+  const liveCameraTotal = cameraStateCounts.live;
+  const monitoredCameraTotal = cameraRows.length;
 
   const checks: ReadinessReport["checks"] = [
     {
@@ -149,6 +182,17 @@ export async function getReadinessReport(): Promise<ReadinessReport> {
     camera_live_adapter: {
       status: providers.find((provider) => provider.provider === "camera_live_adapter")?.status ?? "unknown",
       detail: providers.find((provider) => provider.provider === "camera_live_adapter")?.detail ?? "Adapter status unavailable",
+    },
+    camera_live_streams: {
+      status:
+        monitoredCameraTotal === 0
+          ? "unknown"
+          : !providerConfigured
+            ? "not_configured"
+            : cameraStateCounts.error > 0
+              ? "degraded"
+              : "healthy",
+      detail: `provider=${provider.providerKey} configured=${providerConfigured} total=${monitoredCameraTotal} live=${liveCameraTotal} ready=${cameraStateCounts.ready} provisioning=${cameraStateCounts.provisioning} offline=${cameraStateCounts.offline} error=${cameraStateCounts.error} disabled=${cameraStateCounts.disabled}`,
     },
   };
 

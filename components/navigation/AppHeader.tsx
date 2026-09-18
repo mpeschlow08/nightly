@@ -13,6 +13,7 @@ type Breadcrumb = {
 
 type AppHeaderProps = {
   activeRole: AppRole;
+  currentPath: string;
   pageTitle: string;
   breadcrumbs: Breadcrumb[];
   mobileMenuOpen: boolean;
@@ -49,6 +50,7 @@ function BackButton({ onBack }: { onBack: () => void }) {
 
 export default function AppHeader({
   activeRole,
+  currentPath,
   pageTitle,
   breadcrumbs,
   mobileMenuOpen,
@@ -58,8 +60,19 @@ export default function AppHeader({
   isSignedIn,
   alwaysShowLogo = false,
 }: AppHeaderProps) {
+  const consumerTopNav = [
+    { label: "Home", href: "/home" },
+    { label: "Discover", href: "/discover" },
+    { label: "Map", href: "/map" },
+    { label: "Live", href: "/live" },
+    { label: "Social", href: "/crews" },
+    { label: "Concierge", href: "/concierge" },
+  ];
+
+  const isConsumer = activeRole === "consumer";
+
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#04070b]/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="nightly-nav-blur sticky top-0 z-50 border-b border-[color:var(--border)] px-4 py-3 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -81,22 +94,23 @@ export default function AppHeader({
               height={26}
               imageClassName="h-7 w-auto"
               className={alwaysShowLogo ? "" : "lg:hidden"}
+              priority
             />
           </div>
-          <h1 className="mt-2 truncate text-lg font-semibold text-white sm:text-xl">{pageTitle}</h1>
+          <h1 className="nightly-page-title mt-2 truncate">{pageTitle}</h1>
           {breadcrumbs.length > 0 ? (
-            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-zinc-400">
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-[color:var(--text-muted)]">
               {breadcrumbs.map((crumb, index) => {
                 const isLast = index === breadcrumbs.length - 1;
 
                 return (
                   <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
                     {crumb.href && !isLast ? (
-                      <Link href={crumb.href} className="transition hover:text-cyan-200">
+                      <Link href={crumb.href} className="transition hover:text-[color:var(--brand-hover)]">
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-zinc-300">{crumb.label}</span>
+                      <span className="text-[color:var(--text-secondary)]">{crumb.label}</span>
                     )}
                     {!isLast ? <span aria-hidden="true">/</span> : null}
                   </span>
@@ -128,7 +142,7 @@ export default function AppHeader({
             </Link>
           ) : null}
           {isSignedIn ? (
-            <div className="rounded-full border border-white/20 bg-white/5 p-0.5">
+            <div className="rounded-full border border-[color:var(--border)] bg-white/5 p-0.5">
               <UserButton />
             </div>
           ) : (
@@ -141,6 +155,27 @@ export default function AppHeader({
           )}
         </div>
       </div>
+
+      {isConsumer ? (
+        <nav className="mt-3 hidden items-center gap-1 lg:flex" aria-label="Consumer navigation">
+          {consumerTopNav.map((item) => {
+            const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`rounded-full px-3 py-1.5 text-sm transition ${
+                  active
+                    ? "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
+                    : "border border-transparent text-[color:var(--text-secondary)] hover:border-[color:var(--border)] hover:text-[color:var(--text-primary)]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
     </header>
   );
 }

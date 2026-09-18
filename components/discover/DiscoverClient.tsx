@@ -10,6 +10,8 @@ import ExploreMiniMapPreview from "@/components/explore/ExploreMiniMapPreview";
 import ExploreSearchBar from "@/components/explore/ExploreSearchBar";
 import ExploreSectionHeader from "@/components/explore/ExploreSectionHeader";
 import NightlyImage from "@/components/media/NightlyImage";
+import NightlyEmptyState from "@/components/nightly/NightlyEmptyState";
+import NightlySectionHeader from "@/components/nightly/NightlySectionHeader";
 import EventDiscoveryCard from "@/components/home/EventDiscoveryCard";
 import VenueDiscoveryCard from "@/components/home/VenueDiscoveryCard";
 import type { ExploreDataPayload } from "@/lib/consumer/types";
@@ -317,6 +319,16 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
     [sortedVenues]
   );
 
+  const liveNowVenues = useMemo(
+    () => sortedVenues.filter((venue) => venue.isLive),
+    [sortedVenues]
+  );
+
+  const specialGuestVenues = useMemo(
+    () => sortedVenues.filter((venue) => Boolean(venue.specialGuestHighlight)),
+    [sortedVenues]
+  );
+
   const mapPreviewVenues = useMemo(
     () => (sortedVenues.length > 0 ? sortedVenues.slice(0, 6) : initialData.venues.slice(0, 6)),
     [sortedVenues, initialData.venues]
@@ -325,18 +337,16 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
   const noResults = sortedVenues.length === 0 && sortedEvents.length === 0;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#04070b] text-zinc-100 antialiased">
-      <div className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,40,90,0.22),_transparent_32%),radial-gradient(circle_at_85%_10%,_rgba(139,92,246,0.18),_transparent_25%)]" />
-
-        <main className="relative mx-auto max-w-3xl pb-24 pt-2">
-          <section className="sticky top-0 z-30 border-b border-white/10 bg-[#04070b]/90 px-4 py-3 backdrop-blur-xl sm:px-5 lg:px-6">
+    <div className="nightly-page overflow-x-hidden">
+      <div className="nightly-page-shell overflow-hidden">
+        <main className="relative mx-auto max-w-6xl pb-28 pt-2 lg:pb-12">
+          <section className="nightly-nav-blur sticky top-0 z-30 border-b border-[color:var(--border)] px-4 py-3 sm:px-5 lg:px-8">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-violet-200/80">Explore</p>
-                <h1 className="text-lg font-semibold tracking-tight text-white">Find Your Night</h1>
+                <p className="text-[0.66rem] uppercase tracking-[0.24em] text-violet-200/80">Discover</p>
+                <h1 className="nightly-page-title">Find Your Vibe</h1>
               </div>
-              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-zinc-300">Atlanta</span>
+              <span className="rounded-full border border-[color:var(--border)] bg-white/5 px-3 py-1 text-xs text-[color:var(--text-secondary)]">Atlanta</span>
             </div>
           </section>
 
@@ -347,16 +357,16 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
               onClear={() => setQuery("")}
               onOpenFilters={() => setSelectedFilters((current) => (current.length > 0 ? [] : ["Live Now"]))}
             />
-            <div className="mx-auto mt-2 flex gap-2 px-4 sm:px-5 lg:px-6">
-              <label className="text-xs text-zinc-400" htmlFor="discover-sort">Sort</label>
+            <div className="mx-auto mt-2 flex items-center gap-2 px-4 sm:px-5 lg:px-8">
+              <label className="text-xs text-[color:var(--text-muted)]" htmlFor="discover-sort">Sort</label>
               <select
                 id="discover-sort"
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
-                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-zinc-200"
+                className="rounded-full border border-[color:var(--border)] bg-white/5 px-3 py-1 text-xs text-[color:var(--text-secondary)]"
               >
                 {SORT_OPTIONS.map((option) => (
-                  <option key={option} value={option} className="bg-[#060a14]">
+                  <option key={option} value={option} className="bg-[#060a14] capitalize">
                     {option}
                   </option>
                 ))}
@@ -369,30 +379,29 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
             />
           </section>
 
-          <section className="mx-auto mt-4 px-4 sm:px-5 lg:px-6">
-            <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3.5">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200/80">AI City Pulse</p>
-              <h2 className="mt-1 text-base font-semibold text-white">{initialData.cityPulse.headline}</h2>
-              <p className="mt-1 text-sm text-zinc-300">{initialData.cityPulse.summary}</p>
+          <section className="mx-auto mt-4 px-4 sm:px-5 lg:px-8">
+            <div className="nightly-surface-elevated p-4 sm:p-5">
+              <p className="text-[0.66rem] uppercase tracking-[0.2em] text-cyan-200/80">AI City Pulse</p>
+              <h2 className="nightly-section-title mt-1">{initialData.cityPulse.headline}</h2>
+              <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{initialData.cityPulse.summary}</p>
             </div>
           </section>
 
           {noResults ? (
-            <section className="mx-auto mt-5 px-4 sm:px-5 lg:px-6">
-              <div className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
-                <p className="text-sm text-zinc-200">No results match these filters.</p>
-                <button
-                  type="button"
-                  onClick={() => {
+            <section className="mx-auto mt-5 px-4 sm:px-5 lg:px-8">
+              <NightlyEmptyState
+                eyebrow="No matches"
+                title="No venues or events match this filter set"
+                description="Try fewer filters or a broader search term to discover more nightlife options."
+                secondaryAction={{
+                  label: "Reset filters",
+                  onClick: () => {
                     setQuery("");
                     setSelectedFilters([]);
                     setSortBy("recommended");
-                  }}
-                  className="mt-3 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-zinc-200"
-                >
-                  Reset Filters
-                </button>
-              </div>
+                  },
+                }}
+              />
             </section>
           ) : null}
 
@@ -402,7 +411,35 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
             onSelectVenue={setSelectedMapVenueId}
           />
 
-          <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
+            <NightlySectionHeader
+              eyebrow="Tonight"
+              title="Live Now"
+              subtitle="Venues currently active across Nightly Live and event floors."
+              href="/live"
+            />
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
+              {(liveNowVenues.length > 0 ? liveNowVenues : sortedVenues.slice(0, 6)).map((venue, index) => (
+                <VenueDiscoveryCard key={`live-venue-${venue.id}`} venue={venue} animationDelayMs={index * 45} />
+              ))}
+            </div>
+          </section>
+
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
+            <NightlySectionHeader
+              eyebrow="Exclusive"
+              title="Special Guests"
+              subtitle="Prominent guest appearances happening tonight."
+              href="/discover"
+            />
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
+              {(specialGuestVenues.length > 0 ? specialGuestVenues : sortedVenues.slice(0, 6)).map((venue, index) => (
+                <VenueDiscoveryCard key={`guest-venue-${venue.id}`} venue={venue} animationDelayMs={index * 45} />
+              ))}
+            </div>
+          </section>
+
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Trending Venues" href="/discover" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {(trendingVenues.length > 0 ? trendingVenues : sortedVenues.slice(0, 6)).map((venue, index) => (
@@ -411,7 +448,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
             </div>
           </section>
 
-          <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Events Near You" href="/events" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {(sortedEvents.length > 0 ? sortedEvents : initialData.events.slice(0, 5)).map((event, index) => (
@@ -434,7 +471,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
           </section>
 
           {initialData.friendsInterestedVenues.length > 0 ? (
-            <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+            <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
               <ExploreSectionHeader title="Friends Are Interested" href="/crews" />
               <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
                 {initialData.friendsInterestedVenues.map((venue, index) => (
@@ -444,7 +481,7 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
             </section>
           ) : null}
 
-          <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Featured DJs" href="/events" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {(filteredDjs.length > 0 ? filteredDjs : initialData.djs).map((dj, index) => (
@@ -453,49 +490,49 @@ export default function DiscoverClient({ initialData }: DiscoverClientProps) {
             </div>
           </section>
 
-          <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Categories" href="/discover" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {(filteredCategories.length > 0 ? filteredCategories : initialData.categories).map((category, index) => (
                 <Link
                   key={category.id}
                   href={category.href}
-                  className="nightly-card nightly-card-interactive nightly-fade-in relative min-w-[16rem] snap-start overflow-hidden rounded-[1.2rem] border border-white/10 bg-[#060a14]"
+                  className="nightly-card nightly-card-interactive nightly-fade-in relative min-w-[16rem] snap-start overflow-hidden rounded-[1.2rem]"
                   style={{ animationDelay: `${index * 45}ms` }}
                 >
                   <NightlyImage src={category.imageUrl} alt={`${category.name} cover`} ratio="landscape" sizes="(max-width: 640px) 80vw, 280px" className="rounded-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                  <div className="nightly-image-overlay absolute inset-0" />
                   <div className="absolute inset-x-0 bottom-0 p-3.5">
                     <h3 className="text-base font-semibold text-white">{category.name}</h3>
-                    <p className="mt-1 text-xs text-zinc-300">{category.subtitle}</p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">{category.subtitle}</p>
                   </div>
                 </Link>
               ))}
             </div>
           </section>
 
-          <section className="mx-auto mt-7 px-4 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Neighborhood Collections" href="/discover" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {(filteredNeighborhoods.length > 0 ? filteredNeighborhoods : initialData.neighborhoods).map((neighborhood, index) => (
                 <Link
                   key={neighborhood.id}
                   href={neighborhood.href}
-                  className="nightly-card nightly-card-interactive nightly-fade-in relative min-w-[16.8rem] snap-start overflow-hidden rounded-[1.2rem] border border-white/10 bg-[#060a14]"
+                  className="nightly-card nightly-card-interactive nightly-fade-in relative min-w-[16.8rem] snap-start overflow-hidden rounded-[1.2rem]"
                   style={{ animationDelay: `${index * 45}ms` }}
                 >
                   <NightlyImage src={neighborhood.imageUrl} alt={`${neighborhood.name} nightlife`} ratio="landscape" sizes="(max-width: 640px) 82vw, 300px" className="rounded-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/24 to-transparent" />
+                  <div className="nightly-image-overlay absolute inset-0" />
                   <div className="absolute inset-x-0 bottom-0 p-3.5">
                     <h3 className="text-base font-semibold text-white">{neighborhood.name}</h3>
-                    <p className="mt-1 text-xs text-zinc-300">{neighborhood.summary}</p>
+                    <p className="mt-1 text-xs text-[color:var(--text-secondary)]">{neighborhood.summary}</p>
                   </div>
                 </Link>
               ))}
             </div>
           </section>
 
-          <section className="mx-auto mt-7 px-4 pb-6 sm:px-5 lg:px-6">
+          <section className="mx-auto mt-8 px-4 pb-6 sm:px-5 lg:px-8">
             <ExploreSectionHeader title="Recently Viewed" href="/discover" />
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]">
               {recentlyViewed.map((venue, index) => (

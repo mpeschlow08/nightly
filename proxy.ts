@@ -33,5 +33,7 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*|favicon.ico|api/discovery/track|api/live|api/ready|api/health).*)"],
+  // /api/live stays in the matcher (it is not a protected prefix) so route-level auth() can
+  // resolve an optional actor instead of throwing for anonymous consumers.
+  matcher: ["/((?!_next|.*\\..*|favicon.ico|api/discovery/track|api/ready|api/health).*)"],
 };

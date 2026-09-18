@@ -28,6 +28,7 @@ type Breadcrumb = {
 type BottomNavItem = {
   label: string;
   href: string;
+  icon: string;
 };
 
 const roleFallbackByHistory: Record<Exclude<AppRole, null>, string> = {
@@ -237,17 +238,18 @@ function isConsumerHomePath(pathname: string) {
 function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
   if (role === "consumer") {
     return [
-      { label: "Home", href: "/home" },
-      { label: "Explore", href: "/discover" },
-      { label: "Concierge", href: "/concierge" },
-      { label: "Profile", href: "/profile" },
+      { label: "Home", href: "/home", icon: "◉" },
+      { label: "Discover", href: "/discover", icon: "⌕" },
+      { label: "Live", href: "/live", icon: "●" },
+      { label: "Concierge", href: "/concierge", icon: "✦" },
+      { label: "Profile", href: "/profile", icon: "◌" },
     ];
   }
 
   return roleItems[role]
     .filter((item): item is NavItem & { href: string } => Boolean(item.href))
     .slice(0, 4)
-    .map((item) => ({ label: item.label, href: item.href }));
+    .map((item) => ({ label: item.label, href: item.href, icon: "•" }));
 }
 
 function shouldShowBackButton(pathname: string) {
@@ -325,7 +327,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#04070b] text-zinc-100">
+    <div className="nightly-page bg-[color:var(--background)] text-[color:var(--text-primary)]">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         {!isConsumerHome ? (
           <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-white/10 bg-zinc-950/70 px-4 py-6 backdrop-blur-xl lg:block">
@@ -374,6 +376,7 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader
             activeRole={activeRole}
+            currentPath={pathname}
             pageTitle={pageTitle}
             breadcrumbs={breadcrumbs}
             mobileMenuOpen={mobileMenuOpen}
@@ -385,14 +388,14 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
           />
 
           {mobileMenuOpen ? (
-            <div className="border-b border-white/10 bg-[#04070b]/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+            <div className="nightly-nav-blur border-b border-[color:var(--border)] px-4 py-3 lg:hidden">
               <nav className="grid gap-2">
                 {navItems.map((item) => {
                   const active = item.href ? isCurrentPath(pathname, item.href) : false;
 
                   if (item.comingSoon || !item.href) {
                     return (
-                      <div key={item.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-400">
+                      <div key={item.label} className="flex items-center justify-between rounded-xl border border-[color:var(--border)] bg-white/[0.04] px-4 py-3 text-sm text-[color:var(--text-muted)]">
                         <span>{item.label}</span>
                         <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200">
                           Coming Soon
@@ -407,8 +410,8 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
                       href={item.href}
                       className={`rounded-xl border px-4 py-3 text-sm transition ${
                         active
-                          ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
-                          : "border-white/10 bg-white/[0.04] text-zinc-100 hover:border-cyan-300/30 hover:bg-cyan-500/10"
+                          ? "border-[color:var(--border-active)] bg-[rgba(76,199,255,0.14)] text-[color:var(--text-primary)]"
+                          : "border-[color:var(--border)] bg-white/[0.04] text-[color:var(--text-secondary)] hover:border-[color:var(--border-active)] hover:bg-[rgba(76,199,255,0.1)]"
                       }`}
                     >
                       {item.label}
@@ -419,10 +422,10 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
             </div>
           ) : null}
 
-          <main className="nightly-route-transition min-h-0 flex-1 pb-24 lg:pb-6">{children}</main>
+          <main className="nightly-route-transition min-h-0 flex-1 pb-28 lg:pb-8">{children}</main>
 
-          <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#04070b]/90 px-2 py-2 backdrop-blur-xl lg:hidden">
-            <div className="mx-auto grid max-w-3xl grid-cols-4 gap-2 text-xs">
+          <nav className="nightly-nav-blur nightly-bottom-safe fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--border)] px-2 pt-2 lg:hidden">
+            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1.5 text-xs">
               {bottomNavItems.map((item) => {
                 const active = isCurrentPath(pathname, item.href);
 
@@ -430,11 +433,15 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={`rounded-xl px-2 py-2 text-center transition ${
-                      active ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-zinc-300 hover:bg-cyan-500/10"
+                    className={`rounded-xl px-1.5 py-1.5 text-center transition ${
+                      active
+                        ? "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
+                        : "border border-transparent bg-white/5 text-[color:var(--text-secondary)] hover:border-[color:var(--border)]"
                     }`}
+                    aria-label={item.label}
                   >
-                    {item.label}
+                    <span className={`block text-sm leading-none ${active && item.label === "Live" ? "nightly-pulse-live" : ""}`}>{item.icon}</span>
+                    <span className="mt-1 block text-[0.62rem] leading-none">{item.label}</span>
                   </Link>
                 );
               })}

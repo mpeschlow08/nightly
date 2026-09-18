@@ -26,6 +26,7 @@ import {
   getFixtureHomeData,
   getFixtureLiveData,
 } from "@/lib/consumer/fixtures";
+import { isNightlyLiveState, mapNightlyStreamState, type NightlyStreamState } from "@/lib/live/stream-state";
 import {
   formatDateLabel,
   formatTimeLabel,
@@ -133,7 +134,7 @@ function venueTimezone(value: string | null | undefined) {
 type VenueWithImages = {
   venue: typeof venues.$inferSelect;
   imageRows: Array<{ imageUrl: string }>;
-  hasCameraLive: boolean;
+  cameraStreamState: NightlyStreamState;
   hasLiveEvent: boolean;
   specialGuests?: ConsumerSpecialGuest[];
 };
@@ -263,13 +264,22 @@ async function getLiveFlags(venueIds: number[], now: Date) {
     return {
       cameraLive: new Set<number>(),
       eventLive: new Set<number>(),
+      cameraStateByVenue: new Map<number, NightlyStreamState>(),
     };
   }
 
   const cameras = await db
-    .select({ venueId: venueCameras.venueId })
+    .select({
+      id: venueCameras.id,
+      venueId: venueCameras.venueId,
+      status: venueCameras.status,
+      isPrimary: venueCameras.isPrimary,
+      provisioningStatus: venueCameras.provisioningStatus,
+      lastKnownStreamStatus: venueCameras.lastKnownStreamStatus,
+    })
     .from(venueCameras)
-    .where(and(inArray(venueCameras.venueId, venueIds), eq(venueCameras.status, "enabled")));
+    .where(inArray(venueCameras.venueId, venueIds))
+    .orderBy(asc(venueCameras.venueId), desc(venueCameras.isPrimary), asc(venueCameras.id));
 
   const eventRows = await db
     .select({
@@ -292,7 +302,26 @@ async function getLiveFlags(venueIds: number[], now: Date) {
     .innerJoin(venues, eq(events.venueId, venues.id))
     .where(and(inArray(events.venueId, venueIds), sql`${events.startsAt} <= ${new Date(now.getTime() + 8 * 60 * 60 * 1000)}`));
 
-  const cameraLive = new Set<number>(cameras.map((item) => item.venueId));
+  const cameraLive = new Set<number>();
+  const cameraStateByVenue = new Map<number, NightlyStreamState>();
+
+  for (const camera of cameras) {
+    if (cameraStateByVenue.has(camera.venueId)) {
+      continue;
+    }
+
+    const state = mapNightlyStreamState({
+      cameraEnabled: camera.status === "enabled",
+      provisioningStatus: camera.provisioningStatus,
+      providerStatus: camera.lastKnownStreamStatus,
+    });
+
+    cameraStateByVenue.set(camera.venueId, state);
+    if (isNightlyLiveState(state)) {
+      cameraLive.add(camera.venueId);
+    }
+  }
+
   const eventLive = new Set<number>();
 
   for (const row of eventRows) {
@@ -325,16 +354,16 @@ async function getLiveFlags(venueIds: number[], now: Date) {
     }
   }
 
-  return { cameraLive, eventLive };
+  return { cameraLive, eventLive, cameraStateByVenue };
 }
 
 function liveLabelForVenue(
   venue: typeof venues.$inferSelect,
   hasLiveEvent: boolean,
-  hasCameraLive: boolean,
+  cameraStreamState: NightlyStreamState,
   isTrending: boolean
 ) {
-  if (hasCameraLive) {
+  if (cameraStreamState === "live") {
     return { label: "CAMERA LIVE" as const, provenance: "live_system" as const };
   }
 
@@ -379,7 +408,7 @@ function toVenueCardModel(
   );
 
   const trending = source.venue.isFeatured || (source.venue.vibeScore ?? 0) >= 90;
-  const live = liveLabelForVenue(source.venue, source.hasLiveEvent, source.hasCameraLive, trending);
+  const live = liveLabelForVenue(source.venue, source.hasLiveEvent, source.cameraStreamState, trending);
   const now = new Date();
   const specialGuestHighlight = toSpecialGuestHighlight(
     (source.specialGuests ?? []).map((guest) => ({
@@ -406,6 +435,7 @@ function toVenueCardModel(
     id: source.venue.id,
     slug: source.venue.slug?.trim() || slugify(source.venue.name),
     href: source.venue.slug?.trim() ? `/venues/${source.venue.slug.trim()}` : `/venues/${source.venue.id}`,
+    liveHref: source.venue.slug?.trim() ? `/live/${source.venue.slug.trim()}` : `/live/${source.venue.id}`,
     name: source.venue.name,
     neighborhood: source.venue.neighborhood ?? source.venue.city ?? "Atlanta",
     genre: genres[0] ?? "Open Format",
@@ -413,6 +443,7 @@ function toVenueCardModel(
     distanceLabel,
     isLive: Boolean(live.label),
     liveLabel: live.label,
+    cameraStreamState: source.cameraStreamState,
     liveStatusProvenance: live.provenance,
     crowdLevel: source.venue.crowdLevel,
     heroImageUrl: resolvedImages.heroImageUrl,
@@ -652,7 +683,7 @@ async function buildDiscoveryDataset(now: Date): Promise<DiscoveryDataset> {
     toVenueCardModel({
       venue,
       imageRows: imageMap.get(venue.id) ?? [],
-      hasCameraLive: liveFlags.cameraLive.has(venue.id),
+      cameraStreamState: liveFlags.cameraStateByVenue.get(venue.id) ?? "offline",
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
       specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })
@@ -985,7 +1016,7 @@ export async function searchVenues(query: string) {
     toVenueCardModel({
       venue,
       imageRows: images.get(venue.id) ?? [],
-      hasCameraLive: liveFlags.cameraLive.has(venue.id),
+      cameraStreamState: liveFlags.cameraStateByVenue.get(venue.id) ?? "offline",
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
       specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })
@@ -1051,7 +1082,7 @@ export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDet
   const card = toVenueCardModel({
     venue: row,
     imageRows: images.get(row.id) ?? [],
-    hasCameraLive: liveFlags.cameraLive.has(row.id),
+    cameraStreamState: liveFlags.cameraStateByVenue.get(row.id) ?? "offline",
     hasLiveEvent: liveFlags.eventLive.has(row.id),
     specialGuests: venueSpecialGuests,
   });
@@ -1099,6 +1130,7 @@ export async function getVenueBySlug(slugOrId: string): Promise<ConsumerVenueDet
     galleryImageUrls: card.galleryImageUrls,
     isOpenNow: Boolean(row.isOpenNow),
     liveLabel: card.liveLabel,
+    cameraStreamState: card.cameraStreamState,
     liveStatusProvenance: card.liveStatusProvenance,
     specialGuests: venueSpecialGuests,
     specialGuestHighlight: venueSpecialGuestHighlight
@@ -1302,7 +1334,7 @@ export async function getSimilarVenues(venueId: number) {
     toVenueCardModel({
       venue,
       imageRows: images.get(venue.id) ?? [],
-      hasCameraLive: liveFlags.cameraLive.has(venue.id),
+      cameraStreamState: liveFlags.cameraStateByVenue.get(venue.id) ?? "offline",
       hasLiveEvent: liveFlags.eventLive.has(venue.id),
       specialGuests: specialGuestsByVenue.get(venue.id) ?? [],
     })

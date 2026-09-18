@@ -78,6 +78,13 @@ const RULES: Record<string, VarRule[]> = {
     { key: "JOB_SCHEDULER_PROVIDER", scope: "server", description: "Background scheduler provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
     { key: "WALLET_PASS_PROVIDER", scope: "server", description: "Wallet pass provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
     { key: "CAMERA_LIVE_PROVIDER", scope: "server", description: "Camera/live adapter provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
+    { key: "CLOUDFLARE_STREAM_ACCOUNT_ID", scope: "server", description: "Cloudflare Stream account id", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
+    { key: "CLOUDFLARE_STREAM_API_TOKEN", scope: "server", description: "Cloudflare Stream API token", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "MUX_TOKEN_ID", scope: "server", description: "Mux Video access token id", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "MUX_TOKEN_SECRET", scope: "server", description: "Mux Video access token secret", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "MUX_SIGNING_KEY_ID", scope: "server", description: "Mux signed playback key id", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "MUX_SIGNING_KEY_PRIVATE_KEY", scope: "server", description: "Mux signed playback private key (base64 PEM)", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "LIVE_PLAYBACK_AUTH_TTL_SECONDS", scope: "server", description: "Short-lived playback authorization ttl", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
   ],
 };
 

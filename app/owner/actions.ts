@@ -20,6 +20,7 @@ import {
 } from "./lib/ownership";
 import { assertFeatureEnabled } from "@/lib/platform/feature-access";
 import { runVenueGoogleDataRefresh } from "@/lib/platform/venue-google-refresh";
+import { provisionLiveInputForCamera, refreshCameraStreamHealth } from "@/lib/live/provisioning";
 
 function asNonEmptyString(value: FormDataEntryValue | null, label: string) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -1297,6 +1298,24 @@ function normalizeCameraStreamType(value: FormDataEntryValue | null) {
   return streamType;
 }
 
+function normalizeCameraSource(value: FormDataEntryValue | null) {
+  const streamUrl = asNonEmptyString(value, "Stream URL");
+
+  let parsed: URL;
+  try {
+    parsed = new URL(streamUrl);
+  } catch {
+    throw new Error("Stream URL must be a valid URL.");
+  }
+
+  const allowedProtocols = new Set(["rtsp:", "rtmps:", "srt:", "http:", "https:", "webrtc:", "whip:", "whep:"]);
+  if (!allowedProtocols.has(parsed.protocol)) {
+    throw new Error("Unsupported stream URL protocol.");
+  }
+
+  return parsed.toString();
+}
+
 export async function addOwnerCameraAction(formData: FormData) {
   try {
     const venueId = asInt(formData.get("venueId"), "Venue ID");
@@ -1315,7 +1334,7 @@ export async function addOwnerCameraAction(formData: FormData) {
     );
 
     const name = asNonEmptyString(formData.get("name"), "Camera name");
-    const streamUrl = asNonEmptyString(formData.get("streamUrl"), "Stream URL");
+    const streamUrl = normalizeCameraSource(formData.get("streamUrl"));
     const streamType = normalizeCameraStreamType(formData.get("streamType"));
     const isEnabled = asBoolean(formData.get("isEnabled"));
 
@@ -1358,6 +1377,49 @@ export async function renameOwnerCameraAction(formData: FormData) {
 
     revalidateOwnerAndVenue(camera.venueId);
     redirect(mutationSuccessPath("/owner/cameras", "Camera renamed."));
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/cameras", error));
+  }
+}
+
+export async function updateOwnerCameraSourceAction(formData: FormData) {
+  try {
+    const cameraId = asInt(formData.get("cameraId"), "Camera ID");
+    const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
+
+    const streamUrl = normalizeCameraSource(formData.get("streamUrl"));
+    const streamType = normalizeCameraStreamType(formData.get("streamType"));
+
+    await db
+      .update(venueCameras)
+      .set({
+        streamUrl,
+        streamType,
+        provisioningStatus: "unprovisioned",
+        providerLiveInputId: null,
+        providerPlaybackId: null,
+        lastKnownStreamStatus: null,
+        lastHealthCheckAt: null,
+        lastProvisionedAt: null,
+        lastProvisioningError: null,
+      })
+      .where(eq(venueCameras.id, cameraId));
+
+    revalidateOwnerAndVenue(camera.venueId);
+    redirect(mutationSuccessPath("/owner/cameras", "Camera source replaced. Re-provision to issue new ingest credentials."));
   } catch (error) {
     redirect(mutationErrorPath("/owner/cameras", error));
   }
@@ -1423,6 +1485,66 @@ export async function toggleOwnerCameraStatusAction(formData: FormData) {
         nextStatus === "enabled" ? "Camera enabled." : "Camera disabled."
       )
     );
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/cameras", error));
+  }
+}
+
+export async function toggleOwnerCameraPublicPlaybackAction(formData: FormData) {
+  try {
+    const cameraId = asInt(formData.get("cameraId"), "Camera ID");
+    const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
+
+    const enabled = asBoolean(formData.get("publicPlaybackEnabled"));
+    await db.update(venueCameras).set({ publicPlaybackEnabled: enabled }).where(eq(venueCameras.id, cameraId));
+
+    revalidateOwnerAndVenue(camera.venueId);
+    redirect(mutationSuccessPath("/owner/cameras", enabled ? "Public playback enabled." : "Public playback disabled."));
+  } catch (error) {
+    redirect(mutationErrorPath("/owner/cameras", error));
+  }
+}
+
+export async function provisionOwnerCameraLiveInputAction(formData: FormData) {
+  try {
+    const cameraId = asInt(formData.get("cameraId"), "Camera ID");
+    const camera = await ensureCameraOwnedByCurrentOwner(cameraId);
+    const ownership = await requireAuthorizedOwnerForVenue(camera.venueId);
+
+    await assertFeatureEnabled(
+      "feature.live_cameras",
+      {
+        environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+        userId: ownership.userId,
+        venueId: ownership.venueId,
+        role: ownership.role,
+        city: ownership.venue.city ?? undefined,
+      },
+      "Live camera management is unavailable in Beta V1."
+    );
+
+    await provisionLiveInputForCamera({
+      cameraId,
+      actorClerkUserId: ownership.userId,
+      actorRole: ownership.role,
+    });
+    await refreshCameraStreamHealth(cameraId);
+
+    revalidateOwnerAndVenue(camera.venueId);
+    redirect(mutationSuccessPath("/owner/cameras", "Camera provisioned. Bridge configuration is now available."));
   } catch (error) {
     redirect(mutationErrorPath("/owner/cameras", error));
   }

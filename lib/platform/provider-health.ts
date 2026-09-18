@@ -56,6 +56,8 @@ export async function getProviderHealthChecks() {
     checkConfigured("job_scheduler", ["JOB_SCHEDULER_PROVIDER"]),
     checkConfigured("wallet_passes", ["WALLET_PASS_PROVIDER"]),
     checkConfigured("camera_live_adapter", ["CAMERA_LIVE_PROVIDER"]),
+    checkConfigured("cloudflare_stream", ["CLOUDFLARE_STREAM_ACCOUNT_ID", "CLOUDFLARE_STREAM_API_TOKEN"]),
+    checkConfigured("mux_video", ["MUX_TOKEN_ID", "MUX_TOKEN_SECRET", "MUX_SIGNING_KEY_ID", "MUX_SIGNING_KEY_PRIVATE_KEY"]),
   ];
 
   // In production-like envs, treat unconfigured critical providers as unavailable for readiness.

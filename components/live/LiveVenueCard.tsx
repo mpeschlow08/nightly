@@ -11,7 +11,7 @@ export default function LiveVenueCard({ venue }: Props) {
   return (
     <article className="nightly-card nightly-card-interactive relative min-w-[17.8rem] snap-start overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#080b16]">
       <div className="relative">
-        <Link href={venue.href} aria-label={`Open ${venue.name} venue details`} className="block">
+        <Link href={venue.liveHref} aria-label={`Open ${venue.name} live stream`} className="block">
           <VenueImage src={venue.heroImageUrl} alt={`${venue.name} live`} orientation="portrait" className="rounded-none" />
         </Link>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 to-transparent" />
@@ -48,10 +48,10 @@ export default function LiveVenueCard({ venue }: Props) {
           </dl>
 
           <Link
-            href={venue.href}
+            href={venue.liveHref}
             className="nightly-btn-primary inline-flex min-h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 text-sm font-semibold text-white"
           >
-            View Venue
+            Watch Live
           </Link>
         </div>
       </div>

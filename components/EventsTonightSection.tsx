@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import EventDiscoveryCard from "@/components/home/EventDiscoveryCard";
+import NightlySectionHeader from "@/components/nightly/NightlySectionHeader";
 import type { ConsumerEventCard } from "@/lib/consumer/types";
 
 type Props = {
@@ -10,18 +9,15 @@ type Props = {
 export default function EventsTonightSection({ tonightEvents }: Props) {
 
   return (
-    <section id="events-tonight" className="mx-auto mt-7 max-w-3xl px-4 sm:px-5 lg:px-6">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <h2 className="text-lg font-semibold text-white">Events Tonight</h2>
-        <Link
-          href="/events"
-          className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300"
-        >
-          See All
-        </Link>
-      </div>
+    <section id="events-tonight" className="mx-auto mt-8 max-w-6xl px-4 sm:px-5 lg:px-8">
+      <NightlySectionHeader
+        eyebrow="Tonight"
+        title="Events Tonight"
+        subtitle="Curated events worth planning around."
+        href="/events"
+      />
 
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 [scrollbar-width:none]">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8 [scrollbar-width:none]">
         {tonightEvents.map((event, index) => (
           <EventDiscoveryCard
             key={event.id}

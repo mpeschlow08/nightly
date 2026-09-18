@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import {
   addOwnerCameraAction,
   deleteOwnerCameraAction,
+  provisionOwnerCameraLiveInputAction,
   renameOwnerCameraAction,
   setPrimaryOwnerCameraAction,
+  toggleOwnerCameraPublicPlaybackAction,
   toggleOwnerCameraStatusAction,
+  updateOwnerCameraSourceAction,
 } from "../actions";
 import { getOwnerCameras } from "../lib/data";
 import { getCurrentOwnerVenue } from "../lib/ownership";
@@ -18,6 +21,14 @@ type OwnerCamerasPageProps = {
 
 function formatStreamType(type: string) {
   return type.toUpperCase();
+}
+
+function formatProvisioningStatus(status: string) {
+  return status.replace(/_/g, " ").toUpperCase();
+}
+
+function formatStreamState(state: string) {
+  return state.replace(/_/g, " ").toUpperCase();
 }
 
 export default async function OwnerCamerasPage({ searchParams }: OwnerCamerasPageProps) {
@@ -173,7 +184,22 @@ export default async function OwnerCamerasPage({ searchParams }: OwnerCamerasPag
                   ) : null}
                 </div>
 
-                <p className="mt-3 break-all text-sm text-zinc-300">{camera.streamUrl}</p>
+                <div className="mt-3 space-y-2">
+                  <p className="break-all text-sm text-zinc-300">{camera.maskedStreamUrl}</p>
+                  <p className="text-xs text-zinc-500">Credentials are masked and never returned to the browser.</p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-violet-300/35 bg-violet-500/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-violet-100">
+                    Provisioning: {formatProvisioningStatus(camera.provisioningStatus)}
+                  </span>
+                  <span className="rounded-full border border-cyan-300/35 bg-cyan-500/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-cyan-100">
+                    Stream: {formatStreamState(camera.streamState)}
+                  </span>
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] ${camera.publicPlaybackEnabled ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-zinc-300/25 bg-zinc-500/10 text-zinc-300"}`}>
+                    Playback: {camera.publicPlaybackEnabled ? "Public" : "Private"}
+                  </span>
+                </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                   <form action={renameOwnerCameraAction} className="flex flex-col gap-2">
@@ -195,7 +221,57 @@ export default async function OwnerCamerasPage({ searchParams }: OwnerCamerasPag
                     </div>
                   </form>
 
+                  <form action={updateOwnerCameraSourceAction} className="flex flex-col gap-2 md:col-span-2">
+                    <input type="hidden" name="cameraId" value={camera.id} />
+                    <label htmlFor={`camera-stream-url-${camera.id}`} className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                      Replace Source
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <input
+                        id={`camera-stream-url-${camera.id}`}
+                        name="streamUrl"
+                        required
+                        placeholder="rtsp://user:password@10.0.0.8/live"
+                        className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
+                      />
+                      <select
+                        name="streamType"
+                        defaultValue={camera.streamType}
+                        className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
+                      >
+                        <option value="hls">HLS</option>
+                        <option value="rtsp">RTSP</option>
+                        <option value="webrtc">WebRTC</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <button type="submit" className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:border-cyan-300/40 hover:bg-cyan-500/10">
+                        Replace
+                      </button>
+                    </div>
+                  </form>
+
                   <div className="flex flex-wrap gap-2">
+                    <form action={provisionOwnerCameraLiveInputAction}>
+                      <input type="hidden" name="cameraId" value={camera.id} />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-violet-300/40 bg-violet-500/10 px-4 py-2 text-sm text-violet-100 transition hover:border-violet-200/55"
+                      >
+                        {camera.providerLiveInputId ? "Recheck Provisioning" : "Provision Stream"}
+                      </button>
+                    </form>
+
+                    <form action={toggleOwnerCameraPublicPlaybackAction}>
+                      <input type="hidden" name="cameraId" value={camera.id} />
+                      <input type="hidden" name="publicPlaybackEnabled" value={camera.publicPlaybackEnabled ? "false" : "true"} />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100 transition hover:border-emerald-200/55"
+                      >
+                        {camera.publicPlaybackEnabled ? "Set Private" : "Set Public"}
+                      </button>
+                    </form>
+
                     <form action={setPrimaryOwnerCameraAction}>
                       <input type="hidden" name="cameraId" value={camera.id} />
                       <button

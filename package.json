@@ -33,6 +33,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
     "drizzle-orm": "^0.45.2",
+    "hls.js": "^1.7.3",
     "leaflet": "^1.9.4",
     "next": "16.2.12",
     "pg": "^8.22.0",
