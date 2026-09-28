@@ -1,6 +1,8 @@
 import {
   boolean,
+  check,
   date,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -11,6 +13,7 @@ import {
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
+import { NIGHTLY_DEVICE_DEFAULTS } from "@/lib/nightly-device/policy";
 import { sql } from "drizzle-orm";
 
 export const userRoleEnum = pgEnum("user_role", ["consumer", "dj", "owner", "admin"]);
@@ -33,6 +36,81 @@ export const eventLifecycleStatusEnum = pgEnum("event_lifecycle_status", [
   "cancelled",
   "archived",
 ]);
+
+export const nightlyDeviceLifecycleStateEnum = pgEnum("nightly_device_lifecycle_state", [
+  "factory",
+  "inventory",
+  "provisioned",
+  "unclaimed",
+  "claimed",
+  "active",
+  "degraded",
+  "offline",
+  "suspended",
+  "return_pending",
+  "rma",
+  "revoked",
+  "reprovisioning",
+  "retired",
+]);
+
+export const nightlyDeviceProvisioningStateEnum = pgEnum("nightly_device_provisioning_state", [
+  "inventory",
+  "provisioning",
+  "provisioned",
+  "reprovisioning",
+  "failed",
+  "revoked",
+]);
+
+export const nightlyDeviceClaimStateEnum = pgEnum("nightly_device_claim_state", [
+  "unclaimed",
+  "claimed",
+  "pending",
+  "rejected",
+  "revoked",
+  "expired",
+]);
+
+export const nightlyDeviceOperationalStateEnum = pgEnum("nightly_device_operational_state", [
+  "starting",
+  "healthy",
+  "degraded",
+  "offline",
+  "suspended",
+  "maintenance",
+]);
+
+export const nightlyDeviceSourceTypeEnum = pgEnum("nightly_device_source_type", [
+  "ip_camera",
+  "hdmi_input",
+  "mixer_audio",
+  "ambient_audio",
+  "other",
+]);
+
+export const nightlyDeviceCommissioningCheckEnum = pgEnum("nightly_device_commissioning_check", [
+  "cameras",
+  "audio",
+  "hdmi",
+  "hardware_acceleration",
+  "storage",
+  "internet",
+  "nightly_cloud",
+]);
+
+export const nightlyDeviceCommissioningStatusEnum = pgEnum("nightly_device_commissioning_status", [
+  "not_tested",
+  "checking",
+  "pass",
+  "warning",
+  "fail",
+]);
+
+export type NightlyDeviceServiceEntitlementState = "inactive" | "trial" | "active" | "suspended" | "expired" | "cancelled";
+export type NightlyDeviceManagementAccessLevel = "owner_assisted" | "nightly_managed" | "recovery_only" | "disabled";
+export type NightlyDevicePrivacyMode = "private" | "venue_only" | "public";
+export type NightlyDeviceContentEligibility = "restricted" | "approved" | "blocked";
 
 export const specialGuestTypeEnum = pgEnum("special_guest_type", [
   "artist",
@@ -2293,6 +2371,196 @@ export const venuePublishHistory = pgTable(
   })
 );
 
+export const nightlyDevices = pgTable(
+  "nightly_devices",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    publicDeviceUuid: text("public_device_uuid").notNull().unique(),
+    serialNumber: text("serial_number").notNull().unique(),
+    hardwareModel: text("hardware_model"),
+    hardwareRevision: text("hardware_revision"),
+    manufacturingBatch: text("manufacturing_batch"),
+    factoryMetadataJson: text("factory_metadata_json").notNull().default("{}"),
+    deviceSecretHash: text("device_secret_hash"),
+    deviceAuthVersion: text("device_auth_version").notNull().default("v1"),
+    bootstrapTokenHash: text("bootstrap_token_hash"),
+    lifecycleState: nightlyDeviceLifecycleStateEnum("lifecycle_state").notNull().default("inventory"),
+    provisioningState: nightlyDeviceProvisioningStateEnum("provisioning_state").notNull().default("inventory"),
+    claimState: nightlyDeviceClaimStateEnum("claim_state").notNull().default("unclaimed"),
+    operationalState: nightlyDeviceOperationalStateEnum("operational_state").notNull().default("starting"),
+    serviceEntitlementState: text("service_entitlement_state").$type<NightlyDeviceServiceEntitlementState>().notNull().default(NIGHTLY_DEVICE_DEFAULTS.serviceEntitlementState),
+    serviceSuspendedAt: timestamp("service_suspended_at"),
+    managementRecoveryEligible: boolean("management_recovery_eligible").notNull().default(true),
+    managementAccessLevel: text("management_access_level").$type<NightlyDeviceManagementAccessLevel>().notNull().default("owner_assisted"),
+    privacyMode: text("privacy_mode").$type<NightlyDevicePrivacyMode>().notNull().default(NIGHTLY_DEVICE_DEFAULTS.privacyMode),
+    contentEligibility: text("content_eligibility").$type<NightlyDeviceContentEligibility>().notNull().default(NIGHTLY_DEVICE_DEFAULTS.contentEligibility),
+    publicPublishingEnabled: boolean("public_publishing_enabled").notNull().default(NIGHTLY_DEVICE_DEFAULTS.publicPublishingEnabled),
+    hotReelEligible: boolean("hot_reel_eligible").notNull().default(NIGHTLY_DEVICE_DEFAULTS.hotReelEligible),
+    liveEligible: boolean("live_eligible").notNull().default(NIGHTLY_DEVICE_DEFAULTS.liveEligible),
+    privacyConfigRevision: integer("privacy_config_revision").notNull().default(NIGHTLY_DEVICE_DEFAULTS.privacyConfigRevision),
+    serviceConfigRevision: integer("service_config_revision").notNull().default(1),
+    softwareVersion: text("software_version"),
+    agentVersion: text("agent_version"),
+    publicDeviceName: text("public_device_name"),
+    lastHeartbeatAt: timestamp("last_heartbeat_at"),
+    lastConfigSyncAt: timestamp("last_config_sync_at"),
+    desiredConfigRevision: text("desired_config_revision"),
+    appliedConfigRevision: text("applied_config_revision"),
+    capabilitySummaryJson: text("capability_summary_json").notNull().default("[]"),
+    privacyStateJson: text("privacy_state_json").notNull().default("{}"),
+    serviceStateJson: text("service_state_json").notNull().default("{}"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    activationAt: timestamp("activation_at"),
+    provisioningAt: timestamp("provisioning_at"),
+    suspensionAt: timestamp("suspension_at"),
+    revokedAt: timestamp("revoked_at"),
+    returnPendingAt: timestamp("return_pending_at"),
+    rmaAt: timestamp("rma_at"),
+    retiredAt: timestamp("retired_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdx: index("nightly_devices_venue_id_idx").on(table.venueId),
+    lifecycleIdx: index("nightly_devices_lifecycle_state_idx").on(table.lifecycleState),
+    claimIdx: index("nightly_devices_claim_state_idx").on(table.claimState),
+    operationalIdx: index("nightly_devices_operational_state_idx").on(table.operationalState),
+    publicUuidIdx: index("nightly_devices_public_device_uuid_idx").on(table.publicDeviceUuid),
+    serialIdx: index("nightly_devices_serial_number_idx").on(table.serialNumber),
+    idVenueUnique: unique("nightly_devices_id_venue_unique").on(table.id, table.venueId),
+    serviceEntitlementCheck: check("nightly_devices_service_entitlement_state_check", sql`${table.serviceEntitlementState} in ('inactive', 'trial', 'active', 'suspended', 'expired', 'cancelled')`),
+    managementAccessCheck: check("nightly_devices_management_access_level_check", sql`${table.managementAccessLevel} in ('owner_assisted', 'nightly_managed', 'recovery_only', 'disabled')`),
+    privacyModeCheck: check("nightly_devices_privacy_mode_check", sql`${table.privacyMode} in ('private', 'venue_only', 'public')`),
+    contentEligibilityCheck: check("nightly_devices_content_eligibility_check", sql`${table.contentEligibility} in ('restricted', 'approved', 'blocked')`),
+  })
+);
+
+export const nightlyDeviceAssignments = pgTable(
+  "nightly_device_assignments",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("device_id")
+      .notNull()
+      .references(() => nightlyDevices.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    assignedByClerkUserId: text("assigned_by_clerk_user_id").notNull(),
+    assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+    releasedAt: timestamp("released_at"),
+    assignmentReason: text("assignment_reason"),
+    status: text("status").notNull().default("active"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+  },
+  (table) => ({
+    deviceIdx: index("nightly_device_assignments_device_id_idx").on(table.deviceId),
+    venueIdx: index("nightly_device_assignments_venue_id_idx").on(table.venueId),
+    deviceVenueActiveUnique: unique("nightly_device_assignments_active_unique").on(table.deviceId, table.venueId, table.status),
+  })
+);
+
+export const nightlyDeviceCapabilities = pgTable(
+  "nightly_device_capabilities",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("device_id")
+      .notNull()
+      .references(() => nightlyDevices.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    capabilityName: text("capability_name").notNull(),
+    capabilityValue: text("capability_value"),
+    supported: boolean("supported").notNull().default(true),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    deviceIdx: index("nightly_device_capabilities_device_id_idx").on(table.deviceId),
+    categoryIdx: index("nightly_device_capabilities_category_idx").on(table.category),
+    deviceCapabilityUnique: unique("nightly_device_capabilities_device_name_unique").on(
+      table.deviceId,
+      table.category,
+      table.capabilityName
+    ),
+  })
+);
+
+export const nightlyDeviceClaims = pgTable(
+  "nightly_device_claims",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("device_id")
+      .notNull()
+      .references(() => nightlyDevices.id, { onDelete: "cascade" }),
+    venueId: integer("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    claimantClerkUserId: text("claimant_clerk_user_id").notNull(),
+    claimCodeHash: text("claim_code_hash").notNull().unique(),
+    status: nightlyDeviceClaimStateEnum("status").notNull().default("pending"),
+    expiresAt: timestamp("expires_at"),
+    usedAt: timestamp("used_at"),
+    revokedAt: timestamp("revoked_at"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    deviceIdx: index("nightly_device_claims_device_id_idx").on(table.deviceId),
+    venueIdx: index("nightly_device_claims_venue_id_idx").on(table.venueId),
+    claimantIdx: index("nightly_device_claims_claimant_idx").on(table.claimantClerkUserId),
+    expiresIdx: index("nightly_device_claims_expires_at_idx").on(table.expiresAt),
+  })
+);
+
+export const nightlyDeviceSources = pgTable(
+  "nightly_device_sources",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("device_id").notNull(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    sourceType: nightlyDeviceSourceTypeEnum("source_type").notNull(),
+    sourceLabel: text("source_label").notNull(),
+    venueCameraId: integer("venue_camera_id"),
+    enabled: boolean("enabled").notNull().default(true),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    deviceIdx: index("nightly_device_sources_device_id_idx").on(table.deviceId),
+    venueIdx: index("nightly_device_sources_venue_id_idx").on(table.venueId),
+    cameraIdx: index("nightly_device_sources_venue_camera_id_idx").on(table.venueCameraId),
+    sourceUnique: unique("nightly_device_sources_device_type_label_unique").on(table.deviceId, table.sourceType, table.sourceLabel),
+    cameraUnique: unique("nightly_device_sources_venue_camera_unique").on(table.venueCameraId),
+    cameraLinkCheck: check("nightly_device_sources_camera_link_check", sql`(${table.sourceType} = 'ip_camera' and ${table.venueCameraId} is not null) or (${table.sourceType} <> 'ip_camera' and ${table.venueCameraId} is null)`),
+    deviceVenueForeignKey: foreignKey({ columns: [table.deviceId, table.venueId], foreignColumns: [nightlyDevices.id, nightlyDevices.venueId], name: "nightly_device_sources_device_venue_fkey" }).onDelete("cascade"),
+    cameraVenueForeignKey: foreignKey({ columns: [table.venueCameraId, table.venueId], foreignColumns: [venueCameras.id, venueCameras.venueId], name: "nightly_device_sources_camera_venue_fkey" }).onDelete("cascade"),
+  })
+);
+
+export const nightlyDeviceCommissioningChecks = pgTable(
+  "nightly_device_commissioning_checks",
+  {
+    id: serial("id").primaryKey(),
+    deviceId: integer("device_id").notNull().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+    checkKey: nightlyDeviceCommissioningCheckEnum("check_key").notNull(),
+    status: nightlyDeviceCommissioningStatusEnum("status").notNull().default("not_tested"),
+    summary: text("summary"),
+    evidenceJson: text("evidence_json").notNull().default("{}"),
+    checkedAt: timestamp("checked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    deviceIdx: index("nightly_device_commissioning_checks_device_id_idx").on(table.deviceId),
+    statusIdx: index("nightly_device_commissioning_checks_status_idx").on(table.status),
+    deviceCheckUnique: unique("nightly_device_commissioning_checks_device_check_unique").on(table.deviceId, table.checkKey),
+    completedCheckEvidence: check("nightly_device_commissioning_checks_evidence_check", sql`${table.status} in ('not_tested', 'checking') or (${table.checkedAt} is not null and ${table.evidenceJson} <> '{}' )`),
+  })
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -3422,6 +3690,7 @@ export const venueCameras = pgTable(
   },
   (table) => ({
     venueIdIdx: index("venue_cameras_venue_id_idx").on(table.venueId),
+    idVenueUnique: unique("venue_cameras_id_venue_unique").on(table.id, table.venueId),
     isPrimaryIdx: index("venue_cameras_is_primary_idx").on(table.isPrimary),
     providerLiveInputIdIdx: index("venue_cameras_provider_live_input_id_idx").on(table.providerLiveInputId),
   })

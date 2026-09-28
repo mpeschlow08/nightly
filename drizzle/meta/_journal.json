@@ -204,6 +204,20 @@
       "when": 1792800000000,
       "tag": "0028_live_streaming_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0029_nightly_device_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793000001000,
+      "tag": "0030_nightly_device_control_plane_completion",
+      "breakpoints": true
     }
   ]
 }

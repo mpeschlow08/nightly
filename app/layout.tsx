@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import AppNavigation from "@/components/navigation/AppNavigation";
 import { getUserRole } from "@/app/lib/user-roles";
+import { getCurrentVenueDeviceActor } from "@/lib/nightly-device/auth";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,7 +28,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const { userId } = await auth();
-  const role = userId ? await getUserRole(userId) : null;
+  const [role, deviceActor] = await Promise.all([
+    userId ? getUserRole(userId) : null,
+    userId ? getCurrentVenueDeviceActor() : null,
+  ]);
 
   return (
     <ClerkProvider>
@@ -37,7 +41,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
-          <AppNavigation role={role}>{children}</AppNavigation>
+          <AppNavigation role={role} hasDeviceAccess={Boolean(deviceActor)}>{children}</AppNavigation>
         </body>
       </html>
     </ClerkProvider>

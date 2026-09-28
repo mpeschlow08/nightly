@@ -17,6 +17,7 @@ type NavItem = {
 
 type AppNavigationProps = {
   role: AppRole;
+  hasDeviceAccess: boolean;
   children: React.ReactNode;
 };
 
@@ -77,6 +78,7 @@ const roleItems: Record<Exclude<AppRole, null>, NavItem[]> = {
     { label: "Events", href: "/owner/events" },
     { label: "Gallery", href: "/owner/images" },
     { label: "Cameras", href: "/owner/cameras" },
+    { label: "Nightly Box", href: "/owner/devices" },
     { label: "Analytics", comingSoon: true },
     { label: "Settings", href: "/owner/settings" },
     { label: "Switch Account Type", href: "/select-role?changeRole=1" },
@@ -155,6 +157,7 @@ function getPageTitle(pathname: string) {
   if (pathname === "/owner/events") return "Owner Events";
   if (pathname === "/owner/images") return "Owner Gallery";
   if (pathname === "/owner/cameras") return "Owner Cameras";
+  if (pathname === "/owner/devices") return "Nightly Box";
   if (pathname === "/owner/settings") return "Owner Settings";
   if (pathname === "/owner/hours") return "Business Hours";
   if (pathname === "/admin") return "Admin Dashboard";
@@ -197,6 +200,13 @@ function getUsefulBreadcrumbs(pathname: string): Breadcrumb[] {
     return [
       { label: "Owner Dashboard", href: "/owner" },
       { label: "Cameras" },
+    ];
+  }
+
+  if (pathname === "/owner/devices") {
+    return [
+      { label: "Owner Dashboard", href: "/owner" },
+      { label: "Nightly Box" },
     ];
   }
 
@@ -271,7 +281,7 @@ function getBackFallback(role: Exclude<AppRole, null>, pathname: string, editMod
   return roleFallbackByHistory[role];
 }
 
-export default function AppNavigation({ role, children }: AppNavigationProps) {
+export default function AppNavigation({ role, hasDeviceAccess, children }: AppNavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -291,7 +301,9 @@ export default function AppNavigation({ role, children }: AppNavigationProps) {
   const activeRole: Exclude<AppRole, null> = role ?? "consumer";
   const isConsumerHome = isConsumerHomePath(pathname);
   const layoutRole: Exclude<AppRole, null> = isConsumerHome ? "consumer" : activeRole;
-  const navItems = roleItems[layoutRole];
+  const navItems = hasDeviceAccess && layoutRole !== "owner"
+    ? [...roleItems[layoutRole], { label: "Nightly Box", href: "/owner/devices" }]
+    : roleItems[layoutRole];
   const bottomNavItems = getBottomNavItems(layoutRole);
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = useMemo(() => getUsefulBreadcrumbs(pathname), [pathname]);

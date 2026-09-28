@@ -87,7 +87,7 @@ function getPackageInventoryBindings(packageItemsJson: string) {
   });
 }
 
-async function findOverlappingTableBooking(input: { bookingId?: number; venueTableId: number; venueId: number; startAt: Date | null; endAt: Date | null }) {
+async function findOverlappingTableBooking(input: { bookingId?: number; venueTableId: number; venueId: number; startAt: Date | null; endAt: Date | null }, dbClient: ReservationDbClient) {
   if (!input.startAt || !input.endAt) {
     return null;
   }
@@ -95,7 +95,7 @@ async function findOverlappingTableBooking(input: { bookingId?: number; venueTab
   const startAt = input.startAt;
   const endAt = input.endAt;
 
-  const rows = await db
+  const rows = await dbClient
     .select({
       id: tableBookings.id,
       bookingId: tableBookings.bookingId,
@@ -138,7 +138,7 @@ export async function assertTableAvailability(input: {
     venueTableId: input.venueTableId,
     startAt: input.requestedStartAt,
     endAt: input.requestedEndAt,
-  });
+  }, db);
   if (conflicting) {
     throw new Error("Table is already reserved for an overlapping reservation window.");
   }
@@ -410,7 +410,7 @@ export async function processWaitlistAutomation(input: { venueId: number; actorC
   return db.transaction(async (tx) => {
     const now = new Date();
     await acquireAdvisoryLock(tx, RESERVATION_LOCK_SCOPE.waitlistSection, stableIntHash(`${input.venueId}:${input.sectionName ?? "all"}`));
-    const queue = await getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null });
+    const queue = await getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null }, tx);
 
     for (const entry of queue) {
       if (entry.status === "offered" && entry.expiresAt && entry.expiresAt <= now) {
@@ -425,7 +425,7 @@ export async function processWaitlistAutomation(input: { venueId: number; actorC
       }
     }
 
-    const refreshed = await getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null });
+    const refreshed = await getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null }, tx);
     const hasOpenOffer = refreshed.some((entry) => entry.status === "offered" && (!entry.expiresAt || entry.expiresAt > now));
     if (hasOpenOffer) {
       return refreshed;
@@ -444,7 +444,7 @@ export async function processWaitlistAutomation(input: { venueId: number; actorC
       }, tx);
     }
 
-    return getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null });
+    return getWaitlistQueue({ venueId: input.venueId, section: input.sectionName ?? null, status: null, date: null }, tx);
   });
 }
 
@@ -1613,7 +1613,7 @@ export async function getWaitlistQueue(input: {
   date?: Date | null;
   section?: string | null;
   status?: WaitlistStatus | null;
-}) {
+}, dbClient: ReservationDbClient = db) {
   const conditions = [eq(waitlistEntries.venueId, input.venueId)];
 
   if (input.section) {
@@ -1632,7 +1632,7 @@ export async function getWaitlistQueue(input: {
     conditions.push(sql`${waitlistEntries.createdAt} >= ${start} and ${waitlistEntries.createdAt} < ${end}`);
   }
 
-  return db
+  return dbClient
     .select()
     .from(waitlistEntries)
     .where(and(...conditions))
