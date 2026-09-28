@@ -1,0 +1,37 @@
+[Unit]
+Description=Nightly Box Edge Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=nightly-agent
+Group=nightly-agent
+SupplementaryGroups=video audio render
+ExecStart=/usr/bin/node /opt/nightly-agent/current/agent/dist/agent/src/cli.js
+WorkingDirectory=/opt/nightly-agent/current/agent
+Environment=NODE_ENV=production
+Environment=NIGHTLY_AGENT_STATE_DIR=/var/lib/nightly-agent
+EnvironmentFile=-/etc/nightly-agent/agent.env
+LoadCredential=bootstrap-token:/etc/nightly-agent/bootstrap-token
+LoadCredential=credential-key:/etc/nightly-agent/credential-key
+StateDirectory=nightly-agent
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5s
+WatchdogSec=90s
+NotifyAccess=main
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0077
+TimeoutStopSec=20s
+
+[Install]
+WantedBy=multi-user.target

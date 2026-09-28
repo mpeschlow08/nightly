@@ -22,6 +22,9 @@ import {
   isDeviceClaimUsable,
   normalizeCommissioningStatus,
 } from "../lib/nightly-device/policy";
+import { classifyNightlyDeviceInventoryWriteError, extractPostgresErrorMetadata, isPostgresUniqueConstraintViolation } from "../lib/nightly-device/database-errors";
+
+const CAMERA_UNIQUE_CONSTRAINT = "nightly_device_sources_venue_camera_unique";
 
 test("device capability bundles accept supported Nightly Box capabilities", () => {
   const capabilities = [
@@ -210,4 +213,51 @@ test("safe device error shape does not include credential fields", () => {
   assert.deepEqual(error, { error: { code: "unauthorized", message: "Device authentication is required." } });
   assert.equal(JSON.stringify(error).includes("claimCode"), false);
   assert.equal(JSON.stringify(error).includes("deviceSecret"), false);
+});
+
+test("PostgreSQL classifier recognizes direct and wrapped canonical-camera unique violations", () => {
+  const direct = { name: "error", code: "23505", constraint: CAMERA_UNIQUE_CONSTRAINT };
+  assert.equal(isPostgresUniqueConstraintViolation(direct, CAMERA_UNIQUE_CONSTRAINT), true);
+  assert.equal(isPostgresUniqueConstraintViolation({ name: "DrizzleQueryError", cause: direct }, CAMERA_UNIQUE_CONSTRAINT), true);
+  assert.equal(isPostgresUniqueConstraintViolation({ name: "Outer", cause: { name: "Middle", cause: direct } }, CAMERA_UNIQUE_CONSTRAINT), true);
+  assert.deepEqual(extractPostgresErrorMetadata({ name: "DrizzleQueryError", cause: direct }), {
+    code: "23505",
+    constraint: CAMERA_UNIQUE_CONSTRAINT,
+    errorName: "error",
+    depth: 1,
+  });
+});
+
+test("PostgreSQL classifier rejects unrelated, malformed, cyclic, and overdeep errors", () => {
+  assert.equal(isPostgresUniqueConstraintViolation({ code: "23505", constraint: "nightly_device_sources_device_type_label_unique" }, CAMERA_UNIQUE_CONSTRAINT), false);
+  assert.equal(isPostgresUniqueConstraintViolation({ code: "23503", constraint: CAMERA_UNIQUE_CONSTRAINT }, CAMERA_UNIQUE_CONSTRAINT), false);
+  assert.equal(isPostgresUniqueConstraintViolation({ code: 23505, constraint: CAMERA_UNIQUE_CONSTRAINT }, CAMERA_UNIQUE_CONSTRAINT), false);
+  const cyclic: { cause?: unknown } = {};
+  cyclic.cause = cyclic;
+  assert.equal(extractPostgresErrorMetadata(cyclic), null);
+  let overdeep: unknown = { code: "23505", constraint: CAMERA_UNIQUE_CONSTRAINT };
+  for (let depth = 0; depth < 9; depth += 1) overdeep = { cause: overdeep };
+  assert.equal(extractPostgresErrorMetadata(overdeep), null);
+});
+
+test("canonical camera unique conflict maps to safe 409 and unrelated DB errors stay unclassified", () => {
+  const pgError = { code: "23505", constraint: CAMERA_UNIQUE_CONSTRAINT };
+  const wrapped = { name: "DrizzleQueryError", cause: { name: "NeonDriverError", cause: pgError } };
+  assert.deepEqual(classifyNightlyDeviceInventoryWriteError(wrapped), {
+    status: 409,
+    code: "source_camera_conflict",
+    message: "Venue camera is already assigned to a source.",
+  });
+  assert.equal(classifyNightlyDeviceInventoryWriteError({ cause: { code: "23505", constraint: "nightly_device_sources_device_type_label_unique" } }), null);
+  assert.equal(classifyNightlyDeviceInventoryWriteError({ cause: { code: "23503", constraint: CAMERA_UNIQUE_CONSTRAINT } }), null);
+});
+
+test("inventory route preserves venue-owned sources and maps only canonical camera conflicts", () => {
+  const route = readFileSync(join(process.cwd(), "app/api/device/v1/inventory/route.ts"), "utf8");
+  const schema = readFileSync(join(process.cwd(), "db/schema.ts"), "utf8");
+  assert.match(route, /like\(nightlyDeviceSources\.sourceLabel, "agent:%"\)/);
+  assert.match(route, /classifyNightlyDeviceInventoryWriteError\(error\)/);
+  assert.match(route, /status: conflict\.status/);
+  assert.match(schema, /unique\("nightly_device_sources_venue_camera_unique"\)\.on\(table\.venueCameraId\)/);
+  assert.match(schema, /nightly_device_sources_camera_venue_fkey/);
 });

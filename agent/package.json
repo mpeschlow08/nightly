@@ -1,0 +1,23 @@
+{
+  "name": "@nightly/nightly-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Headless Linux edge runtime for Nightly Box devices",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/agent/src/cli.js",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.23.1",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1"
+  }
+}

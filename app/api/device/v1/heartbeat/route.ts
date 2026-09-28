@@ -8,6 +8,12 @@ import { authenticateDeviceRequest, canUseDeviceForManagement, createAuthError }
 export async function POST(request: Request) {
   const identity = await authenticateDeviceRequest(request);
   if (!identity) return NextResponse.json(createAuthError("unauthorized", "Device authentication is required."), { status: 401 });
+    const body = (await request.json().catch(() => ({}))) as { agentVersion?: unknown; softwareVersion?: unknown; operationalState?: unknown };
+  if ((body.agentVersion !== undefined && (typeof body.agentVersion !== "string" || body.agentVersion.length > 64)) ||
+      (body.softwareVersion !== undefined && (typeof body.softwareVersion !== "string" || body.softwareVersion.length > 64)) ||
+      (body.operationalState !== undefined && body.operationalState !== "healthy" && body.operationalState !== "degraded")) {
+    return NextResponse.json(createAuthError("invalid_request", "Version identifiers must be strings of at most 64 characters."), { status: 400 });
+  }
   const device = identity;
   if (!device) {
     return NextResponse.json(createAuthError("device_not_found", "Device is not registered."), { status: 404 });
@@ -25,7 +31,9 @@ export async function POST(request: Request) {
     .update(nightlyDevices)
     .set({
       lastHeartbeatAt: new Date(),
-      operationalState: current.lifecycleState === "active" ? "healthy" : current.operationalState,
+      ...(body.agentVersion !== undefined ? { agentVersion: body.agentVersion } : {}),
+      ...(body.softwareVersion !== undefined ? { softwareVersion: body.softwareVersion } : {}),
+      operationalState: current.lifecycleState === "active" ? (body.operationalState ?? "healthy") as "healthy" | "degraded" : current.operationalState,
       updatedAt: new Date(),
     })
     .where(eq(nightlyDevices.id, device.id));
