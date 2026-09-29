@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { nightlyDeviceSources, nightlyDevices, venueCameras } from "@/db/schema";
+import { artistPerformanceSessions, artistSessionSources, nightlyDeviceSources, nightlyDevices, venueCameras } from "@/db/schema";
 import { authenticateDeviceRequest, canUseDeviceForOperationalManagement, createAuthError } from "@/lib/nightly-device/auth";
 import { projectDeviceMediaConfig } from "@/lib/nightly-device/media-bindings";
+import { artistSessionLeaseExpiresAt, sourceRole } from "@/lib/artist-sessions/policy";
+import { expireStaleVenueSessions } from "@/lib/artist-sessions/service";
 
 export async function GET(request: Request) {
   const identity = await authenticateDeviceRequest(request);
@@ -25,6 +27,8 @@ export async function GET(request: Request) {
     return NextResponse.json(createAuthError("device_unavailable", "Device management access is unavailable."), { status: 403 });
   }
 
+  if (device.venueId) await expireStaleVenueSessions(device.venueId);
+
   const mediaRows = device.venueId ? await db
     .select({
       id: nightlyDeviceSources.id,
@@ -40,6 +44,33 @@ export async function GET(request: Request) {
     .from(nightlyDeviceSources)
     .leftJoin(venueCameras, and(eq(venueCameras.id, nightlyDeviceSources.venueCameraId), eq(venueCameras.venueId, nightlyDeviceSources.venueId)))
     .where(and(eq(nightlyDeviceSources.deviceId, device.id), eq(nightlyDeviceSources.venueId, device.venueId))) : [];
+
+  const activeSessions = device.venueId && device.desiredConfigRevision ? await db
+    .select({ publicId: artistPerformanceSessions.publicId, venueId: artistPerformanceSessions.venueId,
+      startedAt: artistPerformanceSessions.startedAt, includeMicrophone: artistPerformanceSessions.includeMicrophone,
+      mediaRevision: artistPerformanceSessions.mediaRevision, sourceId: artistSessionSources.sourceKey,
+      role: artistSessionSources.role })
+    .from(artistPerformanceSessions).innerJoin(artistSessionSources, eq(artistSessionSources.sessionId, artistPerformanceSessions.id))
+    .where(and(eq(artistPerformanceSessions.venueId, device.venueId), eq(artistPerformanceSessions.status, "active"),
+      eq(artistSessionSources.deviceKey, device.id))).limit(16) : [];
+  const permittedSources = new Map(projectDeviceMediaConfig(mediaRows, device.id, device.venueId, device.desiredConfigRevision).sources
+    .map((source) => [source.sourceId, sourceRole(source.sourceType)]));
+  const performance = new Map<string, { publicId: string; deviceId: number; venueId: number;
+    sources: Array<{ sourceId: number; role: "camera" | "program_audio" | "ambient_audio" }>;
+    startedAt: string; leaseExpiresAt: string; includeMicrophone: boolean; mediaRevision: number }>();
+  if (device.serviceEntitlementState === "active" && !device.serviceSuspendedAt && device.contentEligibility === "approved" &&
+      device.hotReelEligible && device.publicPublishingEnabled && device.venueId) {
+    for (const row of activeSessions) {
+      if (!row.startedAt || !row.role || permittedSources.get(row.sourceId) !== row.role) continue;
+      const leaseExpiresAt = artistSessionLeaseExpiresAt(row.startedAt);
+      if (!leaseExpiresAt || leaseExpiresAt <= new Date()) continue;
+      const existing = performance.get(row.publicId);
+      if (existing) existing.sources.push({ sourceId: row.sourceId, role: row.role });
+      else performance.set(row.publicId, { publicId: row.publicId, deviceId: device.id, venueId: row.venueId,
+        sources: [{ sourceId: row.sourceId, role: row.role }], startedAt: row.startedAt.toISOString(), includeMicrophone: row.includeMicrophone,
+        leaseExpiresAt: leaseExpiresAt.toISOString(), mediaRevision: row.mediaRevision });
+    }
+  }
 
   return NextResponse.json({
     ok: true,
@@ -62,6 +93,7 @@ export async function GET(request: Request) {
         revision: device.serviceConfigRevision,
       },
       media: projectDeviceMediaConfig(mediaRows, device.id, device.venueId, device.desiredConfigRevision),
+      performance: { revision: device.desiredConfigRevision, ttlSeconds: 300, sessions: [...performance.values()].slice(0, 4) },
       recovery: { enabled: device.managementRecoveryEligible },
     },
     timestamp: new Date().toISOString(),

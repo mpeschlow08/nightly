@@ -8,6 +8,7 @@ import type { AgentStateStore } from "./state-store";
 import type { PlatformProbeAdapter } from "../probes/platform";
 import type { AgentMediaRuntime } from "../media/runtime";
 import type { DeviceMediaBindings } from "../media/device-bindings";
+import { PerformanceDirective } from "../media/performance-directive";
 
 export type RuntimeDependencies = {
   config: AgentConfig;
@@ -23,14 +24,21 @@ export type RuntimeDependencies = {
 
 export class AgentRuntime {
   readonly #machine = new AgentStateMachine();
+  readonly #performanceDirective: PerformanceDirective;
   #state!: AgentPersistentState;
   #stopping = false;
   #wakeDelay: (() => void) | null = null;
   #mediaExpiry: NodeJS.Timeout | null = null;
 
-  constructor(private readonly dependencies: RuntimeDependencies) {}
+  constructor(private readonly dependencies: RuntimeDependencies) {
+    this.#performanceDirective = new PerformanceDirective(() => (dependencies.now ?? (() => new Date()))().getTime());
+  }
 
   get state() { return this.#machine.state; }
+
+  resolvePerformanceSession(sourceId: number, startMs: number, endMs: number) {
+    return this.#performanceDirective.resolve(sourceId, startMs, endMs);
+  }
 
   stop() {
     this.#stopping = true;
@@ -184,6 +192,7 @@ export class AgentRuntime {
           if (this.dependencies.mediaBindings.revision && this.dependencies.mediaBindings.revision !== configResponse.configRevision) await this.dependencies.media?.stop();
           this.dependencies.mediaBindings.bindIdentity(heartbeat.device.id, heartbeat.device.venueId);
           this.dependencies.mediaBindings.update(configResponse);
+          this.#performanceDirective.update(configResponse, this.dependencies.mediaBindings);
           this.#armMediaExpiry();
         } catch { throw new ControlPlaneError("Device media configuration failed validation.", null, "invalid_device_config", false); }
       }
@@ -245,6 +254,7 @@ export class AgentRuntime {
   async #stopMedia() {
     if (this.#mediaExpiry) clearTimeout(this.#mediaExpiry);
     this.#mediaExpiry = null;
+    this.#performanceDirective.clear();
     this.dependencies.mediaBindings?.clear();
     await this.dependencies.media?.stop();
   }

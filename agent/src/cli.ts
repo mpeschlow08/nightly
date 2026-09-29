@@ -36,6 +36,7 @@ async function main() {
   });
   const muxer = new FfmpegMp4Muxer();
   if (!config.simulation) await muxer.recover();
+  const runtimeRef: { current: AgentRuntime | undefined } = { current: undefined };
   const media = new AgentMediaRuntime({
     directory: join(config.stateDirectory, "media"),
     keyProvider: systemdMediaKeyProvider(),
@@ -43,6 +44,13 @@ async function main() {
     logger,
     muxer,
     simulation: config.simulation,
+    performanceSession: (sourceId, startMs, endMs) =>
+      runtimeRef.current?.resolvePerformanceSession(sourceId, startMs, endMs) ?? null,
+    reportSessionMedia: async (reference) => {
+      const credentials = await credentialStore.load();
+      if (!credentials) throw new Error("media_device_credential_unavailable");
+      await client.reportSessionMedia(credentials.deviceSecret, reference);
+    },
   });
   const runtime = new AgentRuntime({
     config,
@@ -54,6 +62,7 @@ async function main() {
     media,
     mediaBindings: bindings,
   });
+  runtimeRef.current = runtime;
   const stopWatchdog = startSystemdWatchdog();
   await notifySystemd("READY=1\nSTATUS=Nightly Agent started");
   const shutdown = () => runtime.stop();

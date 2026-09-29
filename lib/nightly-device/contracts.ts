@@ -80,6 +80,13 @@ export type AgentDeviceConfig = {
       ttlSeconds: number;
       sources: DeviceMediaBinding[];
     };
+    performance?: {
+      revision: string | null;
+      ttlSeconds: number;
+      sessions: Array<{ publicId: string; deviceId: number; venueId: number;
+        sources: Array<{ sourceId: number; role: "camera" | "program_audio" | "ambient_audio" }>;
+        startedAt: string; leaseExpiresAt: string; includeMicrophone: boolean; mediaRevision: number }>;
+    };
     recovery: { enabled: boolean };
   };
   timestamp: string;

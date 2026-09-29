@@ -71,6 +71,11 @@ export class ControlPlaneClient {
     }
   }
 
+  async reportSessionMedia(credentials: string, reference: { publicId: string; sourceId: number; candidateId: string;
+    hotId: string; mediaRevision: number; configRevision: string; windowStartAt: string; windowEndAt: string }) {
+    return this.#authorizedRequest<{ ok: boolean; attributed: boolean }>(credentials, "/api/device/v1/session-media", "POST", reference);
+  }
+
   async acknowledgeConfig(credentials: string, revision: string) {
     return this.#authorizedRequest<{ ok: true; acknowledged: boolean; configRevision: string }>(credentials, "/api/device/v1/config", "POST", { configRevision: revision, appliedConfigRevision: revision });
   }

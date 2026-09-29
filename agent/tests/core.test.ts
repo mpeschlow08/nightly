@@ -289,3 +289,61 @@ test("agent keeps media authorization in memory and rejects malformed config bef
     if (!valid) assert.ok(stored.some((state) => state.includes("invalid_device_config")));
   }
 });
+
+test("performance directives follow config revocation, stop, and restart re-fetch without persistence", async () => {
+  const now = new Date("2026-01-01T00:00:01.000Z");
+  const publicId = "123e4567-e89b-42d3-a456-426614174000";
+  const response: ControlPlaneConfig = {
+    ok: true, deviceId: 7, model: "nightly-box", venueId: 9, configRevision: "rev-1", configAvailable: true,
+    timestamp: now.toISOString(),
+    sections: {
+      privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
+      service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+      media: { revision: "rev-1", ttlSeconds: 300, sources: [{ sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" }] },
+      recovery: { enabled: false },
+      performance: { revision: "rev-1", ttlSeconds: 300, sessions: [{ publicId, deviceId: 7, venueId: 9,
+        sources: [{ sourceId: 3, role: "camera" }], startedAt: "2026-01-01T00:00:00.000Z",
+        leaseExpiresAt: "2026-01-01T12:00:00.000Z", includeMicrophone: false, mediaRevision: 1 }] },
+    },
+  };
+  const saved: string[] = [];
+  const store: AgentStateStore = {
+    load: async () => ({ ...defaultState(), deviceId: 7 }),
+    save: async (state) => { saved.push(JSON.stringify(state)); },
+  };
+  const runCycles = async (responses: ControlPlaneConfig[], expected: Array<string | null>) => {
+    let count = 0;
+    const observed: Array<string | null> = [];
+    const failures: Array<string | null> = [];
+    const client = {
+      heartbeat: async () => ({ device: { id: 7, uuid: "device-uuid", venueId: 9, status: "active" } }),
+      getStatus: async () => ({ device: { id: 7, uuid: "device-uuid", venueId: 9, managementAccessLevel: "owner_assisted" } }),
+      getConfig: async () => responses[Math.min(count, responses.length - 1)],
+      acknowledgeConfig: async () => ({ acknowledged: true }),
+      replaceCapabilities: async () => ({}), replaceInventory: async () => ({}), reportCommissioning: async () => ({}),
+    } as unknown as ControlPlaneClient;
+    const runtime = new AgentRuntime({
+      config: defaultConfig({ heartbeatIntervalMs: 1, simulation: true }), stateStore: store,
+      credentialStore: { load: async () => ({ deviceSecret: "device-secret" }) } as CredentialStore,
+      client, probes: new SimulationProbeAdapter(), mediaBindings: new DeviceMediaBindings(undefined, () => now.getTime()),
+      now: () => now,
+      logger: { log: (_level, event, fields) => {
+        if (event === "agent_cycle_failed") {
+          failures.push(typeof fields?.code === "string" ? fields.code : null);
+          runtime.stop();
+        }
+        if (event !== "agent_cycle_complete") return;
+        observed.push(runtime.resolvePerformanceSession(3, now.getTime() - 500, now.getTime())?.publicId ?? null);
+        count += 1;
+        if (count === responses.length) runtime.stop();
+      } },
+    });
+    await runtime.run();
+    assert.deepEqual(failures, []);
+    assert.deepEqual(observed, expected);
+    assert.equal(runtime.resolvePerformanceSession(3, now.getTime() - 500, now.getTime()), null);
+  };
+  await runCycles([response, { ...response, configAvailable: false, configRevision: null }], [publicId, null]);
+  await runCycles([response], [publicId]);
+  assert.ok(saved.every((state) => !state.includes(publicId) && !state.includes("performance") && !state.includes("sourceIds")));
+});

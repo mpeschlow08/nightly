@@ -11,6 +11,11 @@ import {
 
 const quickActions = [
   {
+    title: "Start a Set",
+    description: "Check in at a Nightly venue and keep your moments together.",
+    href: "/dj/sessions",
+  },
+  {
     title: "Edit Profile",
     description: "Update your public DJ details and booking settings.",
     href: "/dj/onboarding",

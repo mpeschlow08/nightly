@@ -131,3 +131,39 @@ test("runtime keeps timing per source and rejects segment delivery after rebindi
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Hot Moment attribution keeps its capture-time session through delayed extraction", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "nightly-session-attribution-"));
+  const key = randomBytes(32);
+  let sessionActive = true;
+  const references: Array<{ publicId: string; mediaRevision: number; sourceId: number; candidateId: string;
+    hotId: string; configRevision: string; windowStartAt: string; windowEndAt: string }> = [];
+  const media = new AgentMediaRuntime({
+    directory, keyProvider: async () => key, simulation: true, now: () => 100_000,
+    logger: { log: () => {} },
+    bindings: { revision: "rev-1", list: async () => [3], resolve: async () => ({ source, policy }) },
+    performanceSession: () => sessionActive ? { publicId: "123e4567-e89b-42d3-a456-426614174000",
+      mediaRevision: 1, includeMicrophone: false } : null,
+    reportSessionMedia: async (reference) => { references.push(reference); },
+    muxer: {
+      mux: async (segments) => Buffer.from(`CLIP:${segments.map((item) => item.data.toString()).join(",")}`),
+      validate: async (clip) => clip.toString().startsWith("CLIP:"),
+    },
+  });
+  try {
+    await media.start();
+    await media.ingestSimulation(3, Buffer.from("pre"), 900, 1000);
+    await media.ingestSimulation(3, Buffer.from("post"), 1000, 1100);
+    const candidate = await media.trigger(3, 1000, 100, 100, { kind: "manual", requested: true });
+    sessionActive = false;
+    const ready = await media.extractMoment(candidate.id);
+    assert.equal(ready.state, "ready");
+    assert.equal(references.length, 1);
+    assert.equal(references[0].publicId, "123e4567-e89b-42d3-a456-426614174000");
+    assert.equal(references[0].windowStartAt, new Date(900).toISOString());
+    assert.equal(references[0].windowEndAt, new Date(1100).toISOString());
+  } finally {
+    await media.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

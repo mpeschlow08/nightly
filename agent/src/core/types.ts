@@ -74,7 +74,22 @@ export type AgentPersistentState = {
 
 export type AgentCredentials = { deviceSecret: string };
 
-export type ControlPlaneConfig = AgentDeviceConfig;
+export type PerformanceSession = {
+  publicId: string;
+  deviceId: number;
+  venueId: number;
+  sources: Array<{ sourceId: number; role: "camera" | "program_audio" | "ambient_audio" }>;
+  startedAt: string;
+  leaseExpiresAt: string;
+  includeMicrophone: boolean;
+  mediaRevision: number;
+};
+
+export type ControlPlaneConfig = Omit<AgentDeviceConfig, "sections"> & {
+  sections: AgentDeviceConfig["sections"] & {
+    performance?: { revision: string | null; ttlSeconds: number; sessions: PerformanceSession[] };
+  };
+};
 export type ControlPlaneStatus = AgentDeviceStatus;
 export type ControlPlaneHeartbeat = AgentHeartbeatRequest;
 export type ControlPlaneInventory = AgentInventoryRequest;

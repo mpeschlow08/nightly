@@ -218,6 +218,13 @@
       "when": 1793000001000,
       "tag": "0030_nightly_device_control_plane_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793000001001,
+      "tag": "0031_artist_performance_sessions",
+      "breakpoints": true
     }
   ]
 }

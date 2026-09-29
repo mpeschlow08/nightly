@@ -12,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { NIGHTLY_DEVICE_DEFAULTS } from "@/lib/nightly-device/policy";
 import { sql } from "drizzle-orm";
@@ -2539,6 +2540,76 @@ export const nightlyDeviceSources = pgTable(
     cameraVenueForeignKey: foreignKey({ columns: [table.venueCameraId, table.venueId], foreignColumns: [venueCameras.id, venueCameras.venueId], name: "nightly_device_sources_camera_venue_fkey" }).onDelete("cascade"),
   })
 );
+
+export const artistPerformanceSessions = pgTable("artist_performance_sessions", {
+  id: serial("id").primaryKey(),
+  publicId: text("public_id").notNull().unique(),
+  djProfileId: integer("dj_profile_id").notNull().references(() => djProfiles.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  venueId: integer("venue_id").notNull().references(() => venues.id),
+  eventId: integer("event_id").references(() => events.id),
+  status: text("status").$type<"ready" | "active" | "ended" | "cancelled" | "failed">().notNull().default("ready"),
+  origin: text("origin").notNull().default("dj_checkin"),
+  checkedInAt: timestamp("checked_in_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  includeMicrophone: boolean("include_microphone").notNull().default(false),
+  mediaRevision: integer("media_revision").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  activeDjUnique: uniqueIndex("artist_sessions_one_active_dj_idx").on(table.djProfileId).where(sql`${table.status} = 'active'`),
+  venueStatusIdx: index("artist_sessions_venue_status_idx").on(table.venueId, table.status),
+  ownerIdx: index("artist_sessions_user_idx").on(table.userId),
+  statusCheck: check("artist_sessions_status_check", sql`${table.status} in ('ready', 'active', 'ended', 'cancelled', 'failed')`),
+  timeCheck: check("artist_sessions_time_check", sql`${table.endedAt} is null or (${table.startedAt} is not null and ${table.endedAt} >= ${table.startedAt})`),
+}));
+
+export const artistSessionSources = pgTable("artist_session_sources", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => artistPerformanceSessions.id),
+  sourceId: integer("source_id").references(() => nightlyDeviceSources.id, { onDelete: "set null" }),
+  deviceId: integer("device_id").references(() => nightlyDevices.id, { onDelete: "set null" }),
+  sourceKey: integer("source_key").notNull(),
+  deviceKey: integer("device_key").notNull(),
+  sourceType: text("source_type").notNull(),
+  role: text("role").$type<"camera" | "program_audio" | "ambient_audio">().notNull(),
+  label: text("label").notNull(),
+  configRevision: text("config_revision").notNull(),
+  associatedAt: timestamp("associated_at").defaultNow().notNull(),
+}, (table) => ({
+  sourceUnique: unique("artist_session_source_unique").on(table.sessionId, table.sourceKey),
+  sessionIdx: index("artist_session_sources_session_idx").on(table.sessionId),
+  roleCheck: check("artist_session_sources_role_check", sql`${table.role} in ('camera', 'program_audio', 'ambient_audio')`),
+}));
+
+export const artistSessionMedia = pgTable("artist_session_media", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => artistPerformanceSessions.id),
+  sessionSourceId: integer("session_source_id").notNull().references(() => artistSessionSources.id),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id),
+  candidateId: text("candidate_id").notNull(),
+  hotId: text("hot_id").notNull(),
+  windowStartAt: timestamp("window_start_at").notNull(),
+  windowEndAt: timestamp("window_end_at").notNull(),
+  reviewState: text("review_state").$type<"pending" | "available" | "approved" | "hidden">().notNull().default("pending"),
+  includeMicrophone: boolean("include_microphone").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  hotUnique: unique("artist_session_media_device_hot_unique").on(table.deviceId, table.hotId),
+  sessionIdx: index("artist_session_media_session_idx").on(table.sessionId),
+  reviewCheck: check("artist_session_media_review_check", sql`${table.reviewState} in ('pending', 'available', 'approved', 'hidden')`),
+  windowCheck: check("artist_session_media_window_check", sql`${table.windowEndAt} > ${table.windowStartAt}`),
+}));
+
+export const artistSessionHistory = pgTable("artist_session_history", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => artistPerformanceSessions.id),
+  actorUserId: integer("actor_user_id").references(() => users.id),
+  action: text("action").notNull(),
+  occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+}, (table) => ({ sessionIdx: index("artist_session_history_session_idx").on(table.sessionId) }));
 
 export const nightlyDeviceCommissioningChecks = pgTable(
   "nightly_device_commissioning_checks",

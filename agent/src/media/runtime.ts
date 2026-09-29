@@ -24,6 +24,11 @@ export type MediaRuntimeOptions = {
   simulation?: boolean;
   supervisorOptions?: SupervisorOptions;
   now?: () => number;
+  performanceSession?: (sourceId: number, startMs: number, endMs: number) => {
+    publicId: string; mediaRevision: number; includeMicrophone: boolean;
+  } | null;
+  reportSessionMedia?: (input: { publicId: string; mediaRevision: number; sourceId: number; candidateId: string;
+    hotId: string; configRevision: string; windowStartAt: string; windowEndAt: string }) => Promise<void>;
 };
 
 export class AgentMediaRuntime {
@@ -36,6 +41,8 @@ export class AgentMediaRuntime {
   private readonly sessions = new Map<number, SupervisedSource>();
   private readonly credentialTimers = new Map<number, NodeJS.Timeout>();
   private readonly observations = new Map<number, SegmentObservation>();
+  private readonly pendingPerformanceSessions = new Map<string, { publicId: string; mediaRevision: number;
+    includeMicrophone: boolean; configRevision: string; expiresAt: number }>();
   private readonly now: () => number;
   private running = false;
   private maintenanceTimer: NodeJS.Timeout | null = null;
@@ -183,7 +190,33 @@ export class AgentMediaRuntime {
     if (!bound || current.source.sourceId !== sourceId || Object.keys(bound).some((key) =>
       current.source[key as keyof AuthorizedMediaSource] !== bound[key as keyof AuthorizedMediaSource]) ||
       !isHotMomentEligible(current.source, current.policy)) throw new Error("media_source_ineligible");
-    return this.moments.trigger(sourceId, atMs, preMs, postMs, trigger);
+    const candidate = await this.moments.trigger(sourceId, atMs, preMs, postMs, trigger);
+    for (const [id, attribution] of this.pendingPerformanceSessions) {
+      if (attribution.expiresAt <= this.now()) this.pendingPerformanceSessions.delete(id);
+    }
+    const session = this.options.performanceSession?.(sourceId, candidate.startMs, candidate.endMs);
+    const configRevision = this.options.bindings.revision;
+    if (session && configRevision) {
+      if (this.pendingPerformanceSessions.size >= 64) this.pendingPerformanceSessions.delete(this.pendingPerformanceSessions.keys().next().value!);
+      this.pendingPerformanceSessions.set(candidate.id, { ...session, configRevision, expiresAt: candidate.expiresAt });
+    }
+    return candidate;
+  }
+
+  async extractMoment(candidateId: string): Promise<MomentCandidate> {
+    const ready = await this.moments.extract(candidateId);
+    const stored = this.pendingPerformanceSessions.get(candidateId);
+    const session = stored && stored.expiresAt > this.now()
+      ? stored : this.options.performanceSession?.(ready.sourceId, ready.startMs, ready.endMs);
+    const configRevision = stored?.configRevision ?? this.options.bindings.revision;
+    if (ready.state === "ready" && ready.hotId && session && configRevision && this.options.reportSessionMedia) {
+      void this.options.reportSessionMedia({ publicId: session.publicId, mediaRevision: session.mediaRevision,
+        sourceId: ready.sourceId, candidateId: ready.id, hotId: ready.hotId, configRevision,
+        windowStartAt: new Date(ready.startMs).toISOString(), windowEndAt: new Date(ready.endMs).toISOString() })
+        .catch(() => this.options.logger.log("warn", "artist_session_attribution_unavailable"));
+    }
+    this.pendingPerformanceSessions.delete(candidateId);
+    return ready;
   }
 
   async stop(): Promise<void> {
@@ -197,6 +230,7 @@ export class AgentMediaRuntime {
     this.boundSources.clear();
     this.boundPolicies.clear();
     this.observations.clear();
+    this.pendingPerformanceSessions.clear();
   }
 
   timingEvidence(sourceId: number): SegmentObservation | null {
