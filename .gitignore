@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# runtime-generated local queue state
+/tmp/hot-reel-queue.json
+
 .vercel
 .env*
 !.env.example

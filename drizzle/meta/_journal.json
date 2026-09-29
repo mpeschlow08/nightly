@@ -225,6 +225,13 @@
       "when": 1793000001001,
       "tag": "0031_artist_performance_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793000001002,
+      "tag": "0032_hot_reel_cloud_storage",
+      "breakpoints": true
     }
   ]
 }

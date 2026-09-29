@@ -2611,6 +2611,47 @@ export const artistSessionHistory = pgTable("artist_session_history", {
   occurredAt: timestamp("occurred_at").defaultNow().notNull(),
 }, (table) => ({ sessionIdx: index("artist_session_history_session_idx").on(table.sessionId) }));
 
+export const hotReels = pgTable("hot_reels", {
+  id: serial("id").primaryKey(),
+  publicId: text("public_id").notNull().unique(),
+  hotMomentId: text("hot_moment_id").notNull(),
+  venueId: integer("venue_id").notNull().references(() => venues.id),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id),
+  sourceId: integer("source_id").notNull().references(() => nightlyDeviceSources.id),
+  sessionId: integer("session_id").references(() => artistPerformanceSessions.id),
+  lifecycleState: text("lifecycle_state").notNull().default("local_ready"),
+  publicationState: text("publication_state").notNull().default("private"),
+  reviewState: text("review_state").notNull().default("pending"),
+  providerKey: text("provider_key").notNull().default("mock"),
+  providerObjectKey: text("provider_object_key"),
+  providerObjectVersion: integer("provider_object_version").notNull().default(1),
+  contentHash: text("content_hash"),
+  contentBytes: integer("content_bytes"),
+  contentType: text("content_type").notNull().default("video/mp4"),
+  durationMs: integer("duration_ms"),
+  capturedAt: timestamp("captured_at"),
+  uploadedAt: timestamp("uploaded_at"),
+  finalizedAt: timestamp("finalized_at"),
+  expiresAt: timestamp("expires_at"),
+  deletedAt: timestamp("deleted_at"),
+  failureCode: text("failure_code"),
+  failureReason: text("failure_reason"),
+  metadataJson: text("metadata_json").notNull().default("{}"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  venueIdx: index("hot_reels_venue_id_idx").on(table.venueId),
+  deviceIdx: index("hot_reels_device_id_idx").on(table.deviceId),
+  sourceIdx: index("hot_reels_source_id_idx").on(table.sourceId),
+  momentUnique: unique("hot_reels_hot_moment_unique").on(table.hotMomentId),
+  lifecycleIdx: index("hot_reels_lifecycle_state_idx").on(table.lifecycleState),
+  publicationIdx: index("hot_reels_publication_state_idx").on(table.publicationState),
+  expiresIdx: index("hot_reels_expires_at_idx").on(table.expiresAt),
+  stateCheck: check("hot_reels_state_check", sql`${table.lifecycleState} in ('local_ready', 'upload_pending', 'uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleting', 'deleted')`),
+  publicationCheck: check("hot_reels_publication_check", sql`${table.publicationState} in ('private', 'review', 'published', 'unpublished')`),
+  reviewCheck: check("hot_reels_review_check", sql`${table.reviewState} in ('pending', 'approved', 'hidden')`),
+}));
+
 export const nightlyDeviceCommissioningChecks = pgTable(
   "nightly_device_commissioning_checks",
   {
