@@ -7,6 +7,10 @@ import { AgentRuntime } from "./core/runtime";
 import { FileAgentStateStore } from "./core/state-store";
 import { notifySystemd, startSystemdWatchdog } from "./core/systemd-notify";
 import { LinuxProbeAdapter, SimulationProbeAdapter } from "./probes/linux";
+import { DeviceMediaBindings } from "./media/device-bindings";
+import { FfmpegMp4Muxer } from "./media/ffmpeg-muxer";
+import { AgentMediaRuntime } from "./media/runtime";
+import { systemdMediaKeyProvider } from "./media/storage";
 
 async function main() {
   const config = loadAgentConfig();
@@ -25,6 +29,21 @@ async function main() {
     retryBaseMs: config.retryBaseMs,
     retryMaxMs: config.retryMaxMs,
   });
+  const bindings = new DeviceMediaBindings(async (sourceId, revision) => {
+    const credentials = await credentialStore.load();
+    if (!credentials) throw new Error("media_device_credential_unavailable");
+    return client.resolveMediaCredential(credentials.deviceSecret, sourceId, revision);
+  });
+  const muxer = new FfmpegMp4Muxer();
+  if (!config.simulation) await muxer.recover();
+  const media = new AgentMediaRuntime({
+    directory: join(config.stateDirectory, "media"),
+    keyProvider: systemdMediaKeyProvider(),
+    bindings,
+    logger,
+    muxer,
+    simulation: config.simulation,
+  });
   const runtime = new AgentRuntime({
     config,
     stateStore: new FileAgentStateStore(config.stateDirectory),
@@ -32,6 +51,8 @@ async function main() {
     client,
     probes: config.simulation ? new SimulationProbeAdapter() : new LinuxProbeAdapter(),
     logger,
+    media,
+    mediaBindings: bindings,
   });
   const stopWatchdog = startSystemdWatchdog();
   await notifySystemd("READY=1\nSTATUS=Nightly Agent started");

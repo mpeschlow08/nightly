@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -68,6 +69,64 @@ test("durable result artifacts atomically record PASS, FAIL, TIMEOUT and safe fi
     const files = await readdir(directory);
     assert.equal(files.length, 3);
     assert.equal(files.some((name) => name.endsWith(".tmp")), false);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("first failed fixture stage survives later cleanup failure in the durable artifact", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "nightly-cert-first-failure-"));
+  try {
+    const store = await CertificationResultStore.create(`1790579999999-${randomUUID()}`, directory);
+    await store.setDevelopmentIdentityVerified(true);
+    await store.stage("fixture.device.0", "FAIL", 12);
+    assert.equal((await store.read()).failedStage, "fixture.device.0");
+    await store.setDatabaseCleanup("FAIL", 1);
+    await store.stage("cleanup.database", "FAIL", 4);
+    await store.setClerkCleanup("PASS", 0);
+    await store.finish("FAIL", "certification.or-cleanup");
+    const artifact = await store.read();
+    assert.equal(artifact.failedStage, "fixture.device.0");
+    assert.equal(artifact.databaseCleanup.status, "FAIL");
+    assert.equal(artifact.databaseCleanup.remainingFixtures, 1);
+    assert.equal(artifact.clerkCleanup.remainingKnownSessions, 0);
+    assert.deepEqual(artifact.stages.map(({ name, status }) => ({ name, status })), [
+      { name: "fixture.device.0", status: "FAIL" },
+      { name: "cleanup.database", status: "FAIL" },
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("media fixture failure retains its stage after successful exact cleanup", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "nightly-cert-fixture-cleanup-"));
+  try {
+    const store = await CertificationResultStore.create(`1790580000000-${randomUUID()}`, directory);
+    await store.setDevelopmentIdentityVerified(true);
+    await store.stage("fixture.device.0", "FAIL", 12);
+    await store.setDatabaseCleanup("PASS", 0);
+    await store.setClerkCleanup("PASS", 0);
+    await store.finish("FAIL", "certification.or-cleanup");
+    const artifact = await store.read();
+    assert.equal(artifact.status, "FAIL");
+    assert.equal(artifact.failedStage, "fixture.device.0");
+    assert.deepEqual(artifact.databaseCleanup, { status: "PASS", remainingFixtures: 0 });
+    assert.deepEqual(artifact.clerkCleanup, { status: "PASS", remainingKnownSessions: 0 });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("an unfinished failed-stage artifact never stores a sensitive raw stage name", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "nightly-cert-safe-failure-"));
+  try {
+    const store = await CertificationResultStore.create(`1790580000001-${randomUUID()}`, directory);
+    const unsafeStage = "http://localhost:3100/api/device/v1/config?authorization=Bearer%20private-value";
+    await store.stage(unsafeStage, "FAIL", 2);
+    assert.equal((await store.read()).failedStage, normalizeCertificationStageName(unsafeStage));
+    const text = await readFile(store.path, "utf8");
+    assert.doesNotMatch(text, /private-value|authorization|Bearer|localhost/i);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

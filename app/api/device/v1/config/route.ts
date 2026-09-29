@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { nightlyDevices } from "@/db/schema";
+import { nightlyDeviceSources, nightlyDevices, venueCameras } from "@/db/schema";
 import { authenticateDeviceRequest, canUseDeviceForOperationalManagement, createAuthError } from "@/lib/nightly-device/auth";
+import { projectDeviceMediaConfig } from "@/lib/nightly-device/media-bindings";
 
 export async function GET(request: Request) {
   const identity = await authenticateDeviceRequest(request);
   if (!identity) return NextResponse.json(createAuthError("unauthorized", "Device authentication is required."), { status: 401 });
 
   const [device] = await db
-    .select({ id: nightlyDevices.id, publicDeviceUuid: nightlyDevices.publicDeviceUuid, venueId: nightlyDevices.venueId, desiredConfigRevision: nightlyDevices.desiredConfigRevision, serviceEntitlementState: nightlyDevices.serviceEntitlementState, privacyMode: nightlyDevices.privacyMode, contentEligibility: nightlyDevices.contentEligibility, publicPublishingEnabled: nightlyDevices.publicPublishingEnabled, hotReelEligible: nightlyDevices.hotReelEligible, liveEligible: nightlyDevices.liveEligible, privacyConfigRevision: nightlyDevices.privacyConfigRevision, serviceConfigRevision: nightlyDevices.serviceConfigRevision, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible })
+    .select({ id: nightlyDevices.id, publicDeviceUuid: nightlyDevices.publicDeviceUuid, venueId: nightlyDevices.venueId, desiredConfigRevision: nightlyDevices.desiredConfigRevision, serviceEntitlementState: nightlyDevices.serviceEntitlementState, serviceSuspendedAt: nightlyDevices.serviceSuspendedAt, privacyMode: nightlyDevices.privacyMode, contentEligibility: nightlyDevices.contentEligibility, publicPublishingEnabled: nightlyDevices.publicPublishingEnabled, hotReelEligible: nightlyDevices.hotReelEligible, liveEligible: nightlyDevices.liveEligible, privacyConfigRevision: nightlyDevices.privacyConfigRevision, serviceConfigRevision: nightlyDevices.serviceConfigRevision, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible })
     .from(nightlyDevices)
     .where(eq(nightlyDevices.id, identity.id))
     .limit(1);
@@ -23,6 +24,22 @@ export async function GET(request: Request) {
   if (!allowed) {
     return NextResponse.json(createAuthError("device_unavailable", "Device management access is unavailable."), { status: 403 });
   }
+
+  const mediaRows = device.venueId ? await db
+    .select({
+      id: nightlyDeviceSources.id,
+      deviceId: nightlyDeviceSources.deviceId,
+      venueId: nightlyDeviceSources.venueId,
+      sourceType: nightlyDeviceSources.sourceType,
+      venueCameraId: nightlyDeviceSources.venueCameraId,
+      enabled: nightlyDeviceSources.enabled,
+      cameraVenueId: venueCameras.venueId,
+      cameraStatus: venueCameras.status,
+      cameraStreamType: venueCameras.streamType,
+    })
+    .from(nightlyDeviceSources)
+    .leftJoin(venueCameras, and(eq(venueCameras.id, nightlyDeviceSources.venueCameraId), eq(venueCameras.venueId, nightlyDeviceSources.venueId)))
+    .where(and(eq(nightlyDeviceSources.deviceId, device.id), eq(nightlyDeviceSources.venueId, device.venueId))) : [];
 
   return NextResponse.json({
     ok: true,
@@ -39,11 +56,12 @@ export async function GET(request: Request) {
         revision: device.privacyConfigRevision,
       },
       service: {
-        entitlementState: device.serviceEntitlementState,
+        entitlementState: device.serviceSuspendedAt ? "suspended" : device.serviceEntitlementState,
         hotReelEligible: device.hotReelEligible,
         liveEligible: device.liveEligible,
         revision: device.serviceConfigRevision,
       },
+      media: projectDeviceMediaConfig(mediaRows, device.id, device.venueId, device.desiredConfigRevision),
       recovery: { enabled: device.managementRecoveryEligible },
     },
     timestamp: new Date().toISOString(),

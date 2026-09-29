@@ -9,6 +9,12 @@ import { FileAgentStateStore } from "../src/core/state-store";
 import { EncryptedFileCredentialStore } from "../src/core/credential-store";
 import { loadAgentConfig } from "../src/core/config";
 import { ControlPlaneClient, ControlPlaneError } from "../src/core/control-plane-client";
+import { AgentRuntime } from "../src/core/runtime";
+import { DeviceMediaBindings } from "../src/media/device-bindings";
+import type { AgentMediaRuntime } from "../src/media/runtime";
+import type { AgentStateStore } from "../src/core/state-store";
+import type { CredentialStore } from "../src/core/credential-store";
+import type { ControlPlaneConfig } from "../src/core/types";
 import { SimulationProbeAdapter } from "../src/probes/linux";
 import { verifyUpdateManifest } from "../src/core/ota";
 import type { AgentConfig, AgentPersistentState } from "../src/core/types";
@@ -217,4 +223,69 @@ test("suspension, recovery-only, revocation recovery, and errors stay constraine
   machine.transition("CONNECTING");
   machine.transition("ERROR");
   machine.transition("RECOVERY_REQUIRED");
+});
+
+test("media credential POST authenticates the device and never exposes server-provided URL errors", async () => {
+  let called = false;
+  const client = new ControlPlaneClient({
+    baseUrl: "https://control.example.test", deviceUuid: "device-uuid", requestTimeoutMs: 1000, retryBaseMs: 1, retryMaxMs: 1,
+    fetchImpl: async (url, init) => {
+      called = true;
+      assert.match(String(url), /\/media-credentials$/);
+      assert.equal(init?.method, "POST");
+      assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer device-secret");
+      assert.deepEqual(JSON.parse(String(init?.body)), { sourceId: 3, expectedRevision: "rev-1" });
+      return new Response(JSON.stringify({ error: { code: "source_unavailable", message: "rtsp://user:password@camera.invalid/live" } }), { status: 404 });
+    },
+  });
+  await assert.rejects(client.resolveMediaCredential("device-secret", 3, "rev-1"), (error: unknown) =>
+    error instanceof ControlPlaneError && error.code === "media_credential_unavailable" && !error.message.includes("rtsp:"));
+  assert.equal(called, true);
+});
+
+test("agent keeps media authorization in memory and rejects malformed config before capture", async () => {
+  const response: ControlPlaneConfig = {
+    ok: true, deviceId: 7, model: "nightly-box", venueId: 9, configRevision: "rev-1", configAvailable: true,
+    timestamp: new Date().toISOString(),
+    sections: {
+      privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
+      service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+      media: { revision: "rev-1", ttlSeconds: 300, sources: [{ sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" }] },
+      recovery: { enabled: false },
+    },
+  };
+  for (const valid of [true, false]) {
+    const stored: string[] = [];
+    const events: string[] = [];
+    const bindings = new DeviceMediaBindings();
+    const media = {
+      start: async () => { events.push("start"); },
+      reconcile: async () => { events.push("reconcile"); },
+      stop: async () => { events.push("stop"); },
+    } as unknown as AgentMediaRuntime;
+    const store: AgentStateStore = {
+      load: async () => ({ ...defaultState(), deviceId: 7 }),
+      save: async (state) => { stored.push(JSON.stringify(state)); },
+    };
+    const client = {
+      heartbeat: async () => ({ device: { id: 7, uuid: "device-uuid", venueId: 9, status: "active" } }),
+      getStatus: async () => ({ device: { id: 7, uuid: "device-uuid", venueId: 9, managementAccessLevel: "owner_assisted" } }),
+      getConfig: async () => valid ? response : { ...response, sections: { ...response.sections, media: { ...response.sections.media, ttlSeconds: 301 } } },
+      acknowledgeConfig: async () => ({ acknowledged: true }),
+      replaceCapabilities: async () => ({}),
+      replaceInventory: async () => ({}),
+      reportCommissioning: async () => ({}),
+    } as unknown as ControlPlaneClient;
+    const runtime = new AgentRuntime({
+      config: defaultConfig({ heartbeatIntervalMs: 1 }), stateStore: store,
+      credentialStore: { load: async () => ({ deviceSecret: "device-secret" }) } as CredentialStore,
+      client, probes: new SimulationProbeAdapter(), media, mediaBindings: bindings,
+      logger: { log: (_level, event) => { if (event === "agent_cycle_complete" || event === "agent_cycle_failed") runtime.stop(); } },
+    });
+    await runtime.run();
+    assert.ok(stored.every((state) => !state.includes("rtsp:") && !state.includes("device-secret") && !state.includes("\"sources\"")));
+    assert.deepEqual(events.includes("start"), valid);
+    assert.ok(events.includes("stop"));
+    if (!valid) assert.ok(stored.some((state) => state.includes("invalid_device_config")));
+  }
 });

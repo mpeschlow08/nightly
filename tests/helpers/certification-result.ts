@@ -114,7 +114,7 @@ export class CertificationResultStore {
     const safeName = normalizeCertificationStageName(name);
     this.#validateName(safeName);
     this.value.stages.push({ name: safeName, status, durationMs: Math.max(0, Math.floor(durationMs)) });
-    if (status !== "PASS" && this.value.failedStage === null) this.value.failedStage = name;
+    if (status !== "PASS" && this.value.failedStage === null) this.value.failedStage = safeName;
     await this.write();
   }
 
@@ -139,7 +139,7 @@ export class CertificationResultStore {
     if (safeFailedStage) this.#validateName(safeFailedStage);
     this.#terminal = true;
     this.value.status = status;
-    this.value.failedStage = safeFailedStage ?? this.value.failedStage;
+    this.value.failedStage ??= safeFailedStage;
     this.value.completedAt = new Date().toISOString();
     await this.write();
   }

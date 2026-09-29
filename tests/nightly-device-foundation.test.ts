@@ -26,6 +26,12 @@ import { classifyNightlyDeviceInventoryWriteError, extractPostgresErrorMetadata,
 
 const CAMERA_UNIQUE_CONSTRAINT = "nightly_device_sources_venue_camera_unique";
 
+test("device config projects service suspension as ineligible for capture", () => {
+  const route = readFileSync(join(process.cwd(), "app/api/device/v1/config/route.ts"), "utf8");
+  assert.match(route, /serviceSuspendedAt: nightlyDevices\.serviceSuspendedAt/);
+  assert.match(route, /entitlementState: device\.serviceSuspendedAt \? "suspended" : device\.serviceEntitlementState/);
+});
+
 test("device capability bundles accept supported Nightly Box capabilities", () => {
   const capabilities = [
     { category: DeviceCapabilityCategory.HDMI_INPUT, name: "1080p60", value: "supported", supported: true },
@@ -256,6 +262,8 @@ test("inventory route preserves venue-owned sources and maps only canonical came
   const route = readFileSync(join(process.cwd(), "app/api/device/v1/inventory/route.ts"), "utf8");
   const schema = readFileSync(join(process.cwd(), "db/schema.ts"), "utf8");
   assert.match(route, /like\(nightlyDeviceSources\.sourceLabel, "agent:%"\)/);
+  assert.match(route, /if \(unchanged\) return;/);
+  assert.match(route, /desiredConfigRevision: randomUUID\(\)/);
   assert.match(route, /classifyNightlyDeviceInventoryWriteError\(error\)/);
   assert.match(route, /status: conflict\.status/);
   assert.match(schema, /unique\("nightly_device_sources_venue_camera_unique"\)\.on\(table\.venueCameraId\)/);

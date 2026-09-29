@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { head } from "@vercel/blob";
 
 import { db } from "@/db";
@@ -21,6 +21,7 @@ import {
 import { assertFeatureEnabled } from "@/lib/platform/feature-access";
 import { runVenueGoogleDataRefresh } from "@/lib/platform/venue-google-refresh";
 import { provisionLiveInputForCamera, refreshCameraStreamHealth } from "@/lib/live/provisioning";
+import { getBoundCameraDeviceIds, rotateCameraMediaRevision } from "@/lib/nightly-device/media-revision";
 
 function asNonEmptyString(value: FormDataEntryValue | null, label: string) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -1403,20 +1404,25 @@ export async function updateOwnerCameraSourceAction(formData: FormData) {
     const streamUrl = normalizeCameraSource(formData.get("streamUrl"));
     const streamType = normalizeCameraStreamType(formData.get("streamType"));
 
-    await db
-      .update(venueCameras)
-      .set({
-        streamUrl,
-        streamType,
-        provisioningStatus: "unprovisioned",
-        providerLiveInputId: null,
-        providerPlaybackId: null,
-        lastKnownStreamStatus: null,
-        lastHealthCheckAt: null,
-        lastProvisionedAt: null,
-        lastProvisioningError: null,
-      })
-      .where(eq(venueCameras.id, cameraId));
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(venueCameras)
+        .set({
+          streamUrl,
+          streamType,
+          provisioningStatus: "unprovisioned",
+          providerLiveInputId: null,
+          providerPlaybackId: null,
+          lastKnownStreamStatus: null,
+          lastHealthCheckAt: null,
+          lastProvisionedAt: null,
+          lastProvisioningError: null,
+        })
+        .where(and(eq(venueCameras.id, cameraId), eq(venueCameras.venueId, camera.venueId)))
+        .returning({ id: venueCameras.id });
+      if (!updated) throw new Error("Camera not found.");
+      await rotateCameraMediaRevision(tx, camera.venueId, cameraId);
+    });
 
     revalidateOwnerAndVenue(camera.venueId);
     redirect(mutationSuccessPath("/owner/cameras", "Camera source replaced. Re-provision to issue new ingest credentials."));
@@ -1476,7 +1482,13 @@ export async function toggleOwnerCameraStatusAction(formData: FormData) {
       throw new Error("Status must be enabled or disabled.");
     }
 
-    await db.update(venueCameras).set({ status: nextStatus }).where(eq(venueCameras.id, cameraId));
+    await db.transaction(async (tx) => {
+      const [updated] = await tx.update(venueCameras).set({ status: nextStatus })
+        .where(and(eq(venueCameras.id, cameraId), eq(venueCameras.venueId, camera.venueId)))
+        .returning({ id: venueCameras.id });
+      if (!updated) throw new Error("Camera not found.");
+      await rotateCameraMediaRevision(tx, camera.venueId, cameraId);
+    });
 
     revalidateOwnerAndVenue(camera.venueId);
     redirect(
@@ -1568,7 +1580,18 @@ export async function deleteOwnerCameraAction(formData: FormData) {
       "Live camera management is unavailable in Beta V1."
     );
 
-    await db.delete(venueCameras).where(eq(venueCameras.id, cameraId));
+    await db.transaction(async (tx) => {
+      const [locked] = await tx.select({ id: venueCameras.id }).from(venueCameras)
+        .where(and(eq(venueCameras.id, cameraId), eq(venueCameras.venueId, camera.venueId)))
+        .for("update").limit(1);
+      if (!locked) throw new Error("Camera not found.");
+      const deviceIds = await getBoundCameraDeviceIds(tx, camera.venueId, cameraId);
+      const [deleted] = await tx.delete(venueCameras)
+        .where(and(eq(venueCameras.id, cameraId), eq(venueCameras.venueId, camera.venueId)))
+        .returning({ id: venueCameras.id });
+      if (!deleted) throw new Error("Camera not found.");
+      await rotateCameraMediaRevision(tx, camera.venueId, cameraId, deviceIds);
+    });
 
     revalidateOwnerAndVenue(camera.venueId);
     redirect(mutationSuccessPath("/owner/cameras", "Camera deleted."));

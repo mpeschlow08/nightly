@@ -1,5 +1,6 @@
 import type { DeviceCapabilityRecord } from "./foundation";
 import type { CommissioningCheckKey, CommissioningCheckStatus, CaptureSourceType } from "./policy";
+import type { DeviceMediaBinding } from "./media-bindings";
 
 export type DeviceBootstrapRequest = {
   publicDeviceUuid: string;
@@ -73,6 +74,11 @@ export type AgentDeviceConfig = {
       hotReelEligible: boolean;
       liveEligible: boolean;
       revision: number;
+    };
+    media: {
+      revision: string | null;
+      ttlSeconds: number;
+      sources: DeviceMediaBinding[];
     };
     recovery: { enabled: boolean };
   };

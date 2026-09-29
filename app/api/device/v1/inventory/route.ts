@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { and, eq, like } from "drizzle-orm";
 
@@ -6,7 +7,7 @@ import { nightlyDeviceCapabilities, nightlyDeviceSources, nightlyDevices, venueC
 import { assertNotSecretPayload } from "@/lib/nightly-device/foundation";
 import { classifyNightlyDeviceInventoryWriteError } from "@/lib/nightly-device/database-errors";
 import { authenticateDeviceRequest, canUseDeviceForManagement, canUseDeviceForOperationalManagement, createAuthError } from "@/lib/nightly-device/auth";
-import { isCaptureSourceType } from "@/lib/nightly-device/policy";
+import { canUseDeviceForOperationalManagement as operationalAllowed, isCaptureSourceType } from "@/lib/nightly-device/policy";
 
 export async function GET(request: Request) {
   const identity = await authenticateDeviceRequest(request);
@@ -107,8 +108,14 @@ export async function POST(request: Request) {
 
   try {
     await db.transaction(async (tx) => {
-      await tx.delete(nightlyDeviceSources).where(and(eq(nightlyDeviceSources.deviceId, device.id), like(nightlyDeviceSources.sourceLabel, "agent:%")));
-      if (sources.length) await tx.insert(nightlyDeviceSources).values(sources.map((source) => ({
+      const [current] = await tx.select({
+        venueId: nightlyDevices.venueId, lifecycleState: nightlyDevices.lifecycleState,
+        managementRecoveryEligible: nightlyDevices.managementRecoveryEligible,
+        managementAccessLevel: nightlyDevices.managementAccessLevel,
+      })
+        .from(nightlyDevices).where(eq(nightlyDevices.id, device.id)).for("update").limit(1);
+      if (!current || current.venueId !== device.venueId || !operationalAllowed(current)) throw new Error("Device unavailable during inventory update.");
+      const desired = sources.map((source) => ({
         deviceId: device.id,
         venueId: device.venueId!,
         sourceType: source.sourceType as typeof nightlyDeviceSources.$inferInsert.sourceType,
@@ -116,7 +123,23 @@ export async function POST(request: Request) {
         venueCameraId: Number.isInteger(source.venueCameraId) ? source.venueCameraId as number : null,
         enabled: typeof source.enabled === "boolean" ? source.enabled : true,
         metadataJson: JSON.stringify(source.evidence ?? {}),
-      })));
+      }));
+      const existing = await tx.select({
+        sourceType: nightlyDeviceSources.sourceType, sourceLabel: nightlyDeviceSources.sourceLabel,
+        venueCameraId: nightlyDeviceSources.venueCameraId, enabled: nightlyDeviceSources.enabled,
+        metadataJson: nightlyDeviceSources.metadataJson,
+      }).from(nightlyDeviceSources).where(and(eq(nightlyDeviceSources.deviceId, device.id), like(nightlyDeviceSources.sourceLabel, "agent:%")));
+      const signature = (source: typeof existing[number]) => JSON.stringify([
+        source.sourceType, source.sourceLabel, source.venueCameraId, source.enabled, source.metadataJson,
+      ]);
+      const desiredSignatures = desired.map(signature).sort();
+      const unchanged = existing.length === desired.length &&
+        existing.map(signature).sort().every((value, index) => value === desiredSignatures[index]);
+      if (unchanged) return;
+      await tx.delete(nightlyDeviceSources).where(and(eq(nightlyDeviceSources.deviceId, device.id), like(nightlyDeviceSources.sourceLabel, "agent:%")));
+      if (desired.length) await tx.insert(nightlyDeviceSources).values(desired);
+      await tx.update(nightlyDevices).set({ desiredConfigRevision: randomUUID(), updatedAt: new Date() })
+        .where(eq(nightlyDevices.id, device.id));
     });
   } catch (error) {
     const conflict = classifyNightlyDeviceInventoryWriteError(error);

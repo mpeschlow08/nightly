@@ -51,7 +51,7 @@ export class ControlPlaneClient {
   }
 
   async heartbeat(credentials: string, version: AgentHeartbeatRequest) {
-    return this.#authorizedRequest<{ ok: true; device: { id: number; venueId: number | null; status: string; serviceEntitlementState: string; operationalState: string; timestamp: string } }>(credentials, "/api/device/v1/heartbeat", "POST", version);
+    return this.#authorizedRequest<{ ok: true; device: { id: number; uuid: string; venueId: number | null; status: string; serviceEntitlementState: string; operationalState: string; timestamp: string } }>(credentials, "/api/device/v1/heartbeat", "POST", version);
   }
 
   async getStatus(credentials: string) {
@@ -60,6 +60,15 @@ export class ControlPlaneClient {
 
   async getConfig(credentials: string) {
     return this.#authorizedRequest<ControlPlaneConfig>(credentials, "/api/device/v1/config", "GET");
+  }
+
+  async resolveMediaCredential(credentials: string, sourceId: number, expectedRevision: string) {
+    try {
+      return await this.#authorizedRequest<unknown>(credentials, "/api/device/v1/media-credentials", "POST", { sourceId, expectedRevision });
+    } catch (error) {
+      if (error instanceof ControlPlaneError) throw new ControlPlaneError("Media credential request failed.", error.status, error.code === "config_revision_conflict" ? error.code : "media_credential_unavailable", error.retryable);
+      throw new ControlPlaneError("Media credential request failed.", null, "media_credential_unavailable", false);
+    }
   }
 
   async acknowledgeConfig(credentials: string, revision: string) {
