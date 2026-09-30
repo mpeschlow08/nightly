@@ -266,6 +266,13 @@ export const socialMediaModerationStatusEnum = pgEnum("social_media_moderation_s
 export const socialGroupInviteStatusEnum = pgEnum("social_group_invite_status", ["active", "accepted", "expired", "revoked"]);
 export const socialGroupJoinRequestStatusEnum = pgEnum("social_group_join_request_status", ["pending", "approved", "declined", "cancelled"]);
 export const socialStoryPostStatusEnum = pgEnum("social_story_post_status", ["active", "expired", "archived"]);
+export const socialPlatformEnum = pgEnum("social_platform", ["instagram", "facebook", "tiktok", "youtube", "x"]);
+export const socialAccountTypeEnum = pgEnum("social_account_type", ["business", "creator", "page", "channel", "personal", "unknown"]);
+export const socialAccountConnectionStateEnum = pgEnum("social_account_connection_state", ["connected", "disconnected", "verification_failed"]);
+export const socialAccountAuthorizationStateEnum = pgEnum("social_account_authorization_state", ["valid", "expired", "revoked", "reconnect_required", "unknown"]);
+export const socialPublishingModeEnum = pgEnum("social_publishing_mode", ["auto_publish", "review_before_post", "disabled"]);
+export const socialDistributionRequestStateEnum = pgEnum("social_distribution_request_state", ["pending_review", "queued", "processing", "completed", "partial", "failed", "cancelled"]);
+export const socialDestinationStateEnum = pgEnum("social_destination_state", ["queued", "waiting_for_review", "authorized", "uploading", "processing", "published", "failed_retryable", "failed_permanent", "revoke_requested", "revoked", "cancelled"]);
 
 export const bookingLifecycleStatusEnum = pgEnum("booking_lifecycle_status", [
   "draft",
@@ -1559,6 +1566,78 @@ export const socialPreferences = pgTable(
   })
 );
 
+export const socialPlatformAccounts = pgTable(
+  "social_platform_accounts",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    platform: socialPlatformEnum("platform").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    displayName: text("display_name").notNull(),
+    accountType: socialAccountTypeEnum("account_type").notNull().default("unknown"),
+    connectionState: socialAccountConnectionStateEnum("connection_state").notNull().default("disconnected"),
+    authorizationState: socialAccountAuthorizationStateEnum("authorization_state").notNull().default("unknown"),
+    grantedScopesJson: text("granted_scopes_json").notNull().default("[]"),
+    capabilitiesJson: text("capabilities_json").notNull().default("[]"),
+    authorizedAt: timestamp("authorized_at"),
+    expiresAt: timestamp("expires_at"),
+    reconnectRequired: boolean("reconnect_required").notNull().default(true),
+    credentialRef: text("credential_ref"),
+    safeMetadataJson: text("safe_metadata_json").notNull().default("{}"),
+    lastVerifiedAt: timestamp("last_verified_at"),
+    disconnectedAt: timestamp("disconnected_at"),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venuePlatformIdx: index("social_platform_accounts_venue_platform_idx").on(table.venueId, table.platform),
+    providerAccountUnique: unique("social_platform_accounts_provider_account_unique").on(table.platform, table.providerAccountId),
+    idVenueUnique: unique("social_platform_accounts_id_venue_unique").on(table.id, table.venueId),
+    idVenuePlatformUnique: unique("social_platform_accounts_id_venue_platform_unique").on(table.id, table.venueId, table.platform),
+    credentialRefUnique: unique("social_platform_accounts_credential_ref_unique").on(table.credentialRef),
+    credentialRefCheck: check("social_platform_accounts_credential_ref_check", sql`${table.connectionState} <> 'connected' or ${table.credentialRef} is not null`),
+  })
+);
+
+export const socialPublishingPolicies = pgTable(
+  "social_publishing_policies",
+  {
+    id: serial("id").primaryKey(),
+    venueId: integer("venue_id").notNull().unique().references(() => venues.id, { onDelete: "cascade" }),
+    mode: socialPublishingModeEnum("mode").notNull().default("review_before_post"),
+    revision: integer("revision").notNull().default(1),
+    updatedByUserId: integer("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    revisionCheck: check("social_publishing_policies_revision_check", sql`${table.revision} > 0`),
+  })
+);
+
+export const socialOAuthStates = pgTable(
+  "social_oauth_states",
+  {
+    id: serial("id").primaryKey(),
+    stateHash: text("state_hash").notNull().unique(),
+    platform: socialPlatformEnum("platform").notNull(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    actorClerkUserId: text("actor_clerk_user_id").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    requestedScopesJson: text("requested_scopes_json").notNull().default("[]"),
+    pkceVerifierRef: text("pkce_verifier_ref"),
+    expiresAt: timestamp("expires_at").notNull(),
+    consumedAt: timestamp("consumed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    expiryIdx: index("social_oauth_states_expiry_idx").on(table.expiresAt),
+    venueActorIdx: index("social_oauth_states_venue_actor_idx").on(table.venueId, table.actorClerkUserId),
+  })
+);
+
 export const privacySettings = pgTable(
   "privacy_settings",
   {
@@ -2640,6 +2719,7 @@ export const hotReels = pgTable("hot_reels", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
+  idVenueUnique: unique("hot_reels_id_venue_unique").on(table.id, table.venueId),
   venueIdx: index("hot_reels_venue_id_idx").on(table.venueId),
   deviceIdx: index("hot_reels_device_id_idx").on(table.deviceId),
   sourceIdx: index("hot_reels_source_id_idx").on(table.sourceId),
@@ -2651,6 +2731,80 @@ export const hotReels = pgTable("hot_reels", {
   publicationCheck: check("hot_reels_publication_check", sql`${table.publicationState} in ('private', 'review', 'published', 'unpublished')`),
   reviewCheck: check("hot_reels_review_check", sql`${table.reviewState} in ('pending', 'approved', 'hidden')`),
 }));
+
+export const socialDistributionRequests = pgTable(
+  "social_distribution_requests",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    hotReelId: integer("hot_reel_id").notNull(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    actorUserId: integer("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    policyModeSnapshot: socialPublishingModeEnum("policy_mode_snapshot").notNull(),
+    policyRevisionSnapshot: integer("policy_revision_snapshot").notNull(),
+    state: socialDistributionRequestStateEnum("state").notNull().default("pending_review"),
+    caption: text("caption").notNull().default(""),
+    requestedAt: timestamp("requested_at").defaultNow().notNull(),
+    reviewedByUserId: integer("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    venueIdempotencyUnique: unique("social_distribution_requests_venue_idempotency_unique").on(table.venueId, table.idempotencyKey),
+    idVenueUnique: unique("social_distribution_requests_id_venue_unique").on(table.id, table.venueId),
+    idHotReelVenueUnique: unique("social_distribution_requests_id_hot_reel_venue_unique").on(table.id, table.hotReelId, table.venueId),
+    venueCreatedIdx: index("social_distribution_requests_venue_created_idx").on(table.venueId, table.createdAt),
+    reelIdx: index("social_distribution_requests_hot_reel_idx").on(table.hotReelId),
+    revisionCheck: check("social_distribution_requests_policy_revision_check", sql`${table.policyRevisionSnapshot} > 0`),
+    reelVenueForeignKey: foreignKey({ columns: [table.hotReelId, table.venueId], foreignColumns: [hotReels.id, hotReels.venueId], name: "social_distribution_requests_reel_venue_fkey" }).onDelete("restrict"),
+  })
+);
+
+export const socialPublications = pgTable(
+  "social_publications",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    requestId: integer("request_id").notNull(),
+    hotReelId: integer("hot_reel_id").notNull(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    accountId: integer("account_id").notNull(),
+    actorUserId: integer("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    platform: socialPlatformEnum("platform").notNull(),
+    policyModeSnapshot: socialPublishingModeEnum("policy_mode_snapshot").notNull(),
+    state: socialDestinationStateEnum("state").notNull().default("waiting_for_review"),
+    providerKey: text("provider_key").notNull(),
+    providerIdempotencyKey: text("provider_idempotency_key").notNull().unique(),
+    providerPublicationId: text("provider_publication_id"),
+    providerUrl: text("provider_url"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    statusChecks: integer("status_checks").notNull().default(0),
+    maxStatusChecks: integer("max_status_checks").notNull().default(48),
+    nextRetryAt: timestamp("next_retry_at"),
+    lastFailureCode: text("last_failure_code"),
+    publishedAt: timestamp("published_at"),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    requestAccountUnique: unique("social_publications_request_account_unique").on(table.requestId, table.accountId),
+    hotReelAccountUnique: unique("social_publications_hot_reel_account_unique").on(table.hotReelId, table.accountId),
+    requestIdx: index("social_publications_request_idx").on(table.requestId),
+    venueCreatedIdx: index("social_publications_venue_created_idx").on(table.venueId, table.createdAt),
+    dueIdx: index("social_publications_due_idx").on(table.state, table.nextRetryAt),
+    attemptsCheck: check("social_publications_attempts_check", sql`${table.attempts} >= 0 and ${table.maxAttempts} > 0 and ${table.attempts} <= ${table.maxAttempts}`),
+    statusChecksCheck: check("social_publications_status_checks_check", sql`${table.statusChecks} >= 0 and ${table.maxStatusChecks} > 0 and ${table.statusChecks} <= ${table.maxStatusChecks}`),
+    providerUrlCheck: check("social_publications_provider_url_check", sql`${table.providerUrl} is null or ${table.providerUrl} like 'https://%'`),
+    requestHotReelVenueForeignKey: foreignKey({ columns: [table.requestId, table.hotReelId, table.venueId], foreignColumns: [socialDistributionRequests.id, socialDistributionRequests.hotReelId, socialDistributionRequests.venueId], name: "social_publications_request_reel_venue_fkey" }).onDelete("cascade"),
+    accountVenuePlatformForeignKey: foreignKey({ columns: [table.accountId, table.venueId, table.platform], foreignColumns: [socialPlatformAccounts.id, socialPlatformAccounts.venueId, socialPlatformAccounts.platform], name: "social_publications_account_venue_platform_fkey" }).onDelete("restrict"),
+  })
+);
 
 export const nightlyDeviceCommissioningChecks = pgTable(
   "nightly_device_commissioning_checks",

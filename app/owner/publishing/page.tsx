@@ -5,13 +5,16 @@ import { venueProfileChangeRequests, venuePublishHistory } from "@/db/schema";
 
 import { getOwnerVenue } from "../lib/data";
 import { publishOwnerVenueAction, unpublishOwnerVenueAction } from "../workflow-actions";
+import SocialPublishingPanel from "@/components/owner/SocialPublishingPanel";
+import { getSocialPublishingPolicy, listEligibleHotReels, listSocialAccounts, listSocialDistributionHistory } from "@/lib/social-publishing/distribution-service";
+import { isFeatureEnabled } from "@/lib/platform/feature-access";
 
 type OwnerPublishingPageProps = {
   searchParams: Promise<{ success?: string; error?: string }>;
 };
 
 export default async function OwnerPublishingPage({ searchParams }: OwnerPublishingPageProps) {
-  const [{ venueId, venue }, params] = await Promise.all([getOwnerVenue(), searchParams]);
+  const [{ venueId, venue, role }, params] = await Promise.all([getOwnerVenue(), searchParams]);
 
   const [pendingProfileRequest, publishHistory] = await Promise.all([
     db.query.venueProfileChangeRequests.findFirst({
@@ -37,6 +40,15 @@ export default async function OwnerPublishingPage({ searchParams }: OwnerPublish
   ];
 
   const canPublish = completionChecks.every((item) => item.done);
+  const socialEnabled = role === "owner" && await isFeatureEnabled("feature.social_publishing", { role, venueId });
+  const socialData = socialEnabled
+    ? await Promise.all([
+        listSocialAccounts(venueId),
+        listEligibleHotReels(venueId),
+        getSocialPublishingPolicy(venueId),
+        listSocialDistributionHistory(venueId),
+      ])
+    : null;
 
   return (
     <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
@@ -126,6 +138,8 @@ export default async function OwnerPublishingPage({ searchParams }: OwnerPublish
           </ul>
         )}
       </article>
+
+      {socialData ? <SocialPublishingPanel venueId={venueId} accounts={socialData[0]} hotReels={socialData[1]} policy={socialData[2]} distributions={socialData[3]} /> : null}
     </section>
   );
 }

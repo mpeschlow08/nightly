@@ -1,0 +1,16 @@
+export {
+  createSocialDistributionRequest,
+  disconnectSocialAccount,
+  getSocialDistribution,
+  getSocialPublishingPolicy,
+  listEligibleHotReels,
+  listSocialAccounts,
+  listSocialDistributionHistory,
+  retrySocialDestination,
+  reviewSocialDistribution,
+  revokeSocialDestination,
+  refreshSocialAccountAuthorization,
+  runNextSocialDestination,
+  runSocialDestination,
+  setSocialPublishingPolicy,
+} from "./distribution-service";

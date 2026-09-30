@@ -232,6 +232,20 @@
       "when": 1793000001002,
       "tag": "0032_hot_reel_cloud_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793000001003,
+      "tag": "0033_social_publishing_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793000001004,
+      "tag": "0034_social_publishing_integrity_hardening",
+      "breakpoints": true
     }
   ]
 }

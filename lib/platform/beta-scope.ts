@@ -102,6 +102,13 @@ export const BETA_V1_DEFERRED_FEATURES: BetaScopeFeature[] = [
     flagKey: "feature.venue_os",
   },
   {
+    lane: "owner",
+    title: "Official social publishing integrations",
+    status: "deferred",
+    summary: "External publishing remains disabled until official platform adapters and encrypted credential storage are configured.",
+    flagKey: "feature.social_publishing",
+  },
+  {
     lane: "consumer",
     title: "Realtime presence and location sharing",
     status: "deferred",
@@ -161,6 +168,7 @@ export const BETA_V1_REQUIRED_FLAG_KEYS = [
   "feature.beta_only_features",
   "feature.google_places_imports",
   "feature.venue_image_refresh",
+  "feature.social_publishing",
 ] as const;
 
 export function getBetaV1ScopeSnapshot() {

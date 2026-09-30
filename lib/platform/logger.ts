@@ -7,6 +7,14 @@ const SECRET_KEYS = [
   "token",
   "secret",
   "authorization",
+  "oauth_code",
+  "oauthcode",
+  "authorization_code",
+  "authorizationcode",
+  "pkce_verifier",
+  "pkceverifier",
+  "signed_url",
+  "signedurl",
   "cookie",
   "apiKey",
   "api_key",
@@ -40,6 +48,21 @@ function redact(value: unknown): unknown {
 
   if (typeof value === "string" && value.includes("postgresql://")) {
     return "[REDACTED_DATABASE_URL]";
+  }
+
+  if (typeof value === "string" && /^\s*Bearer\s+\S+/i.test(value)) {
+    return "[REDACTED_AUTHORIZATION]";
+  }
+
+  if (typeof value === "string") {
+    try {
+      const url = new URL(value);
+      if (url.protocol === "https:" && [...url.searchParams.keys()].some((key) => /token|sig(?:nature)?|code|credential|authorization/i.test(key))) {
+        return "[REDACTED_SIGNED_URL]";
+      }
+    } catch {
+      // Non-URL strings continue through the remaining redaction rules.
+    }
   }
 
   if (typeof value === "string" && value.toLowerCase().includes("rtsp://")) {
