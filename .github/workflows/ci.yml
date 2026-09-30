@@ -37,6 +37,11 @@ jobs:
       - name: Build Agent
         run: npm run build --prefix agent
 
+      - name: Install Agent media test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+
       - name: Test Agent
         run: npm test --prefix agent
 
