@@ -95,7 +95,7 @@ export function buildDiscoveryProfile(sources: UserPreferenceSources): Discovery
     recentlyViewedEventIds: sources.viewedEventIds ?? [],
     preferredDistanceMiles: readNumber(metadata.preferredDistanceMiles),
     liveStreamInterest: readBoolean(metadata.liveStreamInterest),
-    premiumStatus: readBoolean(metadata.premiumStatus),
+    premiumStatus: null,
     intents: Array.from(new Set([...intentsFromMetadata, ...inferredIntents])),
   };
 }

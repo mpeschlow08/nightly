@@ -246,6 +246,13 @@
       "when": 1793000001004,
       "tag": "0034_social_publishing_integrity_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793000001005,
+      "tag": "0035_commercial_entitlement_foundation",
+      "breakpoints": true
     }
   ]
 }

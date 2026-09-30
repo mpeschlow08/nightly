@@ -27,10 +27,16 @@ export class DeviceMediaBindings implements CanonicalMediaBindings {
 
   update(config: ControlPlaneConfig): void {
     const media = config.sections?.media;
+    const commercial = config.sections?.commercial;
     if (config.ok !== true || config.deviceId !== this.deviceId || config.venueId !== this.venueId ||
         config.configAvailable !== true || typeof config.configRevision !== "string" || !config.configRevision.length || config.configRevision.length > 128 ||
         !media || media.revision !== config.configRevision || media.ttlSeconds !== 300 || !Array.isArray(media.sources) || media.sources.length > 4 ||
         !config.sections.privacy || !config.sections.service || !config.sections.recovery ||
+      !commercial || typeof commercial.commercialState !== "string" || typeof commercial.reasonCode !== "string" ||
+      !Number.isSafeInteger(commercial.revision) || commercial.revision < 0 || !Number.isSafeInteger(commercial.subscriptionRevision) || commercial.subscriptionRevision < 0 ||
+      !Array.isArray(commercial.allowedCapabilities) || commercial.allowedCapabilities.length > 40 || commercial.allowedCapabilities.some((capability) => typeof capability !== "string" || !/^(venue|device|consumer|artist)\.[a-z0-9_.]+$/.test(capability)) ||
+      commercial.managementAvailable !== true || !Number.isFinite(Date.parse(commercial.issuedAt)) || !Number.isFinite(Date.parse(commercial.refreshBy)) || !Number.isFinite(Date.parse(commercial.offlineEntitlementExpiresAt)) ||
+      Date.parse(commercial.refreshBy) > Date.parse(commercial.offlineEntitlementExpiresAt) || Date.parse(commercial.offlineEntitlementExpiresAt) < Date.parse(commercial.issuedAt) ||
         typeof config.sections.privacy.mode !== "string" || typeof config.sections.privacy.contentEligibility !== "string" ||
         typeof config.sections.privacy.publicPublishingEnabled !== "boolean" || !Number.isSafeInteger(config.sections.privacy.revision) ||
         typeof config.sections.service.entitlementState !== "string" || typeof config.sections.service.hotReelEligible !== "boolean" ||
@@ -49,6 +55,17 @@ export class DeviceMediaBindings implements CanonicalMediaBindings {
     }
     const time = this.now();
     if (!Number.isSafeInteger(time) || time < 0) throw new Error("invalid_media_clock");
+    if (this.snapshot) {
+      const previous = this.snapshot.policy;
+      const previousCapabilities = [...previous.allowedCapabilities].sort().join("|");
+      const incomingCapabilities = [...commercial.allowedCapabilities].sort().join("|");
+      const capabilityBroadening = commercial.allowedCapabilities.some((capability) => capability !== "device.management" && !previous.allowedCapabilities.includes(capability));
+      if (commercial.revision < previous.commercialRevision ||
+          commercial.revision === previous.commercialRevision && (capabilityBroadening || incomingCapabilities !== previousCapabilities && Date.parse(commercial.offlineEntitlementExpiresAt) > previous.offlineEntitlementExpiresAt)) {
+        throw new Error("stale_commercial_directive");
+      }
+    }
+    const commercialValid = Date.parse(commercial.offlineEntitlementExpiresAt) > time;
     for (const sourceId of this.locators.keys()) {
       if (this.snapshot?.revision !== config.configRevision || !sources.has(sourceId) ||
           this.snapshot.sources.get(sourceId)?.venueCameraId !== sources.get(sourceId)?.venueCameraId ||
@@ -56,9 +73,13 @@ export class DeviceMediaBindings implements CanonicalMediaBindings {
     }
     this.snapshot = { revision: config.configRevision, expiresAt: time + 300_000, sources, policy: {
       deviceId: this.deviceId, venueId: this.venueId,
-      serviceActive: config.sections.service.entitlementState === "active",
+      serviceActive: commercialValid && commercial.allowedCapabilities.includes("device.capture"),
+      commercialState: commercial.commercialState,
+      commercialRevision: commercial.revision,
+      offlineEntitlementExpiresAt: Date.parse(commercial.offlineEntitlementExpiresAt),
+      allowedCapabilities: [...commercial.allowedCapabilities],
       contentEligible: config.sections.privacy.contentEligibility === "approved",
-      hotReelEligible: config.sections.service.hotReelEligible,
+      hotReelEligible: commercialValid && commercial.allowedCapabilities.includes("venue.hot_reels") && commercial.allowedCapabilities.includes("device.hot_moments") && config.sections.service.hotReelEligible,
       publicPublishingEnabled: config.sections.privacy.publicPublishingEnabled,
       privacyRestricted: config.sections.privacy.mode === "restricted", masksApplied: false,
     } };

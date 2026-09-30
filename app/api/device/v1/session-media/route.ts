@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { artistPerformanceSessions, artistSessionHistory, artistSessionMedia, artistSessionSources, nightlyDevices } from "@/db/schema";
 import { authenticateDeviceRequest, createAuthError } from "@/lib/nightly-device/auth";
-import { canUseDeviceForOperationalManagement, canUseDeviceForService } from "@/lib/nightly-device/policy";
+import { canUseDeviceForOperationalManagement } from "@/lib/nightly-device/policy";
 import { withinSessionWindow } from "@/lib/artist-sessions/policy";
+import { evaluateCommercialEntitlementInTransaction } from "@/lib/commercial-entitlements/service";
 
 const headers = { "Cache-Control": "no-store" };
 const validId = (value: unknown) => typeof value === "string" && /^[0-9a-f]{32}$/i.test(value);
@@ -27,13 +28,12 @@ export async function POST(request: Request) {
   return db.transaction(async (tx) => {
     const [device] = await tx.select({ id: nightlyDevices.id, venueId: nightlyDevices.venueId,
       desiredConfigRevision: nightlyDevices.desiredConfigRevision, lifecycleState: nightlyDevices.lifecycleState,
-      claimState: nightlyDevices.claimState, serviceEntitlementState: nightlyDevices.serviceEntitlementState,
-      serviceSuspendedAt: nightlyDevices.serviceSuspendedAt, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible,
+      claimState: nightlyDevices.claimState, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible,
       managementAccessLevel: nightlyDevices.managementAccessLevel, contentEligibility: nightlyDevices.contentEligibility,
       hotReelEligible: nightlyDevices.hotReelEligible, publicPublishingEnabled: nightlyDevices.publicPublishingEnabled
     }).from(nightlyDevices).where(eq(nightlyDevices.id, identity.id)).for("share").limit(1);
     if (!device || device.venueId !== identity.venueId || device.desiredConfigRevision !== body.configRevision ||
-        !canUseDeviceForService(device) || !canUseDeviceForOperationalManagement(device) ||
+        !canUseDeviceForOperationalManagement(device) ||
         device.contentEligibility !== "approved" || !device.hotReelEligible || !device.publicPublishingEnabled)
       return NextResponse.json(createAuthError("device_unavailable", "Device access is unavailable."), { status: 403, headers });
     const [session] = await tx.select().from(artistPerformanceSessions)
@@ -44,6 +44,11 @@ export async function POST(request: Request) {
     if (!session || !source || !withinSessionWindow(session, { venueId: identity.venueId ?? -1, start, end }) ||
         session.mediaRevision !== body.mediaRevision || source.deviceId !== identity.id)
       return NextResponse.json(createAuthError("source_unavailable", "Session media is unavailable."), { status: 403, headers });
+    const venueEntitlement = await evaluateCommercialEntitlementInTransaction(tx, { scope: "venue", scopeId: device.venueId!, capability: "venue.artist_sessions" });
+    const deviceEntitlement = await evaluateCommercialEntitlementInTransaction(tx, { scope: "device", scopeId: device.id, capability: "device.capture" });
+    const artistEntitlement = await evaluateCommercialEntitlementInTransaction(tx, { scope: "artist", scopeId: session.djProfileId, capability: "artist.performance_sessions" });
+    if (!venueEntitlement.allowed || !deviceEntitlement.allowed || !artistEntitlement.allowed)
+      return NextResponse.json(createAuthError("device_unavailable", "Session media is unavailable."), { status: 403, headers });
     const [existing] = await tx.select({ id: artistSessionMedia.id }).from(artistSessionMedia).where(and(
       eq(artistSessionMedia.deviceId, identity.id), eq(artistSessionMedia.hotId, body.hotId as string))).limit(1);
     if (existing) return NextResponse.json({ ok: true, attributed: true }, { headers });

@@ -26,10 +26,11 @@ import { classifyNightlyDeviceInventoryWriteError, extractPostgresErrorMetadata,
 
 const CAMERA_UNIQUE_CONSTRAINT = "nightly_device_sources_venue_camera_unique";
 
-test("device config projects service suspension as ineligible for capture", () => {
+test("device config projects server commercial entitlement as ineligible for capture", () => {
   const route = readFileSync(join(process.cwd(), "app/api/device/v1/config/route.ts"), "utf8");
-  assert.match(route, /serviceSuspendedAt: nightlyDevices\.serviceSuspendedAt/);
-  assert.match(route, /entitlementState: device\.serviceSuspendedAt \? "suspended" : device\.serviceEntitlementState/);
+  assert.match(route, /getDeviceCommercialDirective\(device\.id\)/);
+  assert.match(route, /commercialCapabilities\.has\("device\.capture"\)/);
+  assert.match(route, /commercial,/);
 });
 
 test("device capability bundles accept supported Nightly Box capabilities", () => {

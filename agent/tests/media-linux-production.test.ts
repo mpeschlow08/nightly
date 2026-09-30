@@ -13,7 +13,7 @@ import { LocalHotMoments } from "../src/media/moments";
 import { EncryptedMediaStorage, MAX_SEGMENT_BYTES } from "../src/media/storage";
 
 const source: AuthorizedMediaSource = { deviceId: 1, venueId: 2, sourceId: 3, venueCameraId: null, kind: "HDMI", audioRole: null, active: true, locator: "/dev/video0", privacyMasksRequired: false };
-const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: false };
+const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, commercialState: "active", commercialRevision: 1, offlineEntitlementExpiresAt: Date.now() + 86_400_000, allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: false };
 
 function execute(command: string, args: string[], input?: Buffer): Buffer {
   const result = spawnSync(command, args, { input, timeout: 10_000, maxBuffer: 256 * 1024 });

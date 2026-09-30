@@ -57,6 +57,8 @@ export class AgentRuntime {
       softwareVersion: typeof stored?.softwareVersion === "string" ? stored.softwareVersion : null,
       desiredConfigRevision: typeof stored?.desiredConfigRevision === "string" ? stored.desiredConfigRevision : null,
       appliedConfigRevision: typeof stored?.appliedConfigRevision === "string" ? stored.appliedConfigRevision : null,
+      commercialDirectiveRevision: Number.isSafeInteger(stored?.commercialDirectiveRevision) && (stored!.commercialDirectiveRevision as number) >= 0 ? stored!.commercialDirectiveRevision as number : null,
+      commercialDirectiveExpiresAt: typeof stored?.commercialDirectiveExpiresAt === "string" ? stored.commercialDirectiveExpiresAt : null,
       lastCloudContactAt: typeof stored?.lastCloudContactAt === "string" ? stored.lastCloudContactAt : null,
       lastHeartbeatAt: typeof stored?.lastHeartbeatAt === "string" ? stored.lastHeartbeatAt : null,
       lastErrorCode: typeof stored?.lastErrorCode === "string" ? stored.lastErrorCode : null,
@@ -77,11 +79,15 @@ export class AgentRuntime {
       } catch (error) {
         const code = error instanceof ControlPlaneError ? error.code : "agent_cycle_failed";
         this.#state.lastErrorCode = code;
-        if (error instanceof ControlPlaneError && (error.status === 401 || error.status === 403 || error.status === 409) ||
+        const now = (this.dependencies.now ?? (() => new Date()))().getTime();
+        const commercialExpiry = this.#state.commercialDirectiveExpiresAt ? Date.parse(this.#state.commercialDirectiveExpiresAt) : Number.NaN;
+        const commercialOfflineExpired = !Number.isFinite(commercialExpiry) || now >= commercialExpiry;
+        if (commercialOfflineExpired || error instanceof ControlPlaneError && (error.status === 401 || error.status === 403 || error.status === 409) ||
           !(error instanceof ControlPlaneError && error.retryable)) await this.#stopMedia();
         else if (this.dependencies.mediaBindings && (this.dependencies.now ?? (() => new Date()))().getTime() >= this.dependencies.mediaBindings.expiresAt) await this.#stopMedia();
         if (error instanceof ControlPlaneError && error.status === 401) await this.#transition("RECOVERY_REQUIRED");
         else if (error instanceof ControlPlaneError && error.status === 403) await this.#transition("SUSPENDED");
+        else if (commercialOfflineExpired) await this.#transition("SUSPENDED");
         else if (this.#machine.state === "UNPROVISIONED") await this.#transition("RECOVERY_REQUIRED");
         else if (this.#machine.state !== "RECOVERY_REQUIRED" && this.#machine.state !== "SUSPENDED") await this.#transition("OFFLINE");
         logger.log("warn", "agent_cycle_failed", { code, state: this.#machine.state });
@@ -179,6 +185,19 @@ export class AgentRuntime {
     const configResponse = await client.getConfig(secret);
     if (configResponse.deviceId !== heartbeat.device.id || configResponse.venueId !== heartbeat.device.venueId) throw new ControlPlaneError("Device configuration identity mismatch.", null, "invalid_device_config", false);
     if (configResponse.configAvailable && !configResponse.configRevision) throw new ControlPlaneError("Device configuration revision missing.", null, "invalid_device_config", false);
+    if (!configResponse.sections?.commercial || !Number.isSafeInteger(configResponse.sections.commercial.revision) ||
+      !Number.isFinite(Date.parse(configResponse.sections.commercial.issuedAt)) ||
+      !Number.isFinite(Date.parse(configResponse.sections.commercial.refreshBy)) ||
+      !Number.isFinite(Date.parse(configResponse.sections.commercial.offlineEntitlementExpiresAt)) ||
+      !Array.isArray(configResponse.sections.commercial.allowedCapabilities) || configResponse.sections.commercial.managementAvailable !== true) throw new ControlPlaneError("Commercial directive is invalid.", null, "invalid_commercial_directive", false);
+    const incomingCommercialRevision = configResponse.sections.commercial.revision;
+    const cachedCommercialRevision = this.#state.commercialDirectiveRevision;
+    const incomingCommercialExpiry = Date.parse(configResponse.sections.commercial.offlineEntitlementExpiresAt);
+    const cachedCommercialExpiry = this.#state.commercialDirectiveExpiresAt ? Date.parse(this.#state.commercialDirectiveExpiresAt) : Number.NaN;
+    if (cachedCommercialRevision !== null && (incomingCommercialRevision < cachedCommercialRevision ||
+        incomingCommercialRevision === cachedCommercialRevision && Number.isFinite(cachedCommercialExpiry) && incomingCommercialExpiry < cachedCommercialExpiry)) {
+      throw new ControlPlaneError("Commercial directive is stale.", null, "stale_commercial_directive", false);
+    }
     if (!configResponse.configAvailable) {
       await this.#stopMedia();
       this.#state.desiredConfigRevision = null;
@@ -199,12 +218,16 @@ export class AgentRuntime {
       this.#state.desiredConfigRevision = configResponse.configRevision;
       this.#state.policyConfig = null;
       this.#state.appliedConfigRevision = configResponse.configRevision;
+      this.#state.commercialDirectiveRevision = incomingCommercialRevision;
+      this.#state.commercialDirectiveExpiresAt = configResponse.sections.commercial.offlineEntitlementExpiresAt;
       await this.#persist();
       await client.acknowledgeConfig(secret, configResponse.configRevision);
     }
     if (this.dependencies.media) {
       const policy = configResponse.sections;
-      if (configResponse.configAvailable && policy.service.entitlementState === "active" && policy.service.hotReelEligible &&
+      const commercial = policy.commercial;
+      const commercialValid = Date.parse(commercial.offlineEntitlementExpiresAt) > (this.dependencies.now ?? (() => new Date()))().getTime();
+      if (configResponse.configAvailable && commercialValid && commercial.allowedCapabilities.includes("device.capture") && policy.service.entitlementState === "active" && policy.service.hotReelEligible &&
           policy.privacy.contentEligibility === "approved" && policy.privacy.publicPublishingEnabled && policy.privacy.mode !== "restricted") {
         await this.dependencies.media.start();
         await this.dependencies.media.reconcile();
@@ -239,6 +262,10 @@ export class AgentRuntime {
       typeof config.sections.privacy.publicPublishingEnabled === "boolean" && Number.isSafeInteger(config.sections.privacy.revision) &&
       typeof config.sections?.service?.entitlementState === "string" && typeof config.sections.service.hotReelEligible === "boolean" &&
       typeof config.sections.service.liveEligible === "boolean" && Number.isSafeInteger(config.sections.service.revision) &&
+      typeof config.sections?.commercial?.commercialState === "string" && Number.isSafeInteger(config.sections.commercial.revision) &&
+      Array.isArray(config.sections.commercial.allowedCapabilities) && config.sections.commercial.managementAvailable === true &&
+      Number.isFinite(Date.parse(config.sections.commercial.issuedAt)) && Number.isFinite(Date.parse(config.sections.commercial.refreshBy)) &&
+      Number.isFinite(Date.parse(config.sections.commercial.offlineEntitlementExpiresAt)) &&
       typeof config.sections?.recovery?.enabled === "boolean";
   }
 

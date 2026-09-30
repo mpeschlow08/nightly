@@ -37,6 +37,7 @@ export const ADMIN_PERMISSIONS = [
   "analytics:view",
   "revenue:view",
   "subscriptions:view",
+  "subscriptions:manage",
   "flags:manage",
   "jobs:manage",
   "health:view",

@@ -7,13 +7,14 @@ import { authenticateDeviceRequest, canUseDeviceForOperationalManagement, create
 import { projectDeviceMediaConfig } from "@/lib/nightly-device/media-bindings";
 import { artistSessionLeaseExpiresAt, sourceRole } from "@/lib/artist-sessions/policy";
 import { expireStaleVenueSessions } from "@/lib/artist-sessions/service";
+import { evaluateCommercialEntitlement, getDeviceCommercialDirective } from "@/lib/commercial-entitlements/service";
 
 export async function GET(request: Request) {
   const identity = await authenticateDeviceRequest(request);
   if (!identity) return NextResponse.json(createAuthError("unauthorized", "Device authentication is required."), { status: 401 });
 
   const [device] = await db
-    .select({ id: nightlyDevices.id, publicDeviceUuid: nightlyDevices.publicDeviceUuid, venueId: nightlyDevices.venueId, desiredConfigRevision: nightlyDevices.desiredConfigRevision, serviceEntitlementState: nightlyDevices.serviceEntitlementState, serviceSuspendedAt: nightlyDevices.serviceSuspendedAt, privacyMode: nightlyDevices.privacyMode, contentEligibility: nightlyDevices.contentEligibility, publicPublishingEnabled: nightlyDevices.publicPublishingEnabled, hotReelEligible: nightlyDevices.hotReelEligible, liveEligible: nightlyDevices.liveEligible, privacyConfigRevision: nightlyDevices.privacyConfigRevision, serviceConfigRevision: nightlyDevices.serviceConfigRevision, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible })
+    .select({ id: nightlyDevices.id, publicDeviceUuid: nightlyDevices.publicDeviceUuid, venueId: nightlyDevices.venueId, desiredConfigRevision: nightlyDevices.desiredConfigRevision, privacyMode: nightlyDevices.privacyMode, contentEligibility: nightlyDevices.contentEligibility, publicPublishingEnabled: nightlyDevices.publicPublishingEnabled, hotReelEligible: nightlyDevices.hotReelEligible, liveEligible: nightlyDevices.liveEligible, privacyConfigRevision: nightlyDevices.privacyConfigRevision, serviceConfigRevision: nightlyDevices.serviceConfigRevision, managementRecoveryEligible: nightlyDevices.managementRecoveryEligible })
     .from(nightlyDevices)
     .where(eq(nightlyDevices.id, identity.id))
     .limit(1);
@@ -26,6 +27,10 @@ export async function GET(request: Request) {
   if (!allowed) {
     return NextResponse.json(createAuthError("device_unavailable", "Device management access is unavailable."), { status: 403 });
   }
+
+  const commercial = await getDeviceCommercialDirective(device.id);
+  const commercialCapabilities = new Set(commercial.allowedCapabilities);
+  const entitlementActive = commercialCapabilities.has("device.capture") && Date.parse(commercial.offlineEntitlementExpiresAt) > Date.now();
 
   if (device.venueId) await expireStaleVenueSessions(device.venueId);
 
@@ -46,7 +51,7 @@ export async function GET(request: Request) {
     .where(and(eq(nightlyDeviceSources.deviceId, device.id), eq(nightlyDeviceSources.venueId, device.venueId))) : [];
 
   const activeSessions = device.venueId && device.desiredConfigRevision ? await db
-    .select({ publicId: artistPerformanceSessions.publicId, venueId: artistPerformanceSessions.venueId,
+    .select({ publicId: artistPerformanceSessions.publicId, venueId: artistPerformanceSessions.venueId, djProfileId: artistPerformanceSessions.djProfileId,
       startedAt: artistPerformanceSessions.startedAt, includeMicrophone: artistPerformanceSessions.includeMicrophone,
       mediaRevision: artistPerformanceSessions.mediaRevision, sourceId: artistSessionSources.sourceKey,
       role: artistSessionSources.role })
@@ -58,10 +63,12 @@ export async function GET(request: Request) {
   const performance = new Map<string, { publicId: string; deviceId: number; venueId: number;
     sources: Array<{ sourceId: number; role: "camera" | "program_audio" | "ambient_audio" }>;
     startedAt: string; leaseExpiresAt: string; includeMicrophone: boolean; mediaRevision: number }>();
-  if (device.serviceEntitlementState === "active" && !device.serviceSuspendedAt && device.contentEligibility === "approved" &&
+  if (entitlementActive && commercialCapabilities.has("venue.artist_sessions") && device.contentEligibility === "approved" &&
       device.hotReelEligible && device.publicPublishingEnabled && device.venueId) {
     for (const row of activeSessions) {
       if (!row.startedAt || !row.role || permittedSources.get(row.sourceId) !== row.role) continue;
+      const artistEntitlement = await evaluateCommercialEntitlement({ scope: "artist", scopeId: row.djProfileId, capability: "artist.performance_sessions" });
+      if (!artistEntitlement.allowed) continue;
       const leaseExpiresAt = artistSessionLeaseExpiresAt(row.startedAt);
       if (!leaseExpiresAt || leaseExpiresAt <= new Date()) continue;
       const existing = performance.get(row.publicId);
@@ -87,11 +94,12 @@ export async function GET(request: Request) {
         revision: device.privacyConfigRevision,
       },
       service: {
-        entitlementState: device.serviceSuspendedAt ? "suspended" : device.serviceEntitlementState,
-        hotReelEligible: device.hotReelEligible,
-        liveEligible: device.liveEligible,
-        revision: device.serviceConfigRevision,
+        entitlementState: entitlementActive ? "active" : commercial.commercialState === "suspended" ? "suspended" : commercial.commercialState === "expired" ? "expired" : "inactive",
+        hotReelEligible: entitlementActive && commercialCapabilities.has("venue.hot_reels") && commercialCapabilities.has("device.hot_moments") && device.hotReelEligible,
+        liveEligible: entitlementActive && commercialCapabilities.has("venue.remote_media") && commercialCapabilities.has("device.remote_output") && device.liveEligible,
+        revision: commercial.revision,
       },
+      commercial,
       media: projectDeviceMediaConfig(mediaRows, device.id, device.venueId, device.desiredConfigRevision),
       performance: { revision: device.desiredConfigRevision, ttlSeconds: 300, sessions: [...performance.values()].slice(0, 4) },
       recovery: { enabled: device.managementRecoveryEligible },

@@ -257,7 +257,7 @@ test("kill switch, feature disabled, and entitlement denial responses stay safe"
   });
   const denied = await authorizeLivePlaybackCore({
     ...baseInput,
-    evaluateEntitlement: async () => ({ allowed: false, reason: "premium_required" }),
+    evaluateEntitlement: async () => ({ allowed: false, reason: "entitlement_required" }),
   });
 
   assert.equal(killSwitch.status, "denied");

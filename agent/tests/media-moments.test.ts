@@ -9,7 +9,7 @@ import { acceptsTrigger, LocalHotMoments, type MediaMuxer } from "../src/media/m
 import { EncryptedMediaStorage } from "../src/media/storage";
 
 const source: AuthorizedMediaSource = { deviceId: 1, venueId: 2, sourceId: 3, venueCameraId: 4, kind: "IP_CAMERA", audioRole: null, active: true, locator: "rtsp://private.local/live", privacyMasksRequired: true };
-const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: true };
+const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, commercialState: "active", commercialRevision: 1, offlineEntitlementExpiresAt: 1_000_000, allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: true };
 
 async function fixture(waitMs = 0) {
   const directory = await mkdtemp(join(tmpdir(), "nightly-moments-"));

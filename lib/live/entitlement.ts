@@ -2,6 +2,7 @@ import "server-only";
 
 import { isFeatureEnabled } from "@/lib/platform/feature-access";
 import { isKillSwitchEnabled } from "@/lib/platform/kill-switches";
+import { evaluateCommercialEntitlement } from "@/lib/commercial-entitlements/service";
 
 export type LivePlaybackActor = {
   userId: string | null;
@@ -41,21 +42,7 @@ export async function evaluateLivePlaybackEntitlement(input: {
     return { allowed: false as const, reason: "feature_disabled" as const };
   }
 
-  const premiumRequired = process.env.LIVE_PLAYBACK_REQUIRE_PREMIUM === "true";
-  if (!premiumRequired) {
-    return { allowed: true as const, reason: "allowed" as const };
-  }
-
-  const premiumUsers = new Set(
-    (process.env.LIVE_PLAYBACK_PREMIUM_USER_IDS ?? "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-  );
-
-  if (input.actor.userId && premiumUsers.has(input.actor.userId)) {
-    return { allowed: true as const, reason: "allowed" as const };
-  }
-
-  return { allowed: false as const, reason: "premium_required" as const };
+  const commercial = await evaluateCommercialEntitlement({ scope: "venue", scopeId: input.venueId, capability: "venue.remote_media" });
+  if (!commercial.allowed) return { allowed: false as const, reason: commercial.reasonCode === "suspended" ? "entitlement_suspended" as const : "entitlement_required" as const };
+  return { allowed: true as const, reason: "allowed" as const };
 }

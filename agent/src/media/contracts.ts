@@ -18,6 +18,10 @@ export type MediaPolicy = {
   deviceId: number;
   venueId: number;
   serviceActive: boolean;
+  commercialState: string;
+  commercialRevision: number;
+  offlineEntitlementExpiresAt: number;
+  allowedCapabilities: readonly string[];
   contentEligible: boolean;
   hotReelEligible: boolean;
   publicPublishingEnabled: boolean;

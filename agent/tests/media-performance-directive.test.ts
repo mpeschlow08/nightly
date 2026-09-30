@@ -17,6 +17,7 @@ const config: ControlPlaneConfig = {
   sections: {
     privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
     service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+    commercial: { commercialState: "active", reasonCode: "active_subscription", allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], revision: 1, subscriptionRevision: 1, issuedAt: session.startedAt, refreshBy: "2026-01-01T00:04:00.000Z", offlineEntitlementExpiresAt: "2026-01-04T00:00:00.000Z", managementAvailable: true },
     media: { revision: "rev-1", ttlSeconds: 300, sources: [
       { sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" },
       { sourceId: 4, deviceId: 7, venueId: 9, sourceType: "mixer_audio", venueCameraId: null, enabled: true, capability: "not_tested" },

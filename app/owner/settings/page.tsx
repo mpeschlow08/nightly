@@ -3,6 +3,27 @@ import { notFound } from "next/navigation";
 import { getOwnerVenue } from "../lib/data";
 import { getCurrentOwnerVenue } from "../lib/ownership";
 import { isFeatureEnabled } from "@/lib/platform/feature-access";
+import { getCommercialSubscriptionStatus } from "@/lib/commercial-entitlements/service";
+
+function dateLabel(value: string | null) {
+  return value ? new Date(value).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }) : null;
+}
+
+function CommercialStatus({ commercial }: { commercial: Awaited<ReturnType<typeof getCommercialSubscriptionStatus>> }) {
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">Commercial status</p>
+      <p className="mt-2 text-lg font-medium capitalize text-white">{commercial.state.replaceAll("_", " ")}</p>
+      <p className="mt-1 text-sm text-zinc-400">Nightly venue package</p>
+      {!commercial.scopeAvailable && <p className="mt-3 border-l-2 border-amber-400 pl-3 text-sm text-amber-100">Venue access is currently unavailable. This is separate from subscription status.</p>}
+      {commercial.scopeAvailable && commercial.state === "suspended" && <p className="mt-3 border-l-2 border-amber-400 pl-3 text-sm text-amber-100">Paid venue features are paused. Device diagnostics and Nightly management remain available.</p>}
+      {commercial.trialEndsAt && <p className="mt-3 text-sm text-zinc-300">Trial ends {dateLabel(commercial.trialEndsAt)}.</p>}
+      {commercial.graceUntil && <p className="mt-1 text-sm text-zinc-300">Grace period ends {dateLabel(commercial.graceUntil)}.</p>}
+      {commercial.endsAt && <p className="mt-1 text-sm text-zinc-300">Access ends {dateLabel(commercial.endsAt)}.</p>}
+      {commercial.state === "expired" && <p className="mt-3 text-sm text-zinc-400">Commercial access is not active. Contact Nightly support for account assistance.</p>}
+    </article>
+  );
+}
 
 export default async function OwnerSettingsPage() {
   const owner = await getCurrentOwnerVenue();
@@ -14,7 +35,7 @@ export default async function OwnerSettingsPage() {
     city: owner.venue.city ?? undefined,
   });
 
-  const { venue, role } = await getOwnerVenue();
+  const [{ venue, role }, commercial] = await Promise.all([getOwnerVenue(), getCommercialSubscriptionStatus("venue", owner.venueId)]);
 
   if (!venue) {
     notFound();
@@ -28,6 +49,7 @@ export default async function OwnerSettingsPage() {
         <p className="mt-2 text-sm text-zinc-300">
           Staff management and billing controls are intentionally deferred from Nightly Beta V1.
         </p>
+        <div className="mt-6"><CommercialStatus commercial={commercial} /></div>
       </section>
     );
   }
@@ -59,13 +81,7 @@ export default async function OwnerSettingsPage() {
         </div>
       </article>
 
-      <article className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">Billing and Subscription</p>
-        <p className="mt-2 text-sm text-zinc-300">Plan controls, invoices, and subscription upgrades will appear in this section.</p>
-        <div className="mt-4 rounded-xl border border-dashed border-white/20 bg-zinc-900/60 px-4 py-3 text-xs text-zinc-400">
-          Coming soon.
-        </div>
-      </article>
+      <div className="mt-4"><CommercialStatus commercial={commercial} /></div>
     </section>
   );
 }

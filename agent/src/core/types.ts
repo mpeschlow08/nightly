@@ -64,6 +64,8 @@ export type AgentPersistentState = {
   agentVersion: string;
   desiredConfigRevision: string | null;
   appliedConfigRevision: string | null;
+  commercialDirectiveRevision: number | null;
+  commercialDirectiveExpiresAt: string | null;
   policyConfig: ControlPlaneConfig | null;
   lastCloudContactAt: string | null;
   lastHeartbeatAt: string | null;
@@ -122,6 +124,8 @@ export const INITIAL_STATE: Omit<AgentPersistentState, "agentVersion" | "simulat
   softwareVersion: null,
   desiredConfigRevision: null,
   appliedConfigRevision: null,
+  commercialDirectiveRevision: null,
+  commercialDirectiveExpiresAt: null,
   policyConfig: null,
   lastCloudContactAt: null,
   lastHeartbeatAt: null,

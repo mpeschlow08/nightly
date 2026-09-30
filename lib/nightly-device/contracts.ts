@@ -55,6 +55,18 @@ export type AgentCommissioningRequest = {
   checks: AgentCommissioningResult[];
 };
 
+export type CommercialDeviceDirective = {
+  commercialState: string;
+  reasonCode: string;
+  allowedCapabilities: string[];
+  revision: number;
+  subscriptionRevision: number;
+  issuedAt: string;
+  refreshBy: string;
+  offlineEntitlementExpiresAt: string;
+  managementAvailable: true;
+};
+
 export type AgentDeviceConfig = {
   ok: true;
   deviceId: number;
@@ -75,6 +87,7 @@ export type AgentDeviceConfig = {
       liveEligible: boolean;
       revision: number;
     };
+    commercial: CommercialDeviceDirective;
     media: {
       revision: string | null;
       ttlSeconds: number;

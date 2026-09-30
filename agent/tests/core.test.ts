@@ -59,6 +59,8 @@ function defaultState(): AgentPersistentState {
     agentVersion: "0.1.0",
     desiredConfigRevision: null,
     appliedConfigRevision: null,
+    commercialDirectiveRevision: null,
+    commercialDirectiveExpiresAt: null,
     policyConfig: null,
     lastCloudContactAt: null,
     lastHeartbeatAt: null,
@@ -244,12 +246,14 @@ test("media credential POST authenticates the device and never exposes server-pr
 });
 
 test("agent keeps media authorization in memory and rejects malformed config before capture", async () => {
+  const issuedAt = new Date();
   const response: ControlPlaneConfig = {
     ok: true, deviceId: 7, model: "nightly-box", venueId: 9, configRevision: "rev-1", configAvailable: true,
     timestamp: new Date().toISOString(),
     sections: {
       privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
       service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+      commercial: { commercialState: "active", reasonCode: "active_subscription", allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], revision: 1, subscriptionRevision: 1, issuedAt: issuedAt.toISOString(), refreshBy: new Date(issuedAt.getTime() + 4 * 60_000).toISOString(), offlineEntitlementExpiresAt: new Date(issuedAt.getTime() + 72 * 60 * 60_000).toISOString(), managementAvailable: true },
       media: { revision: "rev-1", ttlSeconds: 300, sources: [{ sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" }] },
       recovery: { enabled: false },
     },
@@ -284,6 +288,11 @@ test("agent keeps media authorization in memory and rejects malformed config bef
     });
     await runtime.run();
     assert.ok(stored.every((state) => !state.includes("rtsp:") && !state.includes("device-secret") && !state.includes("\"sources\"")));
+    if (valid) {
+      const persistedDirective = stored.map((value) => JSON.parse(value) as AgentPersistentState).find((state) => state.commercialDirectiveRevision === 1);
+      assert.ok(persistedDirective);
+      assert.equal(persistedDirective.commercialDirectiveExpiresAt, response.sections.commercial.offlineEntitlementExpiresAt);
+    }
     assert.deepEqual(events.includes("start"), valid);
     assert.ok(events.includes("stop"));
     if (!valid) assert.ok(stored.some((state) => state.includes("invalid_device_config")));
@@ -299,6 +308,7 @@ test("performance directives follow config revocation, stop, and restart re-fetc
     sections: {
       privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
       service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+      commercial: { commercialState: "active", reasonCode: "active_subscription", allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], revision: 1, subscriptionRevision: 1, issuedAt: now.toISOString(), refreshBy: new Date(now.getTime()+240_000).toISOString(), offlineEntitlementExpiresAt: new Date(now.getTime()+72*60*60*1000).toISOString(), managementAvailable: true },
       media: { revision: "rev-1", ttlSeconds: 300, sources: [{ sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" }] },
       recovery: { enabled: false },
       performance: { revision: "rev-1", ttlSeconds: 300, sessions: [{ publicId, deviceId: 7, venueId: 9,

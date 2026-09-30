@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { nightlyDeviceSources, nightlyDevices, venueCameras } from "@/db/schema";
-import { authenticateDeviceRequest, canUseDeviceForOperationalManagement, canUseDeviceForService, createAuthError } from "@/lib/nightly-device/auth";
+import { authenticateDeviceRequest, canUseDeviceForOperationalManagement, createAuthError } from "@/lib/nightly-device/auth";
 import { canResolveDeviceMediaCredential, MEDIA_CREDENTIAL_TTL_SECONDS } from "@/lib/nightly-device/media-bindings";
-import { canUseDeviceForOperationalManagement as operationalAllowed, canUseDeviceForService as serviceAllowed } from "@/lib/nightly-device/policy";
+import { canUseDeviceForOperationalManagement as operationalAllowed } from "@/lib/nightly-device/policy";
+import { evaluateCommercialEntitlementInTransaction } from "@/lib/commercial-entitlements/service";
 
 const responseHeaders = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json(createAuthError("invalid_request", "sourceId and expectedRevision are required."), { status: 400, headers: responseHeaders });
   }
 
-  if (!await canUseDeviceForService(identity.id) || !await canUseDeviceForOperationalManagement(identity.id)) {
+  if (!await canUseDeviceForOperationalManagement(identity.id)) {
     return NextResponse.json(createAuthError("device_unavailable", "Device access is unavailable."), { status: 403, headers: responseHeaders });
   }
 
@@ -27,8 +28,6 @@ export async function POST(request: Request) {
       id: nightlyDevices.id, venueId: nightlyDevices.venueId,
       desiredConfigRevision: nightlyDevices.desiredConfigRevision,
       lifecycleState: nightlyDevices.lifecycleState, claimState: nightlyDevices.claimState,
-      serviceEntitlementState: nightlyDevices.serviceEntitlementState,
-      serviceSuspendedAt: nightlyDevices.serviceSuspendedAt,
       contentEligibility: nightlyDevices.contentEligibility,
       hotReelEligible: nightlyDevices.hotReelEligible,
       publicPublishingEnabled: nightlyDevices.publicPublishingEnabled,
@@ -36,11 +35,13 @@ export async function POST(request: Request) {
       managementAccessLevel: nightlyDevices.managementAccessLevel,
     }).from(nightlyDevices).where(eq(nightlyDevices.id, identity.id)).for("share").limit(1);
 
-    if (!device || !device.venueId || !serviceAllowed(device) || !operationalAllowed(device) ||
+    if (!device || !device.venueId || !operationalAllowed(device) ||
       device.contentEligibility !== "approved" ||
       device.hotReelEligible !== true || device.publicPublishingEnabled !== true) {
       return NextResponse.json(createAuthError("device_unavailable", "Device access is unavailable."), { status: 403, headers: responseHeaders });
     }
+    const captureEntitlement = await evaluateCommercialEntitlementInTransaction(tx, { scope: "device", scopeId: device.id, capability: "device.capture" });
+    if (!captureEntitlement.allowed) return NextResponse.json(createAuthError("device_unavailable", "Device access is unavailable."), { status: 403, headers: responseHeaders });
     if (!device.desiredConfigRevision || device.desiredConfigRevision !== body.expectedRevision) {
       return NextResponse.json(createAuthError("config_revision_conflict", "Configuration revision is no longer current."), { status: 409, headers: responseHeaders });
     }

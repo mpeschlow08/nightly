@@ -7,7 +7,7 @@ import type { AuthorizedMediaSource, MediaPolicy } from "../src/media/contracts"
 const user = "fixture-user";
 const password = "fixture-password";
 const credentials = Buffer.from(`${user}:${password}`).toString("base64");
-const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: false };
+const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, commercialState: "active", commercialRevision: 1, offlineEntitlementExpiresAt: Date.now() + 86_400_000, allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], contentEligible: true, hotReelEligible: true, publicPublishingEnabled: true, privacyRestricted: false, masksApplied: false };
 
 async function rtspFixture() {
   const sockets = new Set<Socket>();

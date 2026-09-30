@@ -11,6 +11,7 @@ import { isFeatureEnabled } from "@/lib/platform/feature-access";
 import { logger } from "@/lib/platform/logger";
 import { requireSocialPublishingActor, type AuthorizedSocialActor } from "./auth";
 import { mayManageSocialPublishing } from "./authorization-policy";
+import { evaluateCommercialEntitlement, evaluateCommercialEntitlementInTransaction } from "@/lib/commercial-entitlements/service";
 import { getSocialCredentialStore } from "./credentials";
 import { SocialPublishingError } from "./errors";
 import { getSocialPublishingProvider, isSocialProviderAllowed } from "./provider";
@@ -416,6 +417,8 @@ export async function createSocialDistributionRequest(input: {
   caption?: string;
 }) {
   const actor = await requireSocialPublishingActor(input.venueId, "publish");
+  const commercial = await evaluateCommercialEntitlement({ scope: "venue", scopeId: input.venueId, capability: "venue.social_publishing" });
+  if (!commercial.allowed) throw new SocialPublishingError(commercial.reasonCode === "suspended" ? "entitlement_suspended" : "entitlement_required", 403);
   const accountPublicIds = [...new Set(input.accountPublicIds)];
   const caption = input.caption ?? "";
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(input.idempotencyKey) || !/^[A-Za-z0-9_-]{8,80}$/.test(input.hotReelPublicId) || accountPublicIds.length < 1 || accountPublicIds.length > MAX_DESTINATIONS || accountPublicIds.some((id) => typeof id !== "string" || id.length > 128) || caption.length > MAX_CAPTION_LENGTH) {
@@ -773,7 +776,7 @@ async function finalizePublished(input: { id: number; attempts: number; venueId:
   return { id: result.publicId, state: result.state, publishedAt: now.toISOString(), publicUrl: providerUrl };
 }
 
-async function cancelClaimedDestination(input: { id: number; venueId: number; providerKey: string }, reason: "policy_denied" | "authorization_revoked" | "feature_disabled" | "account_disconnected" | "media_not_eligible") {
+async function cancelClaimedDestination(input: { id: number; venueId: number; providerKey: string }, reason: "policy_denied" | "authorization_revoked" | "feature_disabled" | "account_disconnected" | "media_not_eligible" | "entitlement_required" | "entitlement_suspended") {
   const now = new Date();
   const destination = await db.transaction(async (tx) => {
     const [updated] = await tx.update(socialPublications).set({ state: "cancelled", lastFailureCode: reason, nextRetryAt: null, updatedAt: now })
@@ -808,6 +811,8 @@ async function beginProviderCreate(input: { id: number; attempts: number; venueI
       context: { role: "owner", venueId: String(input.venueId) },
     });
     if (!featureState.enabled) return { started: false as const, reason: "feature_disabled" as const };
+    const commercial = await evaluateCommercialEntitlementInTransaction(tx, { scope: "venue", scopeId: input.venueId, capability: "venue.social_publishing", now });
+    if (!commercial.allowed) return { started: false as const, reason: commercial.reasonCode === "suspended" ? "entitlement_suspended" as const : "entitlement_required" as const };
     const [policy] = await tx.select({ mode: socialPublishingPolicies.mode })
       .from(socialPublishingPolicies)
       .where(eq(socialPublishingPolicies.venueId, input.venueId))
@@ -835,6 +840,7 @@ async function beginProviderCreate(input: { id: number; attempts: number; venueI
       return { started: false as const, reason: "account_disconnected" as const };
     }
     const [media] = await tx.select({
+      deviceId: hotReels.deviceId,
       reelState: hotReels.lifecycleState,
       reelReviewState: hotReels.reviewState,
       reelExpiresAt: hotReels.expiresAt,
@@ -864,6 +870,10 @@ async function beginProviderCreate(input: { id: number; attempts: number; venueI
       publicPublishingEnabled: media.publicPublishingEnabled,
       privacyMode: media.privacyMode,
     }, now.getTime())) return { started: false as const, reason: "media_not_eligible" as const };
+    const venueReels = await evaluateCommercialEntitlementInTransaction(tx, { scope: "venue", scopeId: input.venueId, capability: "venue.hot_reels", now });
+    const deviceCapture = await evaluateCommercialEntitlementInTransaction(tx, { scope: "device", scopeId: media.deviceId, capability: "device.capture", now });
+    const deviceMoments = await evaluateCommercialEntitlementInTransaction(tx, { scope: "device", scopeId: media.deviceId, capability: "device.hot_moments", now });
+    if (!venueReels.allowed || !deviceCapture.allowed || !deviceMoments.allowed) return { started: false as const, reason: venueReels.reasonCode === "suspended" || deviceCapture.reasonCode === "suspended" || deviceMoments.reasonCode === "suspended" ? "entitlement_suspended" as const : "entitlement_required" as const };
     const [started] = await tx.update(socialPublications).set({
       state: "processing",
       nextRetryAt: new Date(now.getTime() + 30_000),

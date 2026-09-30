@@ -8,12 +8,14 @@ import type { ControlPlaneConfig } from "../src/core/types";
 import { DeviceMediaBindings } from "../src/media/device-bindings";
 import { AgentMediaRuntime } from "../src/media/runtime";
 
+const issuedAt = new Date();
 const config: ControlPlaneConfig = {
   ok: true, deviceId: 7, model: "nightly-box", venueId: 9, configRevision: "rev-1", configAvailable: true,
   timestamp: "2026-01-01T00:00:00.000Z",
   sections: {
     privacy: { mode: "private", contentEligibility: "approved", publicPublishingEnabled: true, revision: 1 },
     service: { entitlementState: "active", hotReelEligible: true, liveEligible: false, revision: 1 },
+    commercial: { commercialState: "active", reasonCode: "active_subscription", allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], revision: 1, subscriptionRevision: 1, issuedAt: issuedAt.toISOString(), refreshBy: new Date(issuedAt.getTime()+240_000).toISOString(), offlineEntitlementExpiresAt: new Date(issuedAt.getTime()+72*60*60*1000).toISOString(), managementAvailable: true },
     media: { revision: "rev-1", ttlSeconds: 300, sources: [{ sourceId: 3, deviceId: 7, venueId: 9, sourceType: "ip_camera", venueCameraId: 5, enabled: true, capability: "rtsp" }] },
     recovery: { enabled: false },
   },
@@ -44,6 +46,54 @@ test("binding validation fails closed on identity, revision, TTL and duplicate s
   ];
   for (const response of invalid) assert.throws(() => bindings.update(response));
   assert.equal(bindings.revision, null);
+});
+
+test("offline commercial expiry disables paid media and same-revision broadening is rejected", async () => {
+  const expiresAt = Date.parse(config.sections.commercial.offlineEntitlementExpiresAt);
+  const expiredBindings = new DeviceMediaBindings(undefined, () => expiresAt);
+  expiredBindings.bindIdentity(7, 9);
+  expiredBindings.update(config);
+  const expiredPolicy = await expiredBindings.resolve(3);
+  assert.equal(expiredPolicy.policy.serviceActive, false);
+  assert.equal(expiredPolicy.policy.hotReelEligible, false);
+
+  const bindings = new DeviceMediaBindings(undefined, () => issuedAt.getTime());
+  bindings.bindIdentity(7, 9);
+  bindings.update(config);
+  assert.throws(() => bindings.update({ ...config, sections: { ...config.sections, commercial: {
+    ...config.sections.commercial, allowedCapabilities: [...config.sections.commercial.allowedCapabilities, "device.remote_output"],
+  } } }), /stale_commercial_directive/);
+
+  const restricted = new DeviceMediaBindings(undefined, () => issuedAt.getTime());
+  restricted.bindIdentity(7, 9);
+  restricted.update(config);
+  restricted.update({ ...config, sections: { ...config.sections, commercial: {
+    ...config.sections.commercial, allowedCapabilities: ["device.management"],
+    refreshBy: issuedAt.toISOString(), offlineEntitlementExpiresAt: issuedAt.toISOString(),
+  } } });
+  const restrictedPolicy = await restricted.resolve(3);
+  assert.equal(restrictedPolicy.policy.serviceActive, false);
+
+  const reactivated = new DeviceMediaBindings(undefined, () => issuedAt.getTime());
+  reactivated.bindIdentity(7, 9);
+  reactivated.update(config);
+  const suspendedConfig = { ...config, sections: { ...config.sections, commercial: {
+    ...config.sections.commercial, commercialState: "suspended", reasonCode: "suspended",
+    allowedCapabilities: ["device.management"], revision: 2,
+    refreshBy: issuedAt.toISOString(), offlineEntitlementExpiresAt: issuedAt.toISOString(),
+  } } };
+  reactivated.update(suspendedConfig);
+  const suspendedPolicy = (await reactivated.resolve(3)).policy;
+  assert.equal(suspendedPolicy.serviceActive, false);
+  assert.equal(suspendedPolicy.allowedCapabilities.includes("device.management"), true);
+  const activeAgain = { ...config, sections: { ...config.sections, commercial: {
+    ...config.sections.commercial, revision: 3,
+    issuedAt: issuedAt.toISOString(), refreshBy: new Date(issuedAt.getTime() + 240_000).toISOString(),
+    offlineEntitlementExpiresAt: new Date(issuedAt.getTime() + 72 * 60 * 60_000).toISOString(),
+  } } };
+  reactivated.update(activeAgain);
+  assert.equal((await reactivated.resolve(3)).policy.serviceActive, true);
+  assert.throws(() => reactivated.update(suspendedConfig), /stale_commercial_directive/);
 });
 
 test("transient credential checks response identity, revision, URL and 60 second lifetime", async () => {

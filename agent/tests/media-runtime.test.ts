@@ -14,7 +14,7 @@ const source: AuthorizedMediaSource = {
   active: true, locator: "rtsp://camera.invalid/live", privacyMasksRequired: false,
 };
 const policy: MediaPolicy = {
-  deviceId: 1, venueId: 2, serviceActive: true, contentEligible: true, hotReelEligible: true,
+  deviceId: 1, venueId: 2, serviceActive: true, commercialState: "active", commercialRevision: 1, offlineEntitlementExpiresAt: 1_000_000, allowedCapabilities: ["device.capture","device.hot_moments","venue.hot_reels"], contentEligible: true, hotReelEligible: true,
   publicPublishingEnabled: true, privacyRestricted: false, masksApplied: false,
 };
 

@@ -2,11 +2,11 @@ import type { HotReelIntegrityResult, HotReelPlaybackAuthorization, HotReelStora
 
 const defaultBytes = 128;
 const defaultSha256 = "abc123";
+const mockObjects = new Map<string, { sizeBytes: number; sha256: string; status: string; playbackUrl: string; deleted: boolean }>();
 
 export class MockHotReelProvider implements HotReelStorageProvider {
   readonly providerKey = "mock";
-
-  private readonly objects = new Map<string, { sizeBytes: number; sha256: string; status: string; playbackUrl: string; deleted: boolean }>();
+  private readonly objects = mockObjects;
 
   isConfigured(): boolean {
     return true;

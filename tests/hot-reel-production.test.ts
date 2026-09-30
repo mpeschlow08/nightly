@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 
 import { authorizeHotReelPlayback, deleteHotReel, finalizeHotReel, requestHotReelUpload } from "@/lib/hot-reel/service";
@@ -6,6 +7,17 @@ import { MockHotReelProvider } from "@/lib/hot-reel/provider/mock";
 import { HotReelUploadQueue } from "../agent/src/hot-reel/queue";
 
 const provider = new MockHotReelProvider();
+
+test("mock Hot Reel objects remain available across provider instances", async () => {
+  const writer = new MockHotReelProvider();
+  const reader = new MockHotReelProvider();
+  const hotMomentId = `provider-instance-${randomUUID()}`;
+  const upload = await writer.createUploadAuthorization({ hotMomentId, venueId: 42, deviceId: 7, sourceId: 9, durationMs: 30000 });
+  await writer.finalizeUpload(upload.objectKey);
+  const playback = await reader.createPlaybackAuthorization({ objectKey: upload.objectKey, expiresAt: Date.now() + 60_000 });
+  assert.match(playback.url, /cdn\.mock\.example/);
+  await reader.deleteObject(upload.objectKey);
+});
 
 test("request and finalize hot reel upload completes production lifecycle", async () => {
   const record = await requestHotReelUpload({

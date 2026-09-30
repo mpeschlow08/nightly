@@ -20,6 +20,12 @@ import { sql } from "drizzle-orm";
 export const userRoleEnum = pgEnum("user_role", ["consumer", "dj", "owner", "admin"]);
 export const userAccountStatusEnum = pgEnum("user_account_status", ["active", "suspended", "disabled"]);
 export const venueMemberRoleEnum = pgEnum("venue_member_role", ["owner", "manager"]);
+export const commercialScopeEnum = pgEnum("commercial_scope", ["organization", "venue", "device", "consumer", "artist"]);
+export const commercialProductEnum = pgEnum("commercial_product", ["venue_package", "consumer_premium", "artist_subscription"]);
+export const commercialLifecycleStateEnum = pgEnum("commercial_lifecycle_state", ["trialing", "active", "grace_period", "past_due", "suspended", "cancel_pending", "cancelled", "expired"]);
+export const commercialSubscriptionSourceEnum = pgEnum("commercial_subscription_source", ["trial", "manual", "billing_provider", "migration"]);
+export const commercialGrantSourceEnum = pgEnum("commercial_grant_source", ["manual", "promotion", "internal"]);
+export const commercialServicePurposeEnum = pgEnum("commercial_service_purpose", ["device_diagnostics", "device_reprovision", "commissioning", "sales_demo", "commercial_support"]);
 export const claimStatusEnum = pgEnum("claim_status", ["pending", "approved", "rejected", "claimed"]);
 export const moderationStatusEnum = pgEnum("moderation_status", ["pending", "approved", "rejected"]);
 export const eventTypeEnum = pgEnum("event_type", [
@@ -2513,6 +2519,122 @@ export const nightlyDevices = pgTable(
     managementAccessCheck: check("nightly_devices_management_access_level_check", sql`${table.managementAccessLevel} in ('owner_assisted', 'nightly_managed', 'recovery_only', 'disabled')`),
     privacyModeCheck: check("nightly_devices_privacy_mode_check", sql`${table.privacyMode} in ('private', 'venue_only', 'public')`),
     contentEligibilityCheck: check("nightly_devices_content_eligibility_check", sql`${table.contentEligibility} in ('restricted', 'approved', 'blocked')`),
+  })
+);
+
+export const commercialSubscriptions = pgTable(
+  "commercial_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    scopeType: commercialScopeEnum("scope_type").notNull(),
+    scopeId: integer("scope_id").notNull(),
+    product: commercialProductEnum("product").notNull(),
+    state: commercialLifecycleStateEnum("state").notNull().default("expired"),
+    revision: integer("revision").notNull().default(1),
+    source: commercialSubscriptionSourceEnum("source").notNull().default("manual"),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    trialStartedAt: timestamp("trial_started_at"),
+    trialEndsAt: timestamp("trial_ends_at"),
+    graceUntil: timestamp("grace_until"),
+    cancelAt: timestamp("cancel_at"),
+    endsAt: timestamp("ends_at"),
+    billingProvider: text("billing_provider").notNull().default("none"),
+    billingCustomerRef: text("billing_customer_ref"),
+    billingSubscriptionRef: text("billing_subscription_ref"),
+    reasonCode: text("reason_code"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    updatedByUserId: integer("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    scopeProductUnique: unique("commercial_subscriptions_scope_product_unique").on(table.scopeType, table.scopeId, table.product),
+    scopeIdx: index("commercial_subscriptions_scope_idx").on(table.scopeType, table.scopeId),
+    stateIdx: index("commercial_subscriptions_state_idx").on(table.state),
+    trialEndIdx: index("commercial_subscriptions_trial_ends_at_idx").on(table.trialEndsAt),
+    graceIdx: index("commercial_subscriptions_grace_until_idx").on(table.graceUntil),
+    scopeProductCheck: check("commercial_subscriptions_scope_product_check", sql`(${table.product} = 'venue_package' and ${table.scopeType} = 'venue') or (${table.product} = 'consumer_premium' and ${table.scopeType} = 'consumer') or (${table.product} = 'artist_subscription' and ${table.scopeType} = 'artist')`),
+    scopeIdCheck: check("commercial_subscriptions_scope_id_check", sql`${table.scopeId} > 0`),
+    revisionCheck: check("commercial_subscriptions_revision_check", sql`${table.revision} > 0`),
+    trialWindowCheck: check("commercial_subscriptions_trial_window_check", sql`${table.trialEndsAt} is null or (${table.trialStartedAt} is not null and ${table.trialEndsAt} > ${table.trialStartedAt})`),
+    graceWindowCheck: check("commercial_subscriptions_grace_window_check", sql`${table.graceUntil} is null or ${table.graceUntil} >= ${table.startedAt}`),
+  })
+);
+
+export const commercialEntitlementGrants = pgTable(
+  "commercial_entitlement_grants",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    scopeType: commercialScopeEnum("scope_type").notNull(),
+    scopeId: integer("scope_id").notNull(),
+    capability: text("capability").notNull(),
+    source: commercialGrantSourceEnum("source").notNull(),
+    reason: text("reason").notNull(),
+    startsAt: timestamp("starts_at").notNull().defaultNow(),
+    expiresAt: timestamp("expires_at"),
+    revokedAt: timestamp("revoked_at"),
+    issuedByUserId: integer("issued_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    scopeCapabilityIdx: index("commercial_entitlement_grants_scope_capability_idx").on(table.scopeType, table.scopeId, table.capability),
+    expiryIdx: index("commercial_entitlement_grants_expires_at_idx").on(table.expiresAt),
+    scopeIdCheck: check("commercial_entitlement_grants_scope_id_check", sql`${table.scopeId} > 0`),
+    capabilityCheck: check("commercial_entitlement_grants_capability_check", sql`${table.capability} ~ '^(venue|device|consumer|artist)\\.[a-z0-9_.]+$'`),
+    capabilityScopeCheck: check("commercial_entitlement_grants_capability_scope_check", sql`(${table.scopeType} = 'venue' and (${table.capability} like 'venue.%' or ${table.capability} like 'device.%')) or (${table.scopeType} = 'device' and ${table.capability} like 'device.%') or (${table.scopeType} = 'consumer' and ${table.capability} like 'consumer.%') or (${table.scopeType} = 'artist' and ${table.capability} like 'artist.%')`),
+    expiryCheck: check("commercial_entitlement_grants_expiry_check", sql`${table.expiresAt} is null or ${table.expiresAt} > ${table.startsAt}`),
+  })
+);
+
+export const commercialServiceAuthorizations = pgTable(
+  "commercial_service_authorizations",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    actorUserId: integer("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    issuerUserId: integer("issuer_user_id").references(() => users.id, { onDelete: "set null" }),
+    scopeType: commercialScopeEnum("scope_type").notNull(),
+    scopeId: integer("scope_id").notNull(),
+    purpose: commercialServicePurposeEnum("purpose").notNull(),
+    capabilities: text("capabilities").array().notNull(),
+    reason: text("reason").notNull(),
+    issuedAt: timestamp("issued_at").notNull().defaultNow(),
+    expiresAt: timestamp("expires_at").notNull(),
+    revokedAt: timestamp("revoked_at"),
+    revokedByUserId: integer("revoked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    lastUsedAt: timestamp("last_used_at"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    actorScopeIdx: index("commercial_service_authorizations_actor_scope_idx").on(table.actorUserId, table.scopeType, table.scopeId),
+    expiryIdx: index("commercial_service_authorizations_expires_at_idx").on(table.expiresAt),
+    scopeIdCheck: check("commercial_service_authorizations_scope_id_check", sql`${table.scopeId} > 0`),
+    scopeCheck: check("commercial_service_authorizations_scope_check", sql`${table.scopeType} in ('venue', 'device')`),
+    capabilityCheck: check("commercial_service_authorizations_capability_check", sql`cardinality(${table.capabilities}) > 0`),
+    capabilityCatalogCheck: check("commercial_service_authorizations_capability_catalog_check", sql`${table.capabilities} <@ array['service.device_diagnostics', 'service.device_reprovision', 'service.commissioning']::text[]`),
+    purposeCapabilityCheck: check("commercial_service_authorizations_purpose_capability_check", sql`(${table.purpose} = 'device_diagnostics' and ${table.capabilities} <@ array['service.device_diagnostics']::text[]) or (${table.purpose} = 'device_reprovision' and ${table.capabilities} <@ array['service.device_reprovision', 'service.device_diagnostics']::text[]) or (${table.purpose} = 'commissioning' and ${table.capabilities} <@ array['service.commissioning', 'service.device_diagnostics']::text[]) or (${table.purpose} = 'sales_demo' and ${table.capabilities} <@ array['service.device_diagnostics']::text[]) or (${table.purpose} = 'commercial_support' and ${table.capabilities} <@ array['service.device_diagnostics', 'service.device_reprovision']::text[])`),
+    expiryCheck: check("commercial_service_authorizations_expiry_check", sql`${table.expiresAt} > ${table.issuedAt}`),
+  })
+);
+
+export const consumerDailyHotReelUnlocks = pgTable(
+  "consumer_daily_hot_reel_unlocks",
+  {
+    id: serial("id").primaryKey(),
+    consumerUserId: integer("consumer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    unlockDate: date("unlock_date").notNull(),
+    venueId: integer("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userDayUnique: unique("consumer_daily_hot_reel_unlocks_user_day_unique").on(table.consumerUserId, table.unlockDate),
+    venueDayIdx: index("consumer_daily_hot_reel_unlocks_venue_day_idx").on(table.venueId, table.unlockDate),
   })
 );
 

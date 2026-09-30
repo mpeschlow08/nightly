@@ -11,7 +11,7 @@ import { SegmentTimeline, TimestampNormalizer } from "../src/media/timeline";
 import type { AuthorizedMediaSource, MediaPolicy } from "../src/media/contracts";
 
 const source: AuthorizedMediaSource = { deviceId: 1, venueId: 2, sourceId: 3, venueCameraId: 4, kind: "IP_CAMERA", audioRole: null, active: true, locator: "rtsp://camera.local/live", privacyMasksRequired: false };
-const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, contentEligible: false, hotReelEligible: false, publicPublishingEnabled: false, privacyRestricted: true, masksApplied: false };
+const policy: MediaPolicy = { deviceId: 1, venueId: 2, serviceActive: true, commercialState: "active", commercialRevision: 1, offlineEntitlementExpiresAt: 1_000_000, allowedCapabilities: ["device.capture"], contentEligible: false, hotReelEligible: false, publicPublishingEnabled: false, privacyRestricted: true, masksApplied: false };
 const probeJson = JSON.stringify({ streams: [
   { codec_type: "video", codec_name: "h264", pix_fmt: "yuv420p", width: 1920, height: 1080, avg_frame_rate: "30000/1001", time_base: "1/90000" },
   { codec_type: "audio", codec_name: "aac", sample_rate: "48000", channels: 2, time_base: "1/48000" },
