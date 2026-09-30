@@ -55,7 +55,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests
-        run: npm test
+        run: bash -O globstar -c 'npx tsx --test tests/**/*.test.ts'
 
       - name: Secret scan
         run: npm run security:secret-scan
