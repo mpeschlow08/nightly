@@ -53,8 +53,8 @@ export default async function AdminFleetPage({ searchParams }: { searchParams: P
     return { device, venueName, fleet: evaluateFleetState({ ...device, commissioningReady: commissioning.ready }, now) };
   });
 
-  return <main className="space-y-5 text-zinc-100">
-    <header><h1 className="text-2xl font-semibold">Fleet</h1><p className="text-sm text-zinc-400">Nightly Boxes and current operational state</p></header>
+  return <main className="nightly-page space-y-5 text-zinc-100">
+    <header className="nightly-card-hero rounded-[1.4rem] p-5"><p className="nightly-eyebrow">Fleet / Health</p><h1 className="nightly-display nightly-accent-heading mt-2">Network health at a glance.</h1><p className="mt-2 text-sm text-[color:var(--text-secondary)]">Nightly Boxes, current operational state, commercial state, and actionable alerts.</p></header>
     <dl className="grid grid-cols-2 gap-3 border-y border-white/10 py-4 text-sm sm:grid-cols-4">
       {[["Boxes", totals[0]?.total ?? 0], ["Recently online", totals[0]?.online ?? 0], ["Offline", totals[0]?.offline ?? 0], ["Suspended", totals[0]?.suspended ?? 0]].map(([label, value]) =>
         <div key={label}><dt className="text-zinc-400">{label}</dt><dd className="text-xl font-semibold">{value}</dd></div>)}

@@ -15,8 +15,8 @@ export default async function AdminOverviewPage() {
   return (
     <main>
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/80">Enterprise Admin Control Center</p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">Platform Overview</h1>
+        <p className="nightly-eyebrow">Nightly Command Center</p>
+        <h1 className="nightly-display nightly-accent-heading mt-2">Know what needs action.</h1>
         <p className="mt-2 text-sm text-zinc-300">
           Values are labeled as confirmed, estimated, pending, or unavailable. No fabricated metrics are shown.
         </p>
@@ -24,7 +24,7 @@ export default async function AdminOverviewPage() {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <article key={metric.label} className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <article key={metric.label} className="nightly-card rounded-xl p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">{metric.label}</p>
             <p className="mt-2 text-2xl font-semibold text-white">{metric.value}</p>
             <p

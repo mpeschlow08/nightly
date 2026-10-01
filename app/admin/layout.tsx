@@ -79,7 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!actor) {
     return (
-      <div className="min-h-screen bg-[linear-gradient(135deg,#06090f,#0b1324_40%,#0f172a)] text-zinc-100">
+      <div className="min-h-screen bg-[linear-gradient(135deg,#07060b,#120b22_42%,#0b1220)] text-zinc-100">
         <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 py-10">
           <section className="w-full rounded-2xl border border-amber-300/25 bg-zinc-950/70 p-6 text-center shadow-[0_0_50px_rgba(245,158,11,0.08)] backdrop-blur sm:p-8">
             <p className="text-xs uppercase tracking-[0.22em] text-amber-200/80">Permission Denied</p>
@@ -108,11 +108,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#06090f,#0b1324_40%,#0f172a)] text-zinc-100">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#07060b,#120b22_42%,#0b1220)] text-zinc-100">
       <div className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 lg:grid-cols-[280px_1fr] lg:px-6">
         <aside className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 backdrop-blur">
-          <div className="mb-4 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Nightly Admin</p>
+          <div className="mb-4 rounded-xl border border-violet-300/30 bg-violet-500/10 p-3">
+            <div className="flex items-center justify-between gap-2"><p className="text-xs uppercase tracking-[0.2em] text-violet-200/80">Nightly Admin</p><span className="rounded-full border border-amber-300/35 bg-amber-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber-100">{process.env.APP_ENV ?? process.env.NODE_ENV ?? "development"}</span></div>
             <p className="mt-1 text-sm text-white">{actor.clerkUserId}</p>
             <p className="text-xs text-zinc-300">{actor.isSuperAdmin ? "Super Admin" : "Limited Admin"}</p>
           </div>
@@ -126,7 +126,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        className="block rounded-lg border border-transparent px-2 py-1.5 text-sm text-zinc-200 transition hover:border-cyan-300/30 hover:bg-cyan-500/10 hover:text-white"
+                        className="block rounded-lg border border-transparent px-2 py-1.5 text-sm text-zinc-200 transition hover:border-violet-300/30 hover:bg-violet-500/10 hover:text-white"
                       >
                         {item.label}
                       </Link>
@@ -138,7 +138,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </nav>
         </aside>
 
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/55 p-4 shadow-[0_0_50px_rgba(34,211,238,0.08)] backdrop-blur sm:p-6">
+        <section className="rounded-2xl border border-white/10 bg-zinc-950/55 p-4 shadow-[0_0_50px_rgba(168,117,255,0.08)] backdrop-blur sm:p-6">
           {children}
         </section>
       </div>

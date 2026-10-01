@@ -28,6 +28,8 @@ Status reflects the first Foundation + Consumer Core pass.
 | Nightly Box | `/owner/devices` | Appliance readiness, commissioning, and health | Owner/Tech Operator | Existing, visually aligned | Tablet/desktop first | Fleet/device policy and scoped actions |
 | Venue cameras | `/owner/cameras` | Camera source state and public playback controls | Owner | Existing, feature-gated | Tablet/desktop first | Existing camera actions and live feature gate |
 | Venue publishing | `/owner/publishing` | Venue publication readiness and social publishing | Owner | Existing, visually aligned | Tablet/desktop first | Existing publish/social services |
+| Admin Command Center | `/admin/overview` | Platform health, actionable metrics, and system state | Admin | Implemented | Desktop-first | Existing control-center data |
+| Admin Fleet | `/admin/fleet` | Device fleet health, alerts, commissioning, and rollouts | Admin | Implemented | Desktop-first | Existing fleet policy/actions |
 | Consumer navigation | shared shell | Keep Home, Explore, Live, Concierge, Profile reachable | Consumer | Implemented | Touch-first mobile, compact desktop | `AppNavigation`, `AppHeader` |
 
 ## Canonical states
