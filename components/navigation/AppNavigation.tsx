@@ -256,6 +256,16 @@ function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
     ];
   }
 
+  if (role === "dj") {
+    return [
+      { label: "Tonight", href: "/dj/dashboard", icon: "◉" },
+      { label: "Sessions", href: "/dj/sessions", icon: "●" },
+      { label: "Reels", href: "/dj/reels", icon: "◇" },
+      { label: "Insights", href: "/dj/analytics", icon: "◒" },
+      { label: "Profile", href: "/dj/profile", icon: "◌" },
+    ];
+  }
+
   return roleItems[role]
     .filter((item): item is NavItem & { href: string } => Boolean(item.href))
     .slice(0, 4)

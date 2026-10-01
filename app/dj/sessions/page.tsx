@@ -14,10 +14,10 @@ export default async function DjSessionsPage({ searchParams }: { searchParams: P
     program: sources.filter((item) => item.role === "program_audio").length,
     ambient: sources.filter((item) => item.role === "ambient_audio").length };
 
-  return <main className="min-h-screen bg-[#080b12] px-4 py-8 text-zinc-100 sm:px-6">
+  return <main className="nightly-page min-h-screen px-4 py-6 text-zinc-100 sm:px-6">
     <div className="mx-auto max-w-2xl space-y-8">
-      <header className="flex items-center justify-between gap-4"><div><p className="text-xs uppercase text-cyan-300">Tonight</p>
-        <h1 className="mt-2 text-3xl font-semibold">Your set</h1></div><Link href="/dj/dashboard" className="text-sm text-zinc-400 hover:text-white">Dashboard</Link></header>
+      <header className="nightly-card-hero rounded-[1.7rem] p-5"><div><p className="nightly-eyebrow">Tonight</p>
+        <h1 className="nightly-display nightly-accent-heading mt-2">Your set</h1></div><Link href="/dj/dashboard" className="mt-4 inline-flex text-sm text-zinc-400 hover:text-white">Dashboard</Link></header>
       {selected ? <section className="space-y-6 border-t border-white/10 pt-6">
         <div><p className="text-sm text-cyan-300">{selected.status === "active" ? "You're live" : selected.status === "ready" ? "Ready to play" : "Set complete"}</p>
           <h2 className="mt-2 text-2xl font-semibold">{selected.venueName}</h2>

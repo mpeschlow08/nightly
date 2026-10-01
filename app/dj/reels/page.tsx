@@ -1,0 +1,11 @@
+import Link from "next/link";
+import { requireDjProfileForDashboard } from "../lib/data";
+import { getArtistSessions, getSessionMedia } from "@/lib/artist-sessions/service";
+
+export default async function DjReelsPage() {
+  const { user, profile } = await requireDjProfileForDashboard();
+  const sessions = await getArtistSessions({ userId: user.id, djProfileId: profile.id });
+  const media = (await Promise.all(sessions.slice(0, 8).map(async (session) => ({ session, moments: await getSessionMedia({ userId: user.id, djProfileId: profile.id }, session.id) })))).flatMap(({ session, moments }) => moments.map((moment) => ({ ...moment, venueName: session.venueName, sessionPublicId: session.publicId })));
+
+  return <main className="nightly-page mx-auto min-h-screen max-w-5xl px-4 py-6 sm:px-6 lg:px-8"><Link href="/dj/dashboard" className="text-sm text-[color:var(--text-secondary)] hover:text-white">Back to Artist Dashboard</Link><section className="nightly-card-hero mt-4 rounded-[1.7rem] p-5 sm:p-7"><p className="nightly-eyebrow">Artist media</p><h1 className="nightly-display nightly-accent-heading mt-2">Your captured moments.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">Review moments from your Nightly Sessions. Processing and unavailable media stay clearly labeled.</p></section><section className="mt-6 grid gap-3 sm:grid-cols-2">{media.length === 0 ? <div className="nightly-surface p-6 text-sm text-[color:var(--text-secondary)] sm:col-span-2">No captured moments yet. Start a Nightly Session to build your library.</div> : media.map((moment) => <article key={moment.id} className="nightly-card rounded-[1.25rem] p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-white">{moment.venueName}</p><p className="mt-1 text-xs text-[color:var(--text-muted)]">{moment.start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p></div><span className="nightly-badge">{moment.reviewState}</span></div><Link href={`/dj/sessions?session=${moment.sessionPublicId}`} className="mt-4 inline-flex text-sm text-violet-200 hover:text-white">Open session</Link></article>)}</section></main>;
+}

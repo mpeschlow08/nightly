@@ -36,9 +36,9 @@ const quickActions = [
     href: "#",
   },
   {
-    title: "Analytics",
-    description: "Coming Soon",
-    href: "#",
+    title: "Performance Insights",
+    description: "See sessions, moments, and publishing history.",
+    href: "/dj/analytics",
   },
 ];
 
@@ -57,11 +57,13 @@ export default async function DjDashboardPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(167,139,250,0.14),_transparent_25%),linear-gradient(140deg,_#04070b_0%,_#090d18_55%,_#111326_100%)] px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_90px_rgba(34,211,238,0.1)] backdrop-blur-xl sm:p-8 lg:p-10">
-        <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">DJ Dashboard</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Welcome back, {profile.stageName}.</h1>
+    <main className="nightly-page min-h-screen px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <section className="nightly-card-hero rounded-[2rem] p-6 sm:p-8 lg:p-10">
+        <p className="nightly-eyebrow">Artist dashboard</p>
+        <h1 className="nightly-display nightly-accent-heading mt-3">Tonight is your stage, {profile.stageName}.</h1>
         <p className="mt-3 text-base text-zinc-300">Your Phase 1 Nightly DJ workspace is live.</p>
+        </section>
 
         <section className="mt-8 grid gap-4 md:grid-cols-3">
           <article className="rounded-2xl border border-white/10 bg-white/5 p-4">

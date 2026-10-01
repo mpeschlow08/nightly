@@ -19,6 +19,10 @@ Status reflects the first Foundation + Consumer Core pass.
 | Reservations | `/bookings`, `/bookings/[id]` | Request, track, review, and check in to reservations | Consumer | Existing, account entry points aligned | Mobile-first, desktop detail | Existing booking actions/data, canonical pricing |
 | Premium | `/profile/premium` | Explain current Premium value and billing boundary | Consumer | Implemented | Mobile-first | Existing commercial entitlement API |
 | Account settings | `/profile/settings` | Navigate privacy, notifications, Premium, and support | Consumer | Implemented | Mobile-first | Existing account/social services |
+| Artist dashboard | `/dj/dashboard` | Tonight, profile health, and performer actions | DJ/Artist | Foundation pass underway | Mobile-first | Existing DJ profile and mix data |
+| Artist sessions | `/dj/sessions` | Check in, start, perform, review, and end a Nightly Session | DJ/Artist | Existing, visually aligned | Mobile-first | Artist Session service and media rows |
+| Artist moments | `/dj/reels` | Review captured moments and session context | DJ/Artist | Implemented | Mobile-first | Existing session media service |
+| Artist analytics | `/dj/analytics` | Honest performance history state | DJ/Artist | Implemented | Responsive desktop | Existing session/media data boundary |
 | Consumer navigation | shared shell | Keep Home, Explore, Live, Concierge, Profile reachable | Consumer | Implemented | Touch-first mobile, compact desktop | `AppNavigation`, `AppHeader` |
 
 ## Canonical states
