@@ -7,6 +7,7 @@ export type SignedUpdateManifest = {
   downloadUrl: string;
   notBefore: string;
   expiresAt: string;
+  hardwareModels?: string[];
   signature: string;
 };
 
@@ -20,10 +21,13 @@ export function verifyUpdateManifest(manifest: SignedUpdateManifest, publicKeyPe
     if (url.protocol !== "https:") return { eligible: false, reason: "https_required", manifestDigest: null };
     const notBefore = Date.parse(manifest.notBefore);
     const expiresAt = Date.parse(manifest.expiresAt);
+    if (manifest.hardwareModels !== undefined && (!Array.isArray(manifest.hardwareModels) || manifest.hardwareModels.length === 0 || manifest.hardwareModels.length > 8 ||
+      manifest.hardwareModels.some((model) => typeof model !== "string" || !/^[A-Za-z0-9._-]{1,64}$/.test(model)) ||
+      new Set(manifest.hardwareModels).size !== manifest.hardwareModels.length)) return { eligible: false, reason: "invalid_hardware_models", manifestDigest: null };
     if (!Number.isFinite(notBefore) || !Number.isFinite(expiresAt) || notBefore > now.getTime() || expiresAt <= now.getTime() || expiresAt <= notBefore) {
       return { eligible: false, reason: "outside_validity_window", manifestDigest: null };
     }
-    const signedPayload = JSON.stringify({ version: manifest.version, sha256: manifest.sha256.toLowerCase(), downloadUrl: url.toString(), notBefore: new Date(notBefore).toISOString(), expiresAt: new Date(expiresAt).toISOString() });
+    const signedPayload = JSON.stringify({ version: manifest.version, sha256: manifest.sha256.toLowerCase(), downloadUrl: url.toString(), notBefore: new Date(notBefore).toISOString(), expiresAt: new Date(expiresAt).toISOString(), ...(manifest.hardwareModels ? { hardwareModels: manifest.hardwareModels } : {}) });
     const valid = verify(null, Buffer.from(signedPayload), createPublicKey(publicKeyPem), Buffer.from(manifest.signature, "base64"));
     if (!valid) return { eligible: false, reason: "signature_invalid", manifestDigest: null };
     return { eligible: true, reason: "signature_verified_no_install_performed", manifestDigest: createHash("sha256").update(signedPayload).digest("hex") };

@@ -2522,6 +2522,105 @@ export const nightlyDevices = pgTable(
   })
 );
 
+export const fleetDeviceSnapshots = pgTable("fleet_device_snapshots", {
+  deviceId: integer("device_id").primaryKey().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  telemetryJson: text("telemetry_json").notNull().default("{}"),
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+}, (table) => ({
+  schemaCheck: check("fleet_device_snapshots_schema_check", sql`${table.schemaVersion} = 1`),
+  payloadCheck: check("fleet_device_snapshots_payload_check", sql`octet_length(${table.telemetryJson}) <= 4096`),
+}));
+
+export const fleetDeviceAlerts = pgTable("fleet_device_alerts", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  severity: text("severity").$type<"info" | "warning" | "critical">().notNull(),
+  state: text("state").$type<"open" | "acknowledged" | "resolved">().notNull().default("open"),
+  firstObservedAt: timestamp("first_observed_at").notNull().defaultNow(),
+  lastObservedAt: timestamp("last_observed_at").notNull().defaultNow(),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => ({
+  openUnique: uniqueIndex("fleet_device_alerts_active_unique").on(table.deviceId, table.code).where(sql`${table.state} <> 'resolved'`),
+  historyIdx: index("fleet_device_alerts_device_history_idx").on(table.deviceId, table.lastObservedAt),
+  stateIdx: index("fleet_device_alerts_state_idx").on(table.state, table.severity),
+  codeCheck: check("fleet_device_alerts_code_check", sql`${table.code} ~ '^[A-Z_]{3,64}$'`),
+  severityCheck: check("fleet_device_alerts_severity_check", sql`${table.severity} in ('info','warning','critical')`),
+  stateCheck: check("fleet_device_alerts_state_check", sql`${table.state} in ('open','acknowledged','resolved')`),
+  countCheck: check("fleet_device_alerts_count_check", sql`${table.occurrenceCount} > 0`),
+}));
+
+export const fleetSupportGrants = pgTable("fleet_support_grants", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+  actorClerkUserId: text("actor_clerk_user_id").notNull(),
+  scope: text("scope").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => ({
+  deviceIdx: index("fleet_support_grants_device_idx").on(table.deviceId, table.expiresAt),
+  idDeviceUnique: unique("fleet_support_grants_id_device_unique").on(table.id, table.deviceId),
+  actorCheck: check("fleet_support_grants_actor_check", sql`length(${table.actorClerkUserId}) between 1 and 128`),
+  scopeCheck: check("fleet_support_grants_scope_check", sql`${table.scope} in ('device.read_diagnostics','device.request_health_check','device.restart_agent','device.retry_commissioning_step','device.request_update','device.collect_support_bundle')`),
+  expiryCheck: check("fleet_support_grants_expiry_check", sql`${table.expiresAt} > ${table.createdAt}`),
+}));
+
+export const fleetDeviceOperations = pgTable("fleet_device_operations", {
+  id: serial("id").primaryKey(),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+  grantId: integer("grant_id").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  type: text("type").notNull(),
+  state: text("state").$type<"pending" | "acknowledged" | "succeeded" | "failed" | "expired">().notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  completedAt: timestamp("completed_at"),
+  resultCode: text("result_code"),
+}, (table) => ({
+  grantDeviceForeignKey: foreignKey({ columns: [table.grantId, table.deviceId], foreignColumns: [fleetSupportGrants.id, fleetSupportGrants.deviceId], name: "fleet_device_operations_grant_device_fkey" }).onDelete("restrict"),
+  idempotencyUnique: unique("fleet_device_operations_idempotency_unique").on(table.deviceId, table.idempotencyKey),
+  pendingIdx: index("fleet_device_operations_pending_idx").on(table.deviceId, table.state, table.expiresAt),
+  typeCheck: check("fleet_device_operations_type_check", sql`${table.type} in ('REQUEST_HEALTH_CHECK','RESTART_AGENT','RETRY_COMMISSIONING_STEP','REQUEST_DIAGNOSTIC_SNAPSHOT','REQUEST_SUPPORT_BUNDLE','REQUEST_UPDATE')`),
+  stateCheck: check("fleet_device_operations_state_check", sql`${table.state} in ('pending','acknowledged','succeeded','failed','expired')`),
+  expiryCheck: check("fleet_device_operations_expiry_check", sql`${table.expiresAt} > ${table.createdAt}`),
+  keyCheck: check("fleet_device_operations_key_check", sql`length(${table.idempotencyKey}) between 8 and 128`),
+  resultCheck: check("fleet_device_operations_result_check", sql`${table.resultCode} is null or length(${table.resultCode}) <= 64`),
+}));
+
+export const fleetUpdateRollouts = pgTable("fleet_update_rollouts", {
+  id: serial("id").primaryKey(),
+  targetVersion: text("target_version").notNull(),
+  manifestJson: text("manifest_json").notNull(),
+  state: text("state").$type<"available" | "scheduled" | "cancelled" | "completed">().notNull().default("available"),
+  createdByClerkUserId: text("created_by_clerk_user_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  stateIdx: index("fleet_update_rollouts_state_idx").on(table.state, table.createdAt),
+  versionCheck: check("fleet_update_rollouts_version_check", sql`${table.targetVersion} ~ '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$'`),
+  manifestCheck: check("fleet_update_rollouts_manifest_check", sql`octet_length(${table.manifestJson}) between 1 and 2048`),
+  stateCheck: check("fleet_update_rollouts_state_check", sql`${table.state} in ('available','scheduled','cancelled','completed')`),
+}));
+
+export const fleetUpdateTargets = pgTable("fleet_update_targets", {
+  id: serial("id").primaryKey(),
+  rolloutId: integer("rollout_id").notNull().references(() => fleetUpdateRollouts.id, { onDelete: "restrict" }),
+  deviceId: integer("device_id").notNull().references(() => nightlyDevices.id, { onDelete: "cascade" }),
+  state: text("state").$type<"scheduled" | "downloading" | "verifying" | "installing" | "restarting" | "health_check" | "succeeded" | "failed" | "rolled_back" | "recovery_required" | "cancelled">().notNull().default("scheduled"),
+  failureCode: text("failure_code"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  rolloutDeviceUnique: unique("fleet_update_targets_rollout_device_unique").on(table.rolloutId, table.deviceId),
+  activeDeviceUnique: uniqueIndex("fleet_update_targets_active_device_unique").on(table.deviceId).where(sql`${table.state} in ('scheduled','downloading','verifying','installing','restarting','health_check')`),
+  stateIdx: index("fleet_update_targets_state_idx").on(table.state, table.updatedAt),
+  stateCheck: check("fleet_update_targets_state_check", sql`${table.state} in ('scheduled','downloading','verifying','installing','restarting','health_check','succeeded','failed','rolled_back','recovery_required','cancelled')`),
+  failureCheck: check("fleet_update_targets_failure_check", sql`${table.failureCode} is null or length(${table.failureCode}) <= 64`),
+}));
+
 export const commercialSubscriptions = pgTable(
   "commercial_subscriptions",
   {

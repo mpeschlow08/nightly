@@ -1,6 +1,7 @@
 import type { DeviceCapabilityRecord } from "./foundation";
 import type { CommissioningCheckKey, CommissioningCheckStatus, CaptureSourceType } from "./policy";
 import type { DeviceMediaBinding } from "./media-bindings";
+import type { FleetTelemetry } from "./telemetry";
 
 export type DeviceBootstrapRequest = {
   publicDeviceUuid: string;
@@ -24,6 +25,7 @@ export type AgentHeartbeatRequest = {
   agentVersion?: string;
   softwareVersion?: string;
   operationalState?: "healthy" | "degraded";
+  telemetry?: FleetTelemetry;
 };
 
 export type AgentSourceReport = {

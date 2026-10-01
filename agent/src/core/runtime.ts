@@ -9,6 +9,7 @@ import type { PlatformProbeAdapter } from "../probes/platform";
 import type { AgentMediaRuntime } from "../media/runtime";
 import type { DeviceMediaBindings } from "../media/device-bindings";
 import { PerformanceDirective } from "../media/performance-directive";
+import { collectFleetTelemetry } from "./telemetry";
 
 export type RuntimeDependencies = {
   config: AgentConfig;
@@ -156,6 +157,7 @@ export class AgentRuntime {
       agentVersion: config.agentVersion,
       ...(config.softwareVersion ? { softwareVersion: config.softwareVersion } : {}),
       operationalState: reportDegraded ? "degraded" : "healthy",
+      telemetry: collectFleetTelemetry(this.#state.appliedConfigRevision),
     });
     if (!Number.isSafeInteger(heartbeat.device?.id) || heartbeat.device.id <= 0 || heartbeat.device.uuid !== config.deviceUuid ||
       (this.#state.deviceId !== null && this.#state.deviceId !== heartbeat.device.id)) throw new ControlPlaneError("Device identity mismatch.", null, "device_identity_mismatch", false);
@@ -234,6 +236,26 @@ export class AgentRuntime {
       } else await this.#stopMedia();
     }
     const discovery = await probes.discover(config);
+    if (!config.simulation) {
+      const pending = await client.listOperations(secret);
+      if (!Array.isArray(pending.operations) || pending.operations.length > 10) throw new ControlPlaneError("Operation list is invalid.", null, "invalid_operations", false);
+      const seen = new Set<number>();
+      for (const operation of pending.operations) {
+        if (!Number.isSafeInteger(operation.id) || operation.id < 1 || seen.has(operation.id) || operation.type !== "REQUEST_HEALTH_CHECK" ||
+          !Number.isFinite(Date.parse(operation.expiresAt)) || Date.parse(operation.expiresAt) <= (this.dependencies.now ?? (() => new Date()))().getTime()) {
+          throw new ControlPlaneError("Device operation is invalid or expired.", null, "invalid_operation", false);
+        }
+        seen.add(operation.id);
+        const resultCode = discovery.probes.length > 0 && discovery.probes.every((probe) => probe.status === "pass") ? "health_ok" : "health_degraded";
+        try {
+          const result = await client.completeHealthCheck(secret, operation.id, resultCode);
+          if (result.id !== operation.id || result.resultCode !== resultCode) throw new ControlPlaneError("Operation acknowledgement mismatched.", null, "invalid_operation_result", false);
+        } catch (error) {
+          if (!(error instanceof ControlPlaneError) || (error.status !== 409 && error.status !== 410)) throw error;
+          logger.log("info", "fleet_operation_no_longer_active", { deviceId: heartbeat.device.id, operationId: operation.id });
+        }
+      }
+    }
     if (!config.simulation) {
       await client.replaceCapabilities(secret, discovery.capabilities);
       if (heartbeat.device.venueId !== null) await client.replaceInventory(secret, discovery.inventory);

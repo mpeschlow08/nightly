@@ -54,6 +54,14 @@ export class ControlPlaneClient {
     return this.#authorizedRequest<{ ok: true; device: { id: number; uuid: string; venueId: number | null; status: string; serviceEntitlementState: string; operationalState: string; timestamp: string } }>(credentials, "/api/device/v1/heartbeat", "POST", version);
   }
 
+  async listOperations(credentials: string) {
+    return this.#authorizedRequest<{ ok: true; operations: Array<{ id: number; type: string; expiresAt: string }> }>(credentials, "/api/device/v1/operations", "GET");
+  }
+
+  async completeHealthCheck(credentials: string, id: number, resultCode: "health_ok" | "health_degraded") {
+    return this.#authorizedRequest<{ ok: true; id: number; resultCode: string; duplicate: boolean }>(credentials, "/api/device/v1/operations", "POST", { id, resultCode });
+  }
+
   async getStatus(credentials: string) {
     return this.#authorizedRequest<ControlPlaneStatus>(credentials, "/api/device/v1/status", "POST");
   }

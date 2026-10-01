@@ -76,6 +76,8 @@ const RULES: Record<string, VarRule[]> = {
   ],
   operations: [
     { key: "JOB_SCHEDULER_PROVIDER", scope: "server", description: "Background scheduler provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
+    { key: "NIGHTLY_FLEET_SWEEP_TOKEN", scope: "server", description: "Dedicated fleet sweep service bearer token (not a device credential)", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"], secret: true },
+    { key: "NIGHTLY_OTA_PUBLIC_KEY", scope: "server", description: "Trusted Ed25519 public key for signed Nightly Box update manifests", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
     { key: "WALLET_PASS_PROVIDER", scope: "server", description: "Wallet pass provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
     { key: "CAMERA_LIVE_PROVIDER", scope: "server", description: "Camera/live adapter provider", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },
     { key: "CLOUDFLARE_STREAM_ACCOUNT_ID", scope: "server", description: "Cloudflare Stream account id", requiredIn: [], optionalIn: ["development", "test", "preview", "staging", "production"] },

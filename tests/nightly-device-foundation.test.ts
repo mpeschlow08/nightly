@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -18,13 +19,167 @@ import {
   canUseDeviceForManagement,
   canUseDeviceForOperationalManagement,
   canUseDeviceForService,
+  evaluateFleetState,
   isCaptureSourceType,
   isDeviceClaimUsable,
   normalizeCommissioningStatus,
 } from "../lib/nightly-device/policy";
 import { classifyNightlyDeviceInventoryWriteError, extractPostgresErrorMetadata, isPostgresUniqueConstraintViolation } from "../lib/nightly-device/database-errors";
+import { parseFleetTelemetry, readBoundedJson } from "../lib/nightly-device/telemetry";
+import { fleetAlertConditions } from "../lib/nightly-device/fleet-alerts";
+import { fleetOperationScope, supportGrantAllowsOperation } from "../lib/nightly-device/fleet-operations";
+import { buildFleetSupportBundle } from "../lib/nightly-device/support-bundle";
+import { evaluateCommissioning } from "../lib/nightly-device/commissioning";
+import { canAdvanceFleetUpdate, evaluateFleetUpdateCandidate } from "../lib/nightly-device/fleet-updates";
+import { classifyHealthCheckResult } from "../lib/nightly-device/operation-result";
+import { authorizedFleetSweep } from "../lib/nightly-device/fleet-sweep-auth";
 
 const CAMERA_UNIQUE_CONSTRAINT = "nightly_device_sources_venue_camera_unique";
+
+test("fleet scheduler credential authorizes only a configured scoped token", () => {
+  const configured = "fleet_scheduler_only_".padEnd(48, "x");
+  assert.equal(authorizedFleetSweep(`Bearer ${configured}`, configured), true);
+  assert.equal(authorizedFleetSweep(null, configured), false);
+  assert.equal(authorizedFleetSweep(`Bearer ${configured}`, undefined), false);
+  assert.equal(authorizedFleetSweep(`Bearer ${configured}`, "short"), false);
+  assert.equal(authorizedFleetSweep(`Bearer ${configured}wrong`, configured), false);
+  assert.equal(authorizedFleetSweep(`Basic ${configured}`, configured), false);
+});
+
+test("fleet update targeting requires a signed newer version for the actual hardware model", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const now = new Date("2026-09-30T12:00:00Z");
+  const manifest = { version: "1.2.3", sha256: "a".repeat(64), downloadUrl: "https://updates.example.test/agent.tar", notBefore: "2026-09-30T11:00:00.000Z", expiresAt: "2026-09-30T13:00:00.000Z", hardwareModels: ["nightly-box-v1"] };
+  const signature = sign(null, Buffer.from(JSON.stringify(manifest)), privateKey).toString("base64");
+  const input = { manifest: { ...manifest, signature }, publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString(), hardwareModel: "nightly-box-v1", installedVersion: "1.0.0" };
+  assert.equal(evaluateFleetUpdateCandidate(input, now).eligible, true);
+  assert.equal(evaluateFleetUpdateCandidate({ ...input, hardwareModel: "nightly-box-v2" }, now).eligible, false);
+  assert.equal(evaluateFleetUpdateCandidate({ ...input, installedVersion: "1.2.3" }, now).eligible, false);
+  assert.equal(evaluateFleetUpdateCandidate({ ...input, installedVersion: "1.2.4" }, now).eligible, false);
+  assert.equal(evaluateFleetUpdateCandidate({ ...input, manifest: { ...input.manifest, hardwareModels: ["nightly-box-v2"] } }, now).eligible, false);
+});
+
+test("operation results reject expiry and stale terminal overwrites while allowing exact replay", () => {
+  const now = new Date("2026-09-30T12:00:00Z");
+  const base = { state: "pending", resultCode: null, expiresAt: new Date(now.getTime() + 30_000), grantExpiresAt: new Date(now.getTime() + 60_000), grantRevokedAt: null };
+  assert.equal(classifyHealthCheckResult(base, "health_ok", now), "complete");
+  assert.equal(classifyHealthCheckResult({ ...base, state: "succeeded", resultCode: "health_ok" }, "health_ok", now), "duplicate");
+  assert.equal(classifyHealthCheckResult({ ...base, state: "succeeded", resultCode: "health_ok" }, "health_degraded", now), "conflict");
+  assert.equal(classifyHealthCheckResult({ ...base, state: "failed" }, "health_ok", now), "expired");
+  assert.equal(classifyHealthCheckResult({ ...base, grantRevokedAt: now }, "health_ok", now), "expired");
+  assert.equal(classifyHealthCheckResult(base, "health_ok", base.expiresAt), "expired");
+  assert.equal(classifyHealthCheckResult({ ...base, grantExpiresAt: now }, "health_ok", now), "expired");
+});
+
+test("OTA lifecycle refuses skipped stages, unsigned installs and unverified rollback", () => {
+  const candidate = { current: "scheduled" as const, next: "downloading" as const, manifestVerified: false, postUpdateHealthVerified: false, rollbackVerified: false };
+  assert.equal(canAdvanceFleetUpdate(candidate), true);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, next: "installing" }), false);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "verifying", next: "installing" }), false);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "verifying", next: "installing", manifestVerified: true }), true);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "health_check", next: "succeeded", manifestVerified: true }), false);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "health_check", next: "succeeded", manifestVerified: true, postUpdateHealthVerified: true }), true);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "failed", next: "rolled_back" }), false);
+  assert.equal(canAdvanceFleetUpdate({ ...candidate, current: "failed", next: "rolled_back", rollbackVerified: true }), true);
+});
+
+test("commissioning resumes recorded steps but requires real capture and rolling evidence for READY", () => {
+  const base = {
+    publicDeviceUuid: "box-1", serialNumber: "s-1", enrolled: true, venueId: 12, online: true,
+    commercialState: "active", agentVersion: "1.0.0", desiredConfigRevision: "rev-1", appliedConfigRevision: "rev-1",
+    sources: [{ sourceType: "ip_camera", enabled: true }, { sourceType: "mixer_audio", enabled: true }],
+    checks: ["internet", "nightly_cloud", "cameras", "hardware_acceleration", "audio", "storage"].map((key) => ({ checkKey: key as "internet" | "nightly_cloud" | "cameras" | "hardware_acceleration" | "audio" | "storage", status: "pass" as const, evidenceJson: "{}" })),
+  };
+  const pending = evaluateCommissioning(base);
+  assert.equal(pending.ready, false);
+  assert.equal(pending.steps.find((step) => step.key === "capture_test")?.status, "pending");
+  assert.equal(pending.steps.find((step) => step.key === "ambient_audio")?.status, "skipped");
+  const verified = evaluateCommissioning({ ...base, checks: base.checks.map((check) => ({ ...check, evidenceJson: check.checkKey === "cameras" ? '{"captureValidated":true}' : check.checkKey === "storage" ? '{"rollingBufferReady":true}' : "{}" })) });
+  assert.equal(verified.ready, true);
+  assert.equal(evaluateCommissioning({ ...base, online: false, checks: verified.steps.length ? base.checks : [] }).ready, false);
+});
+
+test("support bundle allows only bounded operational fields and drops unsafe diagnostics", () => {
+  const now = new Date("2026-09-30T12:00:00Z");
+  const bundle = JSON.parse(buildFleetSupportBundle({
+    deviceId: 1, agentVersion: "token=leaked", softwareVersion: "1.0", lastHeartbeatAt: now,
+    telemetry: null,
+    checks: [{ key: "storage", status: "pass", evidence: "camera-password" } as { key: string; status: string }],
+    alerts: [{ code: "DEVICE_OFFLINE", severity: "critical", state: "open", secret: "camera-password" } as { code: string; severity: string; state: string }],
+    operations: [{ type: "REQUEST_HEALTH_CHECK", state: "succeeded", resultCode: "token=leaked" }],
+  }, now));
+  assert.equal(bundle.expiresAt, "2026-09-30T12:15:00.000Z");
+  assert.equal(bundle.operations[0].resultCode, null);
+  assert.equal(bundle.agentVersion, null);
+  assert.equal(JSON.stringify(bundle).includes("camera-password"), false);
+  assert.equal(JSON.stringify(bundle).includes("token=leaked"), false);
+});
+
+test("support operations require exact scoped, live, actor- and device-bound grants", () => {
+  const now = new Date("2026-09-30T12:00:00Z");
+  const grant = { actorClerkUserId: "staff-1", deviceId: 17, scope: "device.request_health_check", expiresAt: new Date(now.getTime() + 60_000), revokedAt: null };
+  assert.equal(fleetOperationScope("REQUEST_HEALTH_CHECK"), grant.scope);
+  assert.equal(fleetOperationScope("sh -c env"), null);
+  assert.equal(supportGrantAllowsOperation(grant, "staff-1", 17, "REQUEST_HEALTH_CHECK", now), true);
+  assert.equal(supportGrantAllowsOperation(grant, "staff-2", 17, "REQUEST_HEALTH_CHECK", now), false);
+  assert.equal(supportGrantAllowsOperation(grant, "staff-1", 18, "REQUEST_HEALTH_CHECK", now), false);
+  assert.equal(supportGrantAllowsOperation(grant, "staff-1", 17, "RESTART_AGENT", now), false);
+  assert.equal(supportGrantAllowsOperation(grant, "staff-1", 17, "REQUEST_HEALTH_CHECK", grant.expiresAt), false);
+  assert.equal(supportGrantAllowsOperation({ ...grant, revokedAt: now }, "staff-1", 17, "REQUEST_HEALTH_CHECK", now), false);
+});
+
+test("fleet alerts distinguish outage, memory pressure and commercial suspension", () => {
+  const telemetry = { schemaVersion: 1 as const, uptimeSeconds: 60, memoryTotalBytes: 1000, memoryAvailableBytes: 40, appliedConfigRevision: null };
+  assert.deepEqual(fleetAlertConditions({ connectivity: "online", commercialState: "active", telemetry }), [{ code: "MEMORY_PRESSURE", severity: "critical" }]);
+  assert.deepEqual(fleetAlertConditions({ connectivity: "offline", commercialState: "suspended", telemetry }), [
+    { code: "DEVICE_OFFLINE", severity: "critical" }, { code: "COMMERCIAL_SUSPENSION", severity: "info" },
+  ]);
+  assert.deepEqual(fleetAlertConditions({ connectivity: "unknown", commercialState: "active", telemetry: null }), []);
+  assert.deepEqual(fleetAlertConditions({ connectivity: "online", commercialState: "active", telemetry: { ...telemetry, memoryAvailableBytes: 500, storageTotalBytes: 1000, storageFreeBytes: 30, cameraCount: 2, healthyCameraCount: 0, uploadQueueDepth: 50 } }), [
+    { code: "STORAGE_CRITICAL", severity: "critical" }, { code: "ALL_CAPTURE_SOURCES_UNAVAILABLE", severity: "critical" }, { code: "UPLOAD_BACKLOG", severity: "warning" },
+  ]);
+});
+
+test("fleet heartbeat accepts only bounded versioned allowlisted telemetry", async () => {
+  const valid = { schemaVersion: 1, uptimeSeconds: 600, memoryTotalBytes: 4096, memoryAvailableBytes: 1024, appliedConfigRevision: "rev-2" };
+  assert.deepEqual(parseFleetTelemetry(valid), valid);
+  assert.equal(parseFleetTelemetry({ ...valid, deviceSecret: "secret" }), null);
+  assert.equal(parseFleetTelemetry({ ...valid, memoryAvailableBytes: 4097 }), null);
+  assert.equal(parseFleetTelemetry({ ...valid, uptimeSeconds: -1 }), null);
+  assert.equal(parseFleetTelemetry({ ...valid, schemaVersion: 2 }), null);
+  assert.deepEqual(parseFleetTelemetry({ ...valid, storageTotalBytes: 1000, storageFreeBytes: 200, cameraCount: 3, healthyCameraCount: 2 }), { ...valid, storageTotalBytes: 1000, storageFreeBytes: 200, cameraCount: 3, healthyCameraCount: 2 });
+  assert.equal(parseFleetTelemetry({ ...valid, storageFreeBytes: 1 }), null);
+  assert.equal(parseFleetTelemetry({ ...valid, cameraCount: 2, healthyCameraCount: 3 }), null);
+  assert.equal(parseFleetTelemetry({ ...valid, uploadQueueDepth: 100_001 }), null);
+  assert.deepEqual(await readBoundedJson(new Request("https://nightly.test", { method: "POST", body: JSON.stringify(valid) })), valid);
+  await assert.rejects(readBoundedJson(new Request("https://nightly.test", { method: "POST", body: "x".repeat(4097) })), /oversized_body/);
+});
+
+test("fleet state derives freshness independently of commercial suspension", () => {
+  const now = Date.parse("2026-09-30T12:00:00Z");
+  const device = { lifecycleState: "active", claimState: "claimed", operationalState: "healthy", serviceEntitlementState: "active" };
+  assert.deepEqual(evaluateFleetState({ ...device, lastHeartbeatAt: new Date(now - 30_000) }, now), {
+    state: "ready", health: "healthy", connectivity: "online", commercialState: "active",
+  });
+  assert.deepEqual(evaluateFleetState({ ...device, lastHeartbeatAt: new Date(now - 3 * 60_000) }, now), {
+    state: "degraded", health: "degraded", connectivity: "stale", commercialState: "active",
+  });
+  assert.deepEqual(evaluateFleetState({ ...device, lastHeartbeatAt: new Date(now - 6 * 60_000) }, now), {
+    state: "offline", health: "offline", connectivity: "offline", commercialState: "active",
+  });
+  assert.deepEqual(evaluateFleetState({ ...device, serviceEntitlementState: "suspended", lastHeartbeatAt: new Date(now - 30_000) }, now), {
+    state: "suspended", health: "healthy", connectivity: "online", commercialState: "suspended",
+  });
+  assert.deepEqual(evaluateFleetState({ ...device, operationalState: "suspended", serviceEntitlementState: "suspended", lastHeartbeatAt: new Date(now - 30_000) }, now), {
+    state: "suspended", health: "unknown", connectivity: "online", commercialState: "suspended",
+  });
+  assert.equal(evaluateFleetState({ ...device, claimState: "unclaimed", lastHeartbeatAt: null }, now).state, "provisioning");
+  assert.equal(evaluateFleetState({ ...device, commissioningReady: false, lastHeartbeatAt: new Date(now) }, now).state, "commissioning");
+  assert.equal(evaluateFleetState({ ...device, commissioningReady: false, lastHeartbeatAt: new Date(now - 6 * 60_000) }, now).state, "offline");
+  assert.deepEqual(evaluateFleetState({ ...device, lastHeartbeatAt: null }, now), {
+    state: "commissioning", health: "unknown", connectivity: "unknown", commercialState: "active",
+  });
+});
 
 test("device config projects server commercial entitlement as ineligible for capture", () => {
   const route = readFileSync(join(process.cwd(), "app/api/device/v1/config/route.ts"), "utf8");

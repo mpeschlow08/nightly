@@ -55,6 +55,7 @@ const NAV_GROUPS: Array<{ title: string; items: Array<{ href: string; label: str
   {
     title: "Operations",
     items: [
+      { href: "/admin/fleet", label: "Fleet" },
       { href: "/admin/audit", label: "Audit" },
       { href: "/admin/incidents", label: "Incidents" },
       { href: "/admin/feedback", label: "Beta Feedback" },

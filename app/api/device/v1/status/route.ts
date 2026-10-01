@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { nightlyDevices } from "@/db/schema";
+import { nightlyDeviceCommissioningChecks, nightlyDeviceSources, nightlyDevices } from "@/db/schema";
 import { authenticateDeviceRequest, canUseDeviceForManagement, createAuthError } from "@/lib/nightly-device/auth";
+import { evaluateFleetState } from "@/lib/nightly-device/policy";
+import { evaluateCommissioning } from "@/lib/nightly-device/commissioning";
 
 export async function POST(request: Request) {
   const identity = await authenticateDeviceRequest(request);
@@ -22,6 +24,10 @@ export async function POST(request: Request) {
       lastHeartbeatAt: nightlyDevices.lastHeartbeatAt,
       softwareVersion: nightlyDevices.softwareVersion,
       agentVersion: nightlyDevices.agentVersion,
+      serialNumber: nightlyDevices.serialNumber,
+      deviceSecretHash: nightlyDevices.deviceSecretHash,
+      desiredConfigRevision: nightlyDevices.desiredConfigRevision,
+      appliedConfigRevision: nightlyDevices.appliedConfigRevision,
     })
     .from(nightlyDevices)
     .where(eq(nightlyDevices.id, identity.id))
@@ -35,6 +41,15 @@ export async function POST(request: Request) {
   if (!allowed) {
     return NextResponse.json(createAuthError("device_unavailable", "Device management access is unavailable."), { status: 403 });
   }
+
+  const [checks, sources] = await Promise.all([
+    db.select({ checkKey: nightlyDeviceCommissioningChecks.checkKey, status: nightlyDeviceCommissioningChecks.status, evidenceJson: nightlyDeviceCommissioningChecks.evidenceJson })
+      .from(nightlyDeviceCommissioningChecks).where(eq(nightlyDeviceCommissioningChecks.deviceId, device.id)),
+    db.select({ sourceType: nightlyDeviceSources.sourceType, enabled: nightlyDeviceSources.enabled })
+      .from(nightlyDeviceSources).where(eq(nightlyDeviceSources.deviceId, device.id)),
+  ]);
+  const commissioning = evaluateCommissioning({ ...device, enrolled: !!device.deviceSecretHash, online: !!device.lastHeartbeatAt && Date.now() - device.lastHeartbeatAt.getTime() <= 2 * 60_000, commercialState: device.serviceEntitlementState, checks, sources, publicDeviceUuid: device.publicDeviceUuid });
+  const fleet = evaluateFleetState({ ...device, commissioningReady: commissioning.ready });
 
   return NextResponse.json({
     ok: true,
@@ -50,6 +65,8 @@ export async function POST(request: Request) {
       lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
       softwareVersion: device.softwareVersion,
       agentVersion: device.agentVersion,
+      fleet,
+      commissioning: { ready: commissioning.ready, steps: commissioning.steps },
       timestamp: new Date().toISOString(),
     },
   });

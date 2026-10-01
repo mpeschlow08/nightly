@@ -16,10 +16,20 @@ import type { AgentStateStore } from "../src/core/state-store";
 import type { CredentialStore } from "../src/core/credential-store";
 import type { ControlPlaneConfig } from "../src/core/types";
 import { SimulationProbeAdapter } from "../src/probes/linux";
+import type { PlatformProbeAdapter } from "../src/probes/platform";
 import { verifyUpdateManifest } from "../src/core/ota";
+import { collectFleetTelemetry } from "../src/core/telemetry";
+import { parseFleetTelemetry } from "../../lib/nightly-device/telemetry";
 import type { AgentConfig, AgentPersistentState } from "../src/core/types";
 
 const temporaryDirectories: string[] = [];
+
+test("Agent heartbeat telemetry matches the server allowlist", () => {
+  const snapshot = collectFleetTelemetry("revision-2");
+  assert.deepEqual(parseFleetTelemetry(snapshot), snapshot);
+  assert.equal(snapshot.appliedConfigRevision, "revision-2");
+  assert.equal(collectFleetTelemetry("token=unsafe/path").appliedConfigRevision, null);
+});
 
 async function temporaryDirectory() {
   const directory = await mkdtemp(join(tmpdir(), "nightly-agent-test-"));
@@ -192,6 +202,10 @@ test("OTA verifier accepts only valid signed HTTPS manifests and never installs"
   assert.equal(accepted.eligible, true);
   assert.equal(accepted.reason, "signature_verified_no_install_performed");
   assert.equal(verifyUpdateManifest({ ...base, downloadUrl: "http://updates.example.test/agent.tar", signature }, publicKey.export({ type: "spki", format: "pem" }).toString()).eligible, false);
+  const hardwareModels = ["nightly-box-v1"];
+  const scopedSignature = sign(null, Buffer.from(JSON.stringify({ ...base, hardwareModels })), privateKey).toString("base64");
+  assert.equal(verifyUpdateManifest({ ...base, hardwareModels, signature: scopedSignature }, publicKey.export({ type: "spki", format: "pem" }).toString()).eligible, true);
+  assert.equal(verifyUpdateManifest({ ...base, hardwareModels: ["other-box"], signature: scopedSignature }, publicKey.export({ type: "spki", format: "pem" }).toString()).eligible, false);
 });
 
 test("healthy recurring cycles recover from offline and degraded states", () => {
@@ -279,12 +293,14 @@ test("agent keeps media authorization in memory and rejects malformed config bef
       replaceCapabilities: async () => ({}),
       replaceInventory: async () => ({}),
       reportCommissioning: async () => ({}),
+      listOperations: async () => ({ operations: valid ? [{ id: 42, type: "REQUEST_HEALTH_CHECK", expiresAt: new Date(Date.now() + 60_000).toISOString() }] : [] }),
+      completeHealthCheck: async () => { throw new ControlPlaneError("Support grant expired.", 410, "expired", false); },
     } as unknown as ControlPlaneClient;
     const runtime = new AgentRuntime({
       config: defaultConfig({ heartbeatIntervalMs: 1 }), stateStore: store,
       credentialStore: { load: async () => ({ deviceSecret: "device-secret" }) } as CredentialStore,
-      client, probes: new SimulationProbeAdapter(), media, mediaBindings: bindings,
-      logger: { log: (_level, event) => { if (event === "agent_cycle_complete" || event === "agent_cycle_failed") runtime.stop(); } },
+      client, probes: { discover: async () => ({ platform: "test", architecture: "test", probes: [{ key: "storage", status: "pass", summary: "fixture", checkedAt: new Date().toISOString(), evidence: { available: true } }], availability: {}, inventory: { sources: [] }, capabilities: { capabilities: [] }, commissioning: { checks: [] }, onvifDevices: [] }) } as PlatformProbeAdapter, media, mediaBindings: bindings,
+      logger: { log: (_level, event) => { events.push(event); if (event === "agent_cycle_complete" || event === "agent_cycle_failed") runtime.stop(); } },
     });
     await runtime.run();
     assert.ok(stored.every((state) => !state.includes("rtsp:") && !state.includes("device-secret") && !state.includes("\"sources\"")));
@@ -294,6 +310,7 @@ test("agent keeps media authorization in memory and rejects malformed config bef
       assert.equal(persistedDirective.commercialDirectiveExpiresAt, response.sections.commercial.offlineEntitlementExpiresAt);
     }
     assert.deepEqual(events.includes("start"), valid);
+    assert.equal(events.includes("fleet_operation_no_longer_active"), valid);
     assert.ok(events.includes("stop"));
     if (!valid) assert.ok(stored.some((state) => state.includes("invalid_device_config")));
   }
@@ -356,4 +373,23 @@ test("performance directives follow config revocation, stop, and restart re-fetc
   await runCycles([response, { ...response, configAvailable: false, configRevision: null }], [publicId, null]);
   await runCycles([response], [publicId]);
   assert.ok(saved.every((state) => !state.includes(publicId) && !state.includes("performance") && !state.includes("sourceIds")));
+});
+
+test("Agent health-check delivery uses authenticated typed operation endpoints", async () => {
+  const calls: string[] = [];
+  const client = new ControlPlaneClient({
+    baseUrl: "https://control.example.test", deviceUuid: "device-uuid", requestTimeoutMs: 1000, retryBaseMs: 1, retryMaxMs: 1,
+    fetchImpl: async (url, init) => {
+      assert.match(String(url), /\/api\/device\/v1\/operations$/);
+      assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer device-secret");
+      assert.equal((init?.headers as Record<string, string>)["x-nightly-device-uuid"], "device-uuid");
+      calls.push(init?.method ?? "");
+      if (init?.method === "GET") return new Response(JSON.stringify({ ok: true, operations: [{ id: 42, type: "REQUEST_HEALTH_CHECK", expiresAt: "2026-09-30T12:00:00Z" }] }));
+      assert.deepEqual(JSON.parse(String(init?.body)), { id: 42, resultCode: "health_degraded" });
+      return new Response(JSON.stringify({ ok: true, id: 42, resultCode: "health_degraded", duplicate: false }));
+    },
+  });
+  assert.equal((await client.listOperations("device-secret")).operations[0].id, 42);
+  assert.equal((await client.completeHealthCheck("device-secret", 42, "health_degraded")).id, 42);
+  assert.deepEqual(calls, ["GET", "POST"]);
 });

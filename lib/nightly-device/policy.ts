@@ -73,6 +73,40 @@ export function canUseDeviceForOperationalManagement(input: {
     input.managementAccessLevel !== "recovery_only";
 }
 
+export type FleetHealth = "healthy" | "degraded" | "critical" | "offline" | "unknown";
+export type FleetState = "provisioning" | "commissioning" | "ready" | "degraded" | "offline" | "suspended" | "maintenance" | "updating" | "recovery_required" | "decommissioned";
+export type FleetConnectivity = "online" | "stale" | "offline" | "unknown";
+
+export function evaluateFleetState(input: {
+  lifecycleState: string;
+  claimState: string;
+  operationalState: string;
+  serviceEntitlementState: string;
+  lastHeartbeatAt: Date | null;
+  commissioningReady?: boolean;
+  updating?: boolean;
+  recoveryRequired?: boolean;
+}, now = Date.now()): { state: FleetState; health: FleetHealth; connectivity: FleetConnectivity; commercialState: string } {
+  const age = input.lastHeartbeatAt ? Math.max(0, now - input.lastHeartbeatAt.getTime()) : null;
+  const connectivity: FleetConnectivity = age === null ? "unknown" : age > 5 * 60_000 ? "offline" : age > 2 * 60_000 ? "stale" : "online";
+  const health: FleetHealth = connectivity === "offline" ? "offline" : connectivity === "unknown" ? "unknown" :
+    input.operationalState === "degraded" || connectivity === "stale" ? "degraded" :
+    input.operationalState === "healthy" ? "healthy" :
+    input.operationalState === "suspended" || input.operationalState === "maintenance" ? "unknown" : "critical";
+  const commercialState = input.serviceEntitlementState;
+
+  if (["retired", "revoked", "return_pending", "rma"].includes(input.lifecycleState)) return { state: "decommissioned", health, connectivity, commercialState };
+  if (input.recoveryRequired) return { state: "recovery_required", health, connectivity, commercialState };
+  if (input.updating) return { state: "updating", health, connectivity, commercialState };
+  if (input.operationalState === "maintenance") return { state: "maintenance", health, connectivity, commercialState };
+  if (input.claimState !== "claimed" || input.lifecycleState === "factory" || input.lifecycleState === "inventory" || input.lifecycleState === "provisioned") return { state: "provisioning", health, connectivity, commercialState };
+  if (input.lifecycleState === "suspended" || commercialState === "suspended" || commercialState === "expired") return { state: "suspended", health, connectivity, commercialState };
+  if (connectivity === "offline") return { state: "offline", health, connectivity, commercialState };
+  if (input.commissioningReady === false || input.lifecycleState === "claimed" || connectivity === "unknown") return { state: "commissioning", health, connectivity, commercialState };
+  if (health === "degraded" || health === "critical" || input.lifecycleState === "degraded") return { state: "degraded", health, connectivity, commercialState };
+  return { state: "ready", health, connectivity, commercialState };
+}
+
 export type CommissioningCheckStatus = "not_tested" | "checking" | "pass" | "warning" | "fail";
 export type CommissioningCheckKey =
   | "cameras"
