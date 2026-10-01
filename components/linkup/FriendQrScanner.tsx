@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 type BarcodeDetectorLike = {
   detect(video: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>;
@@ -74,7 +75,7 @@ export default function FriendQrScanner({ action }: Props) {
       <div className="mt-4 flex flex-wrap gap-2">
         {state !== "scanning" && state !== "found" ? <button type="button" onClick={() => void startScanner()} className="nightly-btn-primary min-h-11 rounded-full px-5 text-sm">{state === "starting" ? "Opening camera..." : "Open camera"}</button> : null}
         {state === "found" ? <form action={action}><input type="hidden" name="qrToken" value={token} /><button type="submit" className="nightly-btn-primary min-h-11 rounded-full px-5 text-sm">Confirm friend request</button></form> : null}
-        <a href="/crews#friend-code" className="nightly-btn-secondary min-h-11 rounded-full px-5 text-sm">Use Friend Code</a>
+        <Link href="/crews#friend-code" className="nightly-btn-secondary min-h-11 rounded-full px-5 text-sm">Use Friend Code</Link>
       </div>
     </section>
   );

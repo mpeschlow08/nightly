@@ -43,9 +43,9 @@ export default async function CrewsPage({ searchParams }: CrewsPageProps) {
         </div>
         <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
           <a href="#friends" className="nightly-btn-primary min-h-11 rounded-full px-4 text-center text-sm">See who&apos;s out</a>
-          <a href="/crews/scan" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Scan QR</a>
-          <a href="/crews/radar" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Friend Radar</a>
-          <a href="/crews/plans" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Plans</a>
+          <Link href="/crews/scan" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Scan QR</Link>
+          <Link href="/crews/radar" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Friend Radar</Link>
+          <Link href="/crews/plans" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Plans</Link>
         </div>
       </section>
 
