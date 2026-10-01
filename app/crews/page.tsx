@@ -1,16 +1,16 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 
-import { blockUserAction, createMeetRequestAction, createSocialGroupAction, endNightOutAction, respondFriendRequestAction, sendFriendRequestAction, startNightOutAction, toggleFriendFavoriteAction, toggleFriendMuteAction, updateSocialProfileAction } from "./actions";
+import { blockUserAction, createMeetRequestAction, createSocialGroupAction, endNightOutAction, respondFriendRequestAction, sendFriendRequestAction, sendFriendRequestByCodeAction, startNightOutAction, toggleFriendFavoriteAction, toggleFriendMuteAction, updateSocialProfileAction } from "./actions";
 import { archiveDirectConversationAction, deleteDirectConversationAction, markDirectConversationReadAction, sendDirectMessageAction } from "./social-actions";
-import { getSocialActor } from "./lib/auth";
 import { getDirectConversationOverview, getSocialDashboardData, searchSocialPlatform } from "@/lib/social/data";
+import CopyFriendCodeButton from "@/components/linkup/CopyFriendCodeButton";
 
 type CrewsPageProps = {
   searchParams: Promise<{ q?: string; conversation?: string }>;
 };
 
 export default async function CrewsPage({ searchParams }: CrewsPageProps) {
-  const actor = await getSocialActor();
   const params = await searchParams;
   const searchQuery = params.q?.trim() ?? "";
   const selectedConversationId = Number(params.conversation) || null;
@@ -20,24 +20,58 @@ export default async function CrewsPage({ searchParams }: CrewsPageProps) {
     searchQuery ? searchSocialPlatform(searchQuery) : Promise.resolve(null),
   ]);
   const selectedSession = data.nightOutSessions[0] ?? null;
+  const friendQrDataUrl = await QRCode.toDataURL(data.profile.friendQrToken, {
+    margin: 1,
+    width: 180,
+    color: { dark: "#160d27", light: "#ffffff" },
+  });
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
-      <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_80px_rgba(232,121,249,0.08)] backdrop-blur-xl sm:p-8">
+    <main className="nightly-page mx-auto min-h-screen max-w-6xl px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
+      <section className="nightly-card-hero overflow-hidden rounded-[1.7rem] p-5 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-fuchsia-200/80">Social Circle</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Friends, groups, and nightlife presence</h1>
-            <p className="mt-2 max-w-3xl text-sm text-zinc-300">Database-backed friend requests, favorite friends, group planning, presence, and meetup tools.</p>
+            <p className="nightly-eyebrow">Link Up</p>
+            <h1 className="nightly-display nightly-accent-heading mt-2">Make tonight a group plan.</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--text-secondary)]">Friends, plans, and arrival context in one calm place. Share only the location detail you choose.</p>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-zinc-300">
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Role: {actor.role}</span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Code: {data.profile.friendCode}</span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Friends: {data.friends.length}</span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Groups: {data.groups.length}</span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Requests: {data.requests.length}</span>
+          <div className="flex flex-wrap gap-2 text-xs text-[color:var(--text-secondary)]">
+            <span className="nightly-badge">{data.friends.length} friends</span>
+            <span className="nightly-badge">{data.groups.length} groups</span>
+            <span className="nightly-badge">{data.requests.length} requests</span>
           </div>
         </div>
+        <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+          <a href="#friends" className="nightly-btn-primary min-h-11 rounded-full px-4 text-center text-sm">See who&apos;s out</a>
+          <a href="/crews/scan" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Scan QR</a>
+          <a href="/crews/radar" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Friend Radar</a>
+          <a href="/crews/plans" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-center text-sm">Plans</a>
+        </div>
+      </section>
+
+      <section id="friend-code" className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
+        <div className="nightly-surface-elevated p-5 sm:p-6">
+          <p className="nightly-eyebrow">Your connection key</p>
+          <h2 className="nightly-section-title mt-2">Add each other in person.</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--text-secondary)]">Show this code or QR when you meet. No contact syncing, public follower graph, or stranger discovery.</p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <code className="rounded-xl border border-[color:var(--border-active)] bg-black/30 px-4 py-3 text-lg font-semibold tracking-[0.18em] text-white">{data.profile.friendCode}</code>
+            <CopyFriendCodeButton code={data.profile.friendCode} />
+          </div>
+        </div>
+        <div className="grid place-items-center rounded-[1.35rem] border border-white/10 bg-white p-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+          <img src={friendQrDataUrl} alt="Your Nightly Friend QR" width={180} height={180} className="h-44 w-44" />
+          <p className="mt-2 text-center text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[#160d27]">Friend QR</p>
+        </div>
+      </section>
+
+      <section className="nightly-surface mt-5 p-5 sm:p-6">
+        <p className="nightly-eyebrow">Add a friend</p>
+        <h2 className="nightly-section-title mt-2">Enter their Friend Code.</h2>
+        <form action={sendFriendRequestByCodeAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input name="friendCode" required placeholder="NIGHT-7K2A" className="nightly-control w-full uppercase tracking-[0.14em] placeholder:normal-case placeholder:tracking-normal" />
+          <button type="submit" className="nightly-btn-primary min-h-11 rounded-full px-5 text-sm">Send request</button>
+        </form>
       </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -65,7 +99,7 @@ export default async function CrewsPage({ searchParams }: CrewsPageProps) {
             </form>
           </article>
 
-          <article className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+          <article id="requests" className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
             <h2 className="text-lg font-semibold text-white">Incoming requests</h2>
             <div className="mt-4 space-y-3">
               {data.requests.length === 0 ? <p className="text-sm text-zinc-400">No incoming requests.</p> : null}
@@ -96,7 +130,7 @@ export default async function CrewsPage({ searchParams }: CrewsPageProps) {
             </div>
           </article>
 
-          <article className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+          <article id="friends" className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
             <h2 className="text-lg font-semibold text-white">Friends</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {data.friends.length === 0 ? <p className="text-sm text-zinc-400">No friends yet.</p> : null}
@@ -169,7 +203,7 @@ export default async function CrewsPage({ searchParams }: CrewsPageProps) {
         </section>
 
         <aside className="space-y-6">
-          <article className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+          <article id="night-out" className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
             <h2 className="text-lg font-semibold text-white">Start Night Out</h2>
             <form action={startNightOutAction} className="mt-4 grid gap-3">
               <input type="hidden" name="status" value="heading_out" />

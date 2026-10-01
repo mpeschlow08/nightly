@@ -11,6 +11,11 @@ Status reflects the first Foundation + Consumer Core pass.
 | Event detail | `/events/[slug]` | Understand an event and enter or RSVP | Consumer | Implemented | Mobile-first, desktop sticky actions | event/venue data services |
 | Hot Reels | `/live` | Browse nightlife media and live context | Consumer | Existing, visually aligned | Mobile-first media feed | live and consumer data services |
 | Concierge | `/concierge` | Ask for a simple plan or recommendation | Consumer | Existing, visually aligned | Mobile-first conversation surface | Concierge service and discovery payloads |
+| Consumer Social | `/crews` | Friends, groups, plans, Night Out, Friend Code, and privacy-aware meetup context | Consumer | Foundation pass underway | Mobile-first social home | Social dashboard data/actions and QR token |
+| Friend Radar | `/crews/radar` | Privacy-aware friend presence and arrival context | Consumer | Implemented | Mobile-first | Existing presence/privacy rows |
+| Plans | `/crews/plans` | Create and manage lightweight night-out plans | Consumer | Implemented | Mobile-first | Existing `night_out_plans` model |
+| Plan detail | `/crews/plans/[id]` | Protected destination and attendee view | Consumer | Implemented | Mobile-first | Existing plan member/stop relations |
+| Friend QR scanner | `/crews/scan` | Camera QR scan with signed-token validation and code fallback | Consumer | Implemented | Mobile-first | Native `BarcodeDetector`, existing social token path |
 | Consumer navigation | shared shell | Keep Home, Explore, Live, Concierge, Profile reachable | Consumer | Implemented | Touch-first mobile, compact desktop | `AppNavigation`, `AppHeader` |
 
 ## Canonical states
@@ -25,7 +30,7 @@ All Core surfaces use the shared route transition, loading files, empty states, 
 - [x] Core pages keep mobile-safe bottom padding and constrained content widths
 - [x] Hero media remains the first-viewport emotional anchor
 - [ ] Browser screenshot pass across mobile, tablet, and desktop
-- [ ] Consumer Social pass
+- [ ] Authenticated Consumer Social visual QA (requires a signed-in Development browser session)
 - [ ] DJ / Artist pass
 - [ ] VenueOS pass
 - [ ] Admin / Fleet pass

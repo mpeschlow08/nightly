@@ -17,6 +17,9 @@ import {
   groupMembers,
   groupMessages,
   meetRequests,
+  nightOutPlanMembers,
+  nightOutPlans,
+  nightOutPlanStops,
   nightOutSessions,
   presence,
   privacySettings,
@@ -27,7 +30,7 @@ import {
   users,
 } from "@/db/schema";
 import { getSocialActor } from "./lib/auth";
-import { generateFriendCode, issueFriendQrToken } from "@/lib/social/token";
+import { generateFriendCode, issueFriendQrToken, verifyFriendQrToken } from "@/lib/social/token";
 import type { FriendRequestStatus, GroupVisibility, MeetRequestType, NightOutLocationMode, PresenceStatus, SocialVisibility } from "@/lib/social/types";
 
 function toTrimmedString(value: FormDataEntryValue | null | undefined) {
@@ -217,6 +220,37 @@ export async function sendFriendRequestAction(formData: FormData) {
   redirect("/crews?requestSent=1");
 }
 
+export async function sendFriendRequestByCodeAction(formData: FormData) {
+  const actor = await getSocialActor();
+  await ensureSocialProfile(actor);
+  const friendCode = toTrimmedString(formData.get("friendCode")).toUpperCase();
+  const [recipient] = await db
+    .select({ userId: socialProfiles.userId })
+    .from(socialProfiles)
+    .where(eq(socialProfiles.friendCode, friendCode))
+    .limit(1);
+
+  if (!recipient || recipient.userId === actor.userId) {
+    throw new Error("Friend code is invalid.");
+  }
+
+  const requestForm = new FormData();
+  requestForm.set("recipientUserId", String(recipient.userId));
+  requestForm.set("message", toTrimmedString(formData.get("message")));
+  requestForm.set("inviteCode", friendCode);
+  return sendFriendRequestAction(requestForm);
+}
+
+export async function sendFriendRequestByQrAction(formData: FormData) {
+  const token = toTrimmedString(formData.get("qrToken"));
+  const verified = verifyFriendQrToken(token);
+  if (!verified) throw new Error("This QR is invalid or expired.");
+  const requestForm = new FormData();
+  requestForm.set("friendCode", verified.friendCode);
+  requestForm.set("message", toTrimmedString(formData.get("message")));
+  return sendFriendRequestByCodeAction(requestForm);
+}
+
 export async function respondFriendRequestAction(formData: FormData) {
   const actor = await getSocialActor();
   const requestId = Number(formData.get("requestId"));
@@ -385,6 +419,35 @@ export async function startNightOutAction(formData: FormData) {
   redirect("/crews?nightOutStarted=1");
 }
 
+export async function createNightOutPlanAction(formData: FormData) {
+  const actor = await getSocialActor();
+  const title = toTrimmedString(formData.get("title")) || "Tonight's plan";
+  const startsAtRaw = toTrimmedString(formData.get("startsAt"));
+  const startsAt = startsAtRaw ? new Date(startsAtRaw) : null;
+  const groupId = Number(formData.get("groupId")) || null;
+  const venueId = Number(formData.get("venueId")) || null;
+  if (startsAt && Number.isNaN(startsAt.getTime())) throw new Error("Plan time is invalid.");
+
+  if (groupId) {
+    const membership = await db.query.groupMembers.findFirst({ where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, actor.userId), eq(groupMembers.status, "active")) });
+    if (!membership) throw new Error("You are not a member of this group.");
+  }
+
+  const [plan] = await db.insert(nightOutPlans).values({
+    creatorUserId: actor.userId,
+    groupId,
+    title,
+    description: toTrimmedString(formData.get("description")) || null,
+    startsAt,
+    endsAt: null,
+  }).returning();
+
+  await db.insert(nightOutPlanMembers).values({ planId: plan.id, userId: actor.userId, role: "host", rsvpStatus: "confirmed" });
+  if (venueId) await db.insert(nightOutPlanStops).values({ planId: plan.id, venueId, sortOrder: 0, title: "Tonight's destination" });
+  await writeSocialAudit(actor.clerkUserId, actor.role, "night_out_plan", plan.id, "night_out_plan_created", { groupId, venueId });
+  redirect(`/crews/plans/${plan.id}`);
+}
+
 export async function endNightOutAction(formData: FormData) {
   const actor = await getSocialActor();
   const nightOutSessionId = Number(formData.get("nightOutSessionId"));
@@ -392,6 +455,13 @@ export async function endNightOutAction(formData: FormData) {
   await db.update(presence).set({ status: "night_over", updatedAt: new Date() }).where(eq(presence.userId, actor.userId));
   await writeSocialAudit(actor.clerkUserId, actor.role, "night_out_session", nightOutSessionId, "night_out_ended");
   redirect("/crews?nightOutEnded=1");
+}
+
+export async function stopLocationSharingAction() {
+  const actor = await getSocialActor();
+  await db.update(presence).set({ visibility: "private", exactLocationJson: null, approximateLocationLabel: null, updatedAt: new Date() }).where(eq(presence.userId, actor.userId));
+  await writeSocialAudit(actor.clerkUserId, actor.role, "presence", actor.userId, "location_sharing_stopped");
+  redirect("/crews/radar?sharing=stopped");
 }
 
 export async function createGroupMessageAction(formData: FormData) {
