@@ -12,6 +12,7 @@ import { trackDiscoveryInteraction } from "@/lib/discovery/analytics-client";
 
 type VenueDiscoveryCardProps = {
   venue: ConsumerVenueCard;
+  variant?: "default" | "compact";
   animationDelayMs?: number;
   className?: string;
 };
@@ -25,10 +26,13 @@ const crowdToneByLevel: Record<string, string> = {
 
 export default function VenueDiscoveryCard({
   venue,
+  variant = "default",
   animationDelayMs = 0,
   className,
 }: VenueDiscoveryCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
+  const isTrulyLive = venue.liveLabel === "EVENT LIVE" || venue.liveLabel === "CAMERA LIVE";
+  const activityLabel = venue.liveLabel === "OPEN NOW" ? "Open now" : venue.liveLabel === "TRENDING" ? "Trending" : "Tonight";
 
   const trackSpecialGuestClick = () => {
     if (!venue.specialGuestHighlight) {
@@ -76,6 +80,38 @@ export default function VenueDiscoveryCard({
       }),
     });
   }, [venue.id, venue.specialGuestHighlight]);
+
+  if (variant === "compact") {
+    return (
+      <article className={`nightly-fade-in group relative h-44 w-[72vw] max-w-[17rem] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-[#100d18] transition hover:border-violet-300/40 ${className ?? ""}`} style={{ animationDelay: `${animationDelayMs}ms` }}>
+        <Link
+          href={venue.href}
+          aria-label={`Open ${venue.name} venue details`}
+          className="absolute inset-0"
+          onClick={() => {
+            void trackDiscoveryInteraction({
+              event: "recommendation_click",
+              recommendationType: "venue",
+              itemId: venue.id,
+              explanationCategory: venue.recommendationReasonCode,
+            });
+            trackSpecialGuestClick();
+          }}
+        >
+          <VenueImage src={venue.thumbnailImageUrl || venue.heroImageUrl} alt={`${venue.name} nightlife scene`} orientation="portrait" className="!absolute !inset-0 !h-full !w-full !aspect-auto !rounded-none" />
+          <div className="nightly-image-overlay pointer-events-none absolute inset-0" />
+          <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1.5">
+            {isTrulyLive ? <NightlyLiveBadge label="Live" /> : <span className="rounded-full border border-violet-200/25 bg-black/55 px-2 py-1 text-[0.58rem] font-semibold uppercase text-violet-100">{activityLabel}</span>}
+            {venue.specialGuestHighlight ? <span className="rounded-full border border-amber-200/30 bg-black/55 px-2 py-1 text-[0.58rem] font-medium text-amber-100">Special Guest</span> : null}
+          </div>
+          <div className="absolute inset-x-0 bottom-0 p-3">
+            <h3 className="line-clamp-1 text-sm font-semibold text-white">{venue.name}</h3>
+            <p className="mt-0.5 line-clamp-1 text-xs text-white/75">{venue.neighborhood} · {venue.genre}</p>
+          </div>
+        </Link>
+      </article>
+    );
+  }
 
   return (
     <article

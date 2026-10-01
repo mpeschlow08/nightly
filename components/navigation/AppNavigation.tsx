@@ -46,10 +46,11 @@ const roleItems: Record<Exclude<AppRole, null>, NavItem[]> = {
     { label: "Concierge", href: "/concierge" },
     { label: "Map", href: "/map" },
     { label: "Events", href: "/events" },
-    { label: "Friends", href: "/crews" },
+    { label: "Link Up", href: "/crews" },
+    { label: "Live", href: "/live" },
     { label: "Messages", comingSoon: true },
     { label: "Profile", href: "/profile" },
-    { label: "Settings", href: "/profile" },
+    { label: "Account settings", href: "/profile/settings" },
     { label: "Switch Account Type", href: "/select-role?changeRole=1" },
   ],
   dj: [
@@ -249,8 +250,8 @@ function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
   if (role === "consumer") {
     return [
       { label: "Home", href: "/home", icon: "◉" },
-      { label: "Discover", href: "/discover", icon: "⌕" },
-      { label: "Hot Reels", href: "/live", icon: "●" },
+      { label: "Explore", href: "/discover", icon: "⌕" },
+      { label: "Map", href: "/map", icon: "⌖" },
       { label: "Link Up", href: "/crews", icon: "✦" },
       { label: "Profile", href: "/profile", icon: "◌" },
     ];
@@ -455,14 +456,16 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={`rounded-xl px-1.5 py-1.5 text-center transition ${
+                    prefetch={item.href !== "/profile" && item.href !== "/crews"}
+                    className={`min-h-11 rounded-xl px-1.5 py-1.5 text-center transition ${
                       active
-                        ? "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
+                        ? layoutRole === "consumer" ? "border border-violet-300/35 bg-violet-400/10 text-white" : "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
                         : "border border-transparent bg-white/5 text-[color:var(--text-secondary)] hover:border-[color:var(--border)]"
                     }`}
                     aria-label={item.label}
+                    aria-current={active ? "page" : undefined}
                   >
-                    <span className={`block text-sm leading-none ${active && item.label === "Live" ? "nightly-pulse-live" : ""}`}>{item.icon}</span>
+                    <span className="block text-sm leading-none" aria-hidden="true">{item.icon}</span>
                     <span className="mt-1 block text-[0.62rem] leading-none">{item.label}</span>
                   </Link>
                 );

@@ -146,6 +146,14 @@ button:focus {
     z-index: -1;
   }
 
+  .nightly-home {
+    background: #07060b;
+  }
+
+  .nightly-home::before {
+    background: none;
+  }
+
   .nightly-display {
     font-size: clamp(1.85rem, 5.8vw, 3rem);
     line-height: 1.06;

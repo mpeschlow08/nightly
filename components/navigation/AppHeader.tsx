@@ -62,17 +62,17 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const consumerTopNav = [
     { label: "Home", href: "/home" },
-    { label: "Discover", href: "/discover" },
+    { label: "Explore", href: "/discover" },
     { label: "Map", href: "/map" },
-    { label: "Live", href: "/live" },
-    { label: "Social", href: "/crews" },
-    { label: "Concierge", href: "/concierge" },
+    { label: "Link Up", href: "/crews" },
+    { label: "Profile", href: "/profile" },
   ];
 
   const isConsumer = activeRole === "consumer";
+  const isConsumerHome = isConsumer && currentPath === "/home";
 
   return (
-    <header className="nightly-nav-blur sticky top-0 z-50 border-b border-[color:var(--border)] px-4 py-3 sm:px-6 lg:px-8">
+    <header className={`${isConsumerHome ? "bg-[#07060b]" : "nightly-nav-blur"} sticky top-0 z-50 border-b border-[color:var(--border)] px-4 sm:px-6 lg:px-8 ${isConsumerHome ? "py-2" : "py-3"}`}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ export default function AppHeader({
               priority
             />
           </div>
-          <h1 className="nightly-page-title mt-2 truncate">{pageTitle}</h1>
+          <h1 className={isConsumerHome ? "sr-only" : "nightly-page-title mt-2 truncate"}>{pageTitle}</h1>
           {breadcrumbs.length > 0 ? (
             <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-[color:var(--text-muted)]">
               {breadcrumbs.map((crumb, index) => {
@@ -157,16 +157,17 @@ export default function AppHeader({
       </div>
 
       {isConsumer ? (
-        <nav className="mt-3 hidden items-center gap-1 lg:flex" aria-label="Consumer navigation">
+        <nav className={`${isConsumerHome ? "mt-2" : "mt-3"} hidden items-center gap-1 lg:flex`} aria-label="Consumer navigation">
           {consumerTopNav.map((item) => {
             const active = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={item.href !== "/profile" && item.href !== "/crews"}
                 className={`rounded-full px-3 py-1.5 text-sm transition ${
                   active
-                    ? "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
+                    ? "border border-violet-300/35 bg-violet-400/10 text-white"
                     : "border border-transparent text-[color:var(--text-secondary)] hover:border-[color:var(--border)] hover:text-[color:var(--text-primary)]"
                 }`}
               >
