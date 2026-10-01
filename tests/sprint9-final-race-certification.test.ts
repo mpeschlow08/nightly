@@ -57,7 +57,7 @@ test("Sprint 9 Development Hot Reel allowance concurrency", { skip: !enabled, ti
         consumeFreeHotReelVenueUnlock({ userId, venueId: venues[0].id, hotReelPublicId: `${prefix}-reel-${venues[0].id}`, now }),
         consumeFreeHotReelVenueUnlock({ userId, venueId: venues[1].id, hotReelPublicId: `${prefix}-reel-${venues[1].id}`, now }),
       ]);
-      const fulfilled = results.filter((result): result is PromiseFulfilledResult<{ allowed: boolean; venueId: number }> => result.status === "fulfilled");
+      const fulfilled = results.filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof consumeFreeHotReelVenueUnlock>>> => result.status === "fulfilled");
       const winners = fulfilled.filter((result) => result.value.allowed);
       const { rows: [count] } = await client.query("select count(*)::int count from consumer_daily_hot_reel_unlocks where consumer_user_id=$1 and unlock_date=$2", [userId, `2032-01-${String(round + 1).padStart(2, "0")}`]);
       assert.equal(count.count, 1);
@@ -110,8 +110,8 @@ test("Sprint 9 Development social target execution concurrency", { skip: !enable
   let accountId: number | null = null;
   let policyId: number | null = null;
   let socialReelId: number | null = null;
+  let restorePublish: (() => void) | null = null;
   const requestIds: number[] = [];
-  const originalMethods: Record<string, unknown> = {};
   const calls: string[] = [];
   try {
     const { rows: [identity] } = await client.query("select current_database() database_name,current_setting('neon.project_id',true) project_id,current_setting('neon.branch_id',true) branch_id,current_setting('neon.endpoint_id',true) endpoint_id");
@@ -155,14 +155,12 @@ test("Sprint 9 Development social target execution concurrency", { skip: !enable
       async compareAndSwap() { return true; },
       async delete() {},
     });
-    for (const method of ["validateConnection", "findPublicationByIdempotencyKey", "preparePublication", "uploadMedia", "publish"] as const) {
-      originalMethods[method] = MockSocialPublishingProvider.prototype[method];
-      const original = MockSocialPublishingProvider.prototype[method];
-      MockSocialPublishingProvider.prototype[method] = async function (...args: never[]) {
-        calls.push(method);
-        return (original as (...inner: never[]) => Promise<unknown>).apply(this, args);
-      } as never;
-    }
+    const originalPublish = MockSocialPublishingProvider.prototype.publish;
+    MockSocialPublishingProvider.prototype.publish = async function (this: InstanceType<typeof MockSocialPublishingProvider>, ...args: Parameters<typeof originalPublish>) {
+      calls.push("publish");
+      return originalPublish.apply(this, args);
+    };
+    restorePublish = () => { MockSocialPublishingProvider.prototype.publish = originalPublish; };
 
     const createDestination = async (suffix: string) => {
       const hotReelId = socialReelId as number;
@@ -215,8 +213,7 @@ test("Sprint 9 Development social target execution concurrency", { skip: !enable
     assert.ok(source.indexOf("const providerCreateStarted") < source.indexOf("provider.publish"));
     console.log(JSON.stringify({ suspensionBeforeProvider: suspendedState.state, providerCallsAfterSuspension: suspensionProviderCalls, duplicateProviderPublishes, staleWorker: "terminal state preserved", acceptedBeforeLaterSuspension: acceptedAfter.state, providerOutsideTransaction: true }));
   } finally {
-    const { MockSocialPublishingProvider } = await import("../lib/social-publishing/provider/mock");
-    for (const [method, original] of Object.entries(originalMethods)) MockSocialPublishingProvider.prototype[method as keyof typeof MockSocialPublishingProvider.prototype] = original as never;
+    restorePublish?.();
     if (requestIds.length) await client.query("delete from social_distribution_requests where id=any($1::int[])", [requestIds]);
     if (accountId !== null) await client.query("delete from social_platform_accounts where id=$1 and public_id like $2", [accountId, `${prefix}%`]);
     if (socialReelId !== null) await client.query("delete from hot_reels where id=$1 and public_id like $2", [socialReelId, `${prefix}%`]);
