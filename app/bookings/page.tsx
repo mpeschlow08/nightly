@@ -19,11 +19,11 @@ export default async function BookingsPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(167,139,250,0.14),_transparent_25%),linear-gradient(140deg,_#04070b_0%,_#090d18_55%,_#111326_100%)] px-4 py-8 text-zinc-100 sm:px-6 lg:px-8">
+    <main className="nightly-page min-h-screen px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <section className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_90px_rgba(34,211,238,0.1)] backdrop-blur-xl sm:p-8">
-          <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Marketplace</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Your booking workspace</h1>
+        <section className="nightly-card-hero rounded-[2rem] p-6 sm:p-8">
+          <p className="nightly-eyebrow">Reservations</p>
+          <h1 className="nightly-display nightly-accent-heading mt-3">Your night, reserved.</h1>
           <p className="mt-3 max-w-3xl text-base text-zinc-300">
             Create booking requests, track status changes, and keep every quote, payment, and contract in one place.
           </p>

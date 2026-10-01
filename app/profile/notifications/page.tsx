@@ -1,0 +1,5 @@
+import AccountPageShell from "@/components/account/AccountPageShell";
+
+export default function NotificationsPage() {
+  return <AccountPageShell eyebrow="Notifications" title="Keep the useful stuff close." description="Your notification history and preferences stay separate from delivery infrastructure."><div className="nightly-surface-elevated p-5 sm:p-6"><div className="flex items-center justify-between gap-4"><div><h2 className="text-base font-semibold text-white">Notification history</h2><p className="mt-1 text-sm text-[color:var(--text-secondary)]">No new notifications are waiting.</p></div><span className="nightly-badge">All caught up</span></div><div className="mt-5 grid gap-3 sm:grid-cols-2">{["Friend requests", "Reservation updates", "Plan activity", "Premium updates"].map((item) => <div key={item} className="rounded-xl border border-white/10 bg-black/20 p-4"><p className="text-sm font-medium text-white">{item}</p><p className="mt-1 text-xs text-[color:var(--text-muted)]">Preference controls remain server-owned.</p></div>)}</div></div></AccountPageShell>;
+}

@@ -1,0 +1,9 @@
+import AccountPageShell from "@/components/account/AccountPageShell";
+import { getSocialDashboardData } from "@/lib/social/data";
+import { updatePrivacySettingsAction } from "@/app/crews/actions";
+
+export default async function PrivacyPage() {
+  const data = await getSocialDashboardData();
+  const privacy = data.privacy;
+  return <AccountPageShell eyebrow="Privacy" title="Share only what feels right." description="Nightly keeps social connection and location sharing separate. These controls map to the existing privacy architecture."><form action={updatePrivacySettingsAction} className="nightly-surface-elevated grid gap-5 p-5 sm:p-6"><div className="grid gap-4 sm:grid-cols-2">{[["profileVisibility", "Profile visibility", privacy?.profileVisibility ?? "friends"], ["presenceVisibility", "Night Out visibility", privacy?.presenceVisibility ?? "friends"], ["activityVisibility", "Activity visibility", privacy?.activityVisibility ?? "friends"], ["locationVisibility", "Location sharing", privacy?.locationVisibility ?? "close_friends"]].map(([name, label, value]) => <label key={name} className="grid gap-2 text-sm text-[color:var(--text-secondary)]"><span className="font-medium text-white">{label}</span><select name={name} defaultValue={value} className="nightly-control"><option value="public">Public</option><option value="friends">Friends</option><option value="close_friends">Close friends</option><option value="private">Private</option></select></label>)}</div><label className="flex items-center gap-3 text-sm text-[color:var(--text-secondary)]"><input type="checkbox" name="exactLocationShareAllowed" defaultChecked={privacy?.exactLocationShareAllowed ?? false} className="h-4 w-4 accent-violet-500" /> Allow exact location sharing when explicitly requested</label><button type="submit" className="nightly-btn-primary min-h-11 rounded-full px-5 text-sm">Save privacy settings</button></form></AccountPageShell>;
+}

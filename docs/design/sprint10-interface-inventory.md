@@ -16,6 +16,9 @@ Status reflects the first Foundation + Consumer Core pass.
 | Plans | `/crews/plans` | Create and manage lightweight night-out plans | Consumer | Implemented | Mobile-first | Existing `night_out_plans` model |
 | Plan detail | `/crews/plans/[id]` | Protected destination and attendee view | Consumer | Implemented | Mobile-first | Existing plan member/stop relations |
 | Friend QR scanner | `/crews/scan` | Camera QR scan with signed-token validation and code fallback | Consumer | Implemented | Mobile-first | Native `BarcodeDetector`, existing social token path |
+| Reservations | `/bookings`, `/bookings/[id]` | Request, track, review, and check in to reservations | Consumer | Existing, account entry points aligned | Mobile-first, desktop detail | Existing booking actions/data, canonical pricing |
+| Premium | `/profile/premium` | Explain current Premium value and billing boundary | Consumer | Implemented | Mobile-first | Existing commercial entitlement API |
+| Account settings | `/profile/settings` | Navigate privacy, notifications, Premium, and support | Consumer | Implemented | Mobile-first | Existing account/social services |
 | Consumer navigation | shared shell | Keep Home, Explore, Live, Concierge, Profile reachable | Consumer | Implemented | Touch-first mobile, compact desktop | `AppNavigation`, `AppHeader` |
 
 ## Canonical states
@@ -31,6 +34,7 @@ All Core surfaces use the shared route transition, loading files, empty states, 
 - [x] Hero media remains the first-viewport emotional anchor
 - [ ] Browser screenshot pass across mobile, tablet, and desktop
 - [ ] Authenticated Consumer Social visual QA (requires a signed-in Development browser session)
+- [ ] Authenticated Commerce/Account visual QA (requires a signed-in Development browser session)
 - [ ] DJ / Artist pass
 - [ ] VenueOS pass
 - [ ] Admin / Fleet pass

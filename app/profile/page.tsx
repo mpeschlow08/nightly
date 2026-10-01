@@ -7,12 +7,12 @@ export default function ProfilePage() {
   const { isLoaded, isSignedIn, user } = useUser();
 
   if (!isLoaded) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#04070b] text-zinc-200">Loading profile…</div>;
+    return <div className="nightly-page flex min-h-screen items-center justify-center text-zinc-200">Loading profile…</div>;
   }
 
   if (!isSignedIn || !user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#04070b] px-4 py-10 text-zinc-100">
+      <main className="nightly-page flex min-h-screen items-center justify-center px-4 py-10 text-zinc-100">
         <div className="max-w-md rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 text-center shadow-[0_0_90px_rgba(34,211,238,0.12)]">
           <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Nightly</p>
           <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to access your profile</h1>
@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const city = typeof metadata.city === "string" ? metadata.city : "Atlanta";
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.18),_transparent_32%),linear-gradient(135deg,_#04070b_0%,_#080b14_60%,_#0b1020_100%)] px-4 py-10 text-zinc-100 sm:px-6 lg:px-8">
+    <main className="nightly-page px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] backdrop-blur-xl sm:p-8 lg:p-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -44,6 +44,9 @@ export default function ProfilePage() {
           <div className="flex flex-wrap gap-3">
             <Link href="/discover" className="rounded-full border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
               Discover venues
+            </Link>
+            <Link href="/profile/settings" className="rounded-full border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-violet-300/40 hover:text-white">
+              Settings
             </Link>
             <SignOutButton>
               <button className="rounded-full border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
@@ -77,17 +80,18 @@ export default function ProfilePage() {
           </div>
 
           <div className="rounded-[1.5rem] border border-white/10 bg-zinc-950/80 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-400">Tonight’s picks</p>
-            <div className="mt-5 space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-400">Your Nightly tools</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {[
-                { name: "District Atlanta", reason: "Your EDM lane is lit tonight." },
-                { name: "Rose Bar", reason: "A warm late-night match for your taste." },
-                { name: "Tongue & Groove", reason: "Perfect for your current crew plan." },
-              ].map((item) => (
-                <div key={item.name} className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
-                  <p className="font-medium text-white">{item.name}</p>
-                  <p className="mt-1 text-zinc-400">{item.reason}</p>
-                </div>
+                ["Reservations", "/bookings", "View upcoming and past requests."],
+                ["Link Up", "/crews", "See friends, plans, and your Friend Code."],
+                ["Premium", "/profile/premium", "Review your current access."],
+                ["Privacy", "/profile/privacy", "Tune social and location sharing."],
+              ].map(([label, href, description]) => (
+                <Link key={href} href={href} className="nightly-card nightly-card-interactive rounded-[1.2rem] p-4 text-sm">
+                  <p className="font-medium text-white">{label}</p>
+                  <p className="mt-1 text-zinc-400">{description}</p>
+                </Link>
               ))}
             </div>
           </div>
