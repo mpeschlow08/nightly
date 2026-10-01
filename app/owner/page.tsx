@@ -66,10 +66,15 @@ export default async function OwnerDashboardPage() {
   const missingItems = completionItems.filter((item) => !item.done);
 
   return (
-    <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/75 p-6 shadow-[0_0_70px_rgba(34,211,238,0.08)] backdrop-blur-xl sm:p-8">
-      <p className="text-xs uppercase tracking-[0.32em] text-cyan-200/80">Owner Dashboard</p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">{venue.name}</h2>
-      <p className="mt-2 text-sm text-zinc-300">Venue overview for your assigned owner membership.</p>
+    <section className="nightly-card-hero rounded-[1.7rem] p-6 sm:p-8">
+      <p className="nightly-eyebrow">VenueOS / Tonight</p>
+      <h2 className="nightly-display nightly-accent-heading mt-3">{venue.name}</h2>
+      <p className="mt-2 text-sm text-[color:var(--text-secondary)]">Run the venue from one calm command center.</p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link href="/owner/operations" className="nightly-btn-primary min-h-11 rounded-full px-4 text-sm">Open Tonight</Link>
+        <Link href="/owner/arrivals" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-sm">View arrivals</Link>
+        <Link href="/owner/devices" className="nightly-btn-secondary min-h-11 rounded-full px-4 text-sm">Check readiness</Link>
+      </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4">

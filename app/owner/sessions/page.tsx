@@ -29,9 +29,9 @@ export default async function OwnerSessionsPage() {
     roles.add(source.role);
     rolesBySession.set(source.sessionId, roles);
   }
-  return <main className="min-h-screen bg-[#080b12] px-4 py-8 text-zinc-100 sm:px-6"><div className="mx-auto max-w-4xl space-y-8">
-    <header className="flex items-center justify-between gap-4"><div><p className="text-xs uppercase text-cyan-300">VenueOS</p>
-      <h1 className="mt-2 text-3xl font-semibold">DJ sessions</h1><p className="mt-2 text-sm text-zinc-400">{venue.name}</p></div>
+  return <main className="nightly-page min-h-screen px-4 py-6 text-zinc-100 sm:px-6"><div className="mx-auto max-w-4xl space-y-8">
+    <header className="nightly-card-hero rounded-[1.7rem] p-5"><div><p className="nightly-eyebrow">VenueOS / Artist Sessions</p>
+      <h1 className="nightly-display nightly-accent-heading mt-2">DJ sessions</h1><p className="mt-2 text-sm text-zinc-400">{venue.name}</p></div>
       <Link href="/owner/dashboard" className="text-sm text-zinc-400 hover:text-white">Dashboard</Link></header>
     <section><h2 className="text-lg font-medium">Recent sets</h2><div className="mt-4 divide-y divide-white/10">
       {sessions.map((session) => {

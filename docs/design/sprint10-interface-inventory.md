@@ -23,6 +23,11 @@ Status reflects the first Foundation + Consumer Core pass.
 | Artist sessions | `/dj/sessions` | Check in, start, perform, review, and end a Nightly Session | DJ/Artist | Existing, visually aligned | Mobile-first | Artist Session service and media rows |
 | Artist moments | `/dj/reels` | Review captured moments and session context | DJ/Artist | Implemented | Mobile-first | Existing session media service |
 | Artist analytics | `/dj/analytics` | Honest performance history state | DJ/Artist | Implemented | Responsive desktop | Existing session/media data boundary |
+| VenueOS dashboard | `/owner` | Venue readiness, tonight, arrivals, media, and attention | Venue owner | Foundation pass underway | Tablet/desktop first | Existing owner data and feature gates |
+| VenueOS operations | `/owner/operations` | Run of show, tasks, incidents, and operational queues | Owner/Tech Operator | Existing, visually aligned | Tablet/desktop first | Existing VenueOS module data/actions |
+| Nightly Box | `/owner/devices` | Appliance readiness, commissioning, and health | Owner/Tech Operator | Existing, visually aligned | Tablet/desktop first | Fleet/device policy and scoped actions |
+| Venue cameras | `/owner/cameras` | Camera source state and public playback controls | Owner | Existing, feature-gated | Tablet/desktop first | Existing camera actions and live feature gate |
+| Venue publishing | `/owner/publishing` | Venue publication readiness and social publishing | Owner | Existing, visually aligned | Tablet/desktop first | Existing publish/social services |
 | Consumer navigation | shared shell | Keep Home, Explore, Live, Concierge, Profile reachable | Consumer | Implemented | Touch-first mobile, compact desktop | `AppNavigation`, `AppHeader` |
 
 ## Canonical states
