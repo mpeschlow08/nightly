@@ -250,8 +250,8 @@ function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
     return [
       { label: "Home", href: "/home", icon: "◉" },
       { label: "Discover", href: "/discover", icon: "⌕" },
-      { label: "Live", href: "/live", icon: "●" },
-      { label: "Concierge", href: "/concierge", icon: "✦" },
+      { label: "Hot Reels", href: "/live", icon: "●" },
+      { label: "Link Up", href: "/crews", icon: "✦" },
       { label: "Profile", href: "/profile", icon: "◌" },
     ];
   }

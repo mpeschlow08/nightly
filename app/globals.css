@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #05070c;
-  --surface: #0b1019;
-  --surface-elevated: #111827;
-  --surface-interactive: #161f33;
-  --border: rgba(196, 211, 255, 0.14);
-  --border-active: rgba(90, 201, 255, 0.5);
+  --background: #07060b;
+  --surface: #100d18;
+  --surface-elevated: #181329;
+  --surface-interactive: #241b3d;
+  --border: rgba(226, 216, 255, 0.14);
+  --border-active: rgba(162, 117, 255, 0.62);
 
   --foreground: #f5f7fb;
   --text-primary: #f7f9ff;
   --text-secondary: #c7d0e7;
   --text-muted: #8f9ab5;
 
-  --brand: #4cc7ff;
-  --brand-hover: #72d5ff;
-  --brand-glow: rgba(76, 199, 255, 0.35);
-  --accent-violet: #7f6bff;
+  --brand: #a875ff;
+  --brand-hover: #c39aff;
+  --brand-glow: rgba(168, 117, 255, 0.32);
+  --accent-violet: #a875ff;
+  --accent-blue: #53b9ff;
 
   --success: #45d1a5;
   --warning: #f4b85c;
@@ -62,22 +63,24 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1.45;
 }
 
 ::selection {
-  background: rgba(76, 199, 255, 0.35);
+  background: rgba(168, 117, 255, 0.4);
   color: white;
 }
 
 button:focus {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(76, 199, 255, 0.12);
+  box-shadow: 0 0 0 4px rgba(168, 117, 255, 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -94,9 +97,9 @@ button:focus {
 @layer base {
   body {
     background-image:
-      radial-gradient(circle at 10% -18%, rgba(76, 199, 255, 0.13), transparent 42%),
-      radial-gradient(circle at 90% -20%, rgba(127, 107, 255, 0.11), transparent 38%),
-      linear-gradient(180deg, #05070c 0%, #070b13 38%, #080d18 100%);
+      radial-gradient(circle at 12% -16%, rgba(168, 117, 255, 0.16), transparent 40%),
+      radial-gradient(circle at 88% -16%, rgba(83, 185, 255, 0.1), transparent 34%),
+      linear-gradient(180deg, #07060b 0%, #0a0811 42%, #0d0916 100%);
     min-height: 100vh;
   }
 
@@ -138,8 +141,8 @@ button:focus {
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(circle at 16% -5%, rgba(76, 199, 255, 0.14), transparent 34%),
-      radial-gradient(circle at 84% -2%, rgba(127, 107, 255, 0.12), transparent 30%);
+      radial-gradient(circle at 16% -5%, rgba(168, 117, 255, 0.16), transparent 34%),
+      radial-gradient(circle at 84% -2%, rgba(83, 185, 255, 0.1), transparent 30%);
     z-index: -1;
   }
 
@@ -149,6 +152,37 @@ button:focus {
     letter-spacing: -0.03em;
     font-weight: 640;
     color: var(--text-primary);
+  }
+
+  .nightly-eyebrow {
+    color: #d7c4ff;
+    font-size: 0.66rem;
+    font-weight: 680;
+    letter-spacing: 0.2em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .nightly-accent-heading {
+    background: linear-gradient(110deg, #ffffff 8%, #d7c4ff 54%, #9cceff 100%);
+    background-clip: text;
+    color: transparent;
+  }
+
+  .nightly-control {
+    min-height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--text-secondary);
+    padding-inline: 0.9rem;
+  }
+
+  .nightly-media-hero {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--elevation-2);
+    overflow: hidden;
   }
 
   .nightly-page-title {
@@ -175,10 +209,6 @@ button:focus {
 
   .nightly-route-transition {
     animation: nightly-page-enter var(--nightly-motion-slow) var(--nightly-ease-standard);
-  }
-
-  .nightly-route-transition {
-    animation: nightly-page-enter 320ms var(--nightly-ease-standard);
   }
 
   .nightly-fade-in {
@@ -222,8 +252,8 @@ button:focus {
   }
 
   .nightly-chip[data-active="true"] {
-    border-color: rgba(127, 107, 255, 0.62);
-    background: linear-gradient(120deg, rgba(127, 107, 255, 0.88), rgba(76, 199, 255, 0.72));
+    border-color: rgba(168, 117, 255, 0.68);
+    background: linear-gradient(120deg, rgba(168, 117, 255, 0.9), rgba(83, 185, 255, 0.72));
     color: white;
     box-shadow: 0 6px 24px rgba(109, 134, 255, 0.22);
   }
@@ -312,7 +342,7 @@ button:focus {
   .nightly-btn-secondary:hover,
   .nightly-btn-secondary:focus-visible {
     border-color: var(--border-active);
-    background-color: rgba(76, 199, 255, 0.12);
+    background-color: rgba(168, 117, 255, 0.12);
   }
 }
 

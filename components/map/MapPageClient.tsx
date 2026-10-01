@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import type { ConsumerVenueCard } from "@/lib/consumer/types";
 import type { MapVenue } from "@/components/MapLeaflet";
+import NightlyButton from "@/components/nightly/NightlyButton";
 
 type CrowdFilter = "any" | "quiet" | "busy" | "packed";
 
@@ -94,16 +95,16 @@ export default function MapPageClient({ venues }: MapPageClientProps) {
   }, [nearMe]);
 
   return (
-    <div className="min-h-screen bg-[#04070b] text-zinc-100 antialiased">
+    <div className="nightly-page min-h-screen text-zinc-100 antialiased">
       <div className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,179,255,0.18),_transparent_30%),radial-gradient(circle_at_90%_10%,_rgba(155,92,255,0.16),_transparent_22%)]" />
 
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
-          <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:p-8 lg:p-10">
+          <section className="nightly-surface-elevated p-5 sm:p-7 lg:p-9">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
-                <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Map</p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                <p className="nightly-eyebrow">Explore the city</p>
+                <h1 className="nightly-page-title nightly-accent-heading mt-3 sm:text-4xl">
                   Nightlife Map
                 </h1>
                 <p className="mt-4 text-base leading-7 text-zinc-300">
@@ -112,19 +113,17 @@ export default function MapPageClient({ venues }: MapPageClientProps) {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => setNearMe((value) => !value)} className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90">
+                <button type="button" onClick={() => setNearMe((value) => !value)} className="nightly-btn-primary min-h-11 rounded-full border border-transparent bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 px-4 py-2.5 text-sm font-medium text-white">
                   {nearMe ? "Near me on" : "Near Me"}
                 </button>
-                <Link href="/discover" className="rounded-full border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-400/40 hover:text-white">
-                  Discover venues
-                </Link>
+                <NightlyButton href="/discover" variant="secondary">Discover venues</NightlyButton>
               </div>
             </div>
 
             <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr_0.8fr_0.8fr]">
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Genre</label>
-                <select value={selectedGenre} onChange={(event) => setSelectedGenre(event.target.value)} className="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none">
+                <select value={selectedGenre} onChange={(event) => setSelectedGenre(event.target.value)} className="nightly-control w-full outline-none">
                   <option value="any">Any genre</option>
                   {genreOptions.map((genre) => (
                     <option key={genre} value={genre}>
@@ -136,7 +135,7 @@ export default function MapPageClient({ venues }: MapPageClientProps) {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Distance</label>
-                <select value={distance} onChange={(event) => setDistance(event.target.value)} className="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none">
+                <select value={distance} onChange={(event) => setDistance(event.target.value)} className="nightly-control w-full outline-none">
                   <option value="any">Any distance</option>
                   <option value="under-2">Under 2 mi</option>
                   <option value="under-5">Under 5 mi</option>
@@ -145,7 +144,7 @@ export default function MapPageClient({ venues }: MapPageClientProps) {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Crowd</label>
-                <select value={crowd} onChange={(event) => setCrowd(event.target.value as CrowdFilter)} className="w-full rounded-full border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-white outline-none">
+                <select value={crowd} onChange={(event) => setCrowd(event.target.value as CrowdFilter)} className="nightly-control w-full outline-none">
                   <option value="any">Any mood</option>
                   <option value="quiet">Quiet</option>
                   <option value="busy">Busy</option>
@@ -153,7 +152,7 @@ export default function MapPageClient({ venues }: MapPageClientProps) {
                 </select>
               </div>
 
-              <label className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2.5 text-sm text-zinc-200">
+              <label className="nightly-control flex items-center justify-center gap-2 text-sm">
                 <input type="checkbox" checked={openNowOnly} onChange={() => setOpenNowOnly((value) => !value)} className="h-4 w-4 rounded border-white/20 accent-cyan-500" />
                 Open now
               </label>

@@ -140,7 +140,7 @@ export default function MapLeaflet({ venues, selectedVenue, onSelectVenue, cente
 
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-zinc-400">{selectedVenue.neighborhood}</p>
-            <a href={`/venues/${selectedVenue.slug}`} className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90">
+            <a href={selectedVenue.href} className="rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90">
               Open venue
             </a>
           </div>

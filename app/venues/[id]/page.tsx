@@ -130,7 +130,7 @@ async function VenueContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main className="nightly-page min-h-screen overflow-x-hidden antialiased">
       <div className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(26,124,212,0.2),_transparent_35%),radial-gradient(circle_at_88%_7%,_rgba(255,126,92,0.16),_transparent_24%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(168,117,255,0.18),_transparent_35%),radial-gradient(circle_at_88%_7%,_rgba(83,185,255,0.12),_transparent_24%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-4 sm:px-6 lg:px-8">
           <section className="nightly-surface-elevated overflow-hidden">

@@ -97,7 +97,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   return (
     <main className="nightly-page min-h-screen overflow-x-hidden antialiased">
       <div className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(24,136,201,0.2),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(255,120,90,0.18),_transparent_26%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(168,117,255,0.18),_transparent_34%),radial-gradient(circle_at_90%_8%,_rgba(83,185,255,0.12),_transparent_26%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-4 sm:px-6 lg:px-8">
           <section className="nightly-surface-elevated overflow-hidden">

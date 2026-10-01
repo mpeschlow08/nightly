@@ -25,8 +25,8 @@ export default function Hero({ greeting, title, subtitle, featuredVenue }: HeroP
       <div className="nightly-card-hero nightly-fade-in overflow-hidden rounded-[1.35rem] p-4 sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
-            <p className="text-xs font-medium tracking-[0.04em] text-[color:var(--text-secondary)]">{greeting}</p>
-            <h1 className="nightly-display mt-2">
+            <p className="nightly-eyebrow">{greeting}</p>
+            <h1 className="nightly-display nightly-accent-heading mt-2">
               {title}
             </h1>
             <p className="mt-3 max-w-[46ch] text-sm leading-6 text-[color:var(--text-secondary)]">

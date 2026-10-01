@@ -27,7 +27,7 @@ function isLinkProps(
 
 function variantClassName(variant: NightlyButtonVariant) {
   if (variant === "primary") {
-    return "nightly-btn-primary border-transparent bg-gradient-to-r from-sky-400 to-violet-500 text-white hover:from-sky-300 hover:to-violet-400";
+    return "nightly-btn-primary border-transparent bg-gradient-to-r from-violet-400 via-fuchsia-400 to-sky-400 text-white hover:from-violet-300 hover:via-fuchsia-300 hover:to-sky-300";
   }
 
   if (variant === "ghost") {
