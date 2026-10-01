@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { Compass, House, Map, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import AppHeader from "@/components/navigation/AppHeader";
@@ -30,6 +31,14 @@ type BottomNavItem = {
   label: string;
   href: string;
   icon: string;
+};
+
+const consumerBottomIcons: Record<string, LucideIcon> = {
+  home: House,
+  explore: Compass,
+  map: Map,
+  linkUp: UsersRound,
+  profile: UserRound,
 };
 
 const roleFallbackByHistory: Record<Exclude<AppRole, null>, string> = {
@@ -249,11 +258,11 @@ function isConsumerHomePath(pathname: string) {
 function getBottomNavItems(role: Exclude<AppRole, null>): BottomNavItem[] {
   if (role === "consumer") {
     return [
-      { label: "Home", href: "/home", icon: "◉" },
-      { label: "Explore", href: "/discover", icon: "⌕" },
-      { label: "Map", href: "/map", icon: "⌖" },
-      { label: "Link Up", href: "/crews", icon: "✦" },
-      { label: "Profile", href: "/profile", icon: "◌" },
+      { label: "Home", href: "/home", icon: "home" },
+      { label: "Explore", href: "/discover", icon: "explore" },
+      { label: "Map", href: "/map", icon: "map" },
+      { label: "Link Up", href: "/crews", icon: "linkUp" },
+      { label: "Profile", href: "/profile", icon: "profile" },
     ];
   }
 
@@ -345,6 +354,21 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
     router.push(fallback);
   };
 
+  const appHeader = (
+    <AppHeader
+      activeRole={activeRole}
+      currentPath={pathname}
+      pageTitle={pageTitle}
+      breadcrumbs={breadcrumbs}
+      mobileMenuOpen={mobileMenuOpen}
+      onToggleMobileMenu={() => setMobileMenuOpen((value) => !value)}
+      onBack={onBack}
+      showBackButton={showBackButton}
+      isSignedIn={isSignedInUser}
+      alwaysShowLogo={isConsumerHome}
+    />
+  );
+
   if (shouldHide) {
     return <div className="nightly-route-transition">{children}</div>;
   }
@@ -397,18 +421,7 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader
-            activeRole={activeRole}
-            currentPath={pathname}
-            pageTitle={pageTitle}
-            breadcrumbs={breadcrumbs}
-            mobileMenuOpen={mobileMenuOpen}
-            onToggleMobileMenu={() => setMobileMenuOpen((value) => !value)}
-            onBack={onBack}
-            showBackButton={showBackButton}
-            isSignedIn={isSignedInUser}
-            alwaysShowLogo={isConsumerHome}
-          />
+          {isConsumerHome ? <div className="hidden lg:block">{appHeader}</div> : appHeader}
 
           {mobileMenuOpen ? (
             <div className="nightly-nav-blur border-b border-[color:var(--border)] px-4 py-3 lg:hidden">
@@ -445,12 +458,13 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
             </div>
           ) : null}
 
-          <main className="nightly-route-transition min-h-0 flex-1 pb-28 lg:pb-8">{children}</main>
+          <main className={`nightly-route-transition min-h-0 flex-1 ${isConsumerHome ? "pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-8" : "pb-28 lg:pb-8"}`}>{children}</main>
 
-          <nav className="nightly-nav-blur nightly-bottom-safe fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--border)] px-2 pt-2 lg:hidden">
-            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1.5 text-xs">
+          <nav className={`${layoutRole === "consumer" ? "bg-[#09080e]/95 backdrop-blur-xl" : "nightly-nav-blur"} nightly-bottom-safe fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--border)] px-2 pt-1.5 lg:hidden`}>
+            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1 text-xs">
               {bottomNavItems.map((item) => {
                 const active = isCurrentPath(pathname, item.href);
+                const Icon = consumerBottomIcons[item.icon];
 
                 return (
                   <Link
@@ -459,14 +473,18 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
                     prefetch={item.href !== "/profile" && item.href !== "/crews"}
                     className={`min-h-11 rounded-xl px-1.5 py-1.5 text-center transition ${
                       active
-                        ? layoutRole === "consumer" ? "border border-violet-300/35 bg-violet-400/10 text-white" : "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
+                        ? layoutRole === "consumer" ? "text-violet-100" : "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
                         : "border border-transparent bg-white/5 text-[color:var(--text-secondary)] hover:border-[color:var(--border)]"
                     }`}
                     aria-label={item.label}
                     aria-current={active ? "page" : undefined}
                   >
-                    <span className="block text-sm leading-none" aria-hidden="true">{item.icon}</span>
-                    <span className="mt-1 block text-[0.62rem] leading-none">{item.label}</span>
+                    {layoutRole === "consumer" && Icon ? (
+                      <Icon className={`mx-auto block h-[18px] w-[18px] ${active ? "text-violet-300" : ""}`} strokeWidth={active ? 2.2 : 1.75} aria-hidden="true" />
+                    ) : (
+                      <span className="block text-sm leading-none" aria-hidden="true">{item.icon}</span>
+                    )}
+                    <span className={`mt-1 block text-[0.62rem] leading-none ${active && layoutRole === "consumer" ? "font-semibold text-violet-100" : ""}`}>{item.label}</span>
                   </Link>
                 );
               })}
