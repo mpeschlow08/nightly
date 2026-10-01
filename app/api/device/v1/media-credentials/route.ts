@@ -28,6 +28,8 @@ export async function POST(request: Request) {
       id: nightlyDevices.id, venueId: nightlyDevices.venueId,
       desiredConfigRevision: nightlyDevices.desiredConfigRevision,
       lifecycleState: nightlyDevices.lifecycleState, claimState: nightlyDevices.claimState,
+      serviceEntitlementState: nightlyDevices.serviceEntitlementState,
+      serviceSuspendedAt: nightlyDevices.serviceSuspendedAt,
       contentEligibility: nightlyDevices.contentEligibility,
       hotReelEligible: nightlyDevices.hotReelEligible,
       publicPublishingEnabled: nightlyDevices.publicPublishingEnabled,
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
     }).from(nightlyDevices).where(eq(nightlyDevices.id, identity.id)).for("share").limit(1);
 
     if (!device || !device.venueId || !operationalAllowed(device) ||
+      device.serviceEntitlementState !== "active" || device.serviceSuspendedAt !== null ||
       device.contentEligibility !== "approved" ||
       device.hotReelEligible !== true || device.publicPublishingEnabled !== true) {
       return NextResponse.json(createAuthError("device_unavailable", "Device access is unavailable."), { status: 403, headers: responseHeaders });

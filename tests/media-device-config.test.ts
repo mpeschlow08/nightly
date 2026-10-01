@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { canResolveDeviceMediaCredential, projectDeviceMediaBindings, projectDeviceMediaConfig, type MediaBindingRow } from "../lib/nightly-device/media-bindings";
@@ -61,4 +62,12 @@ test("credential access requires active service and operational management", () 
   assert.equal(canUseDeviceForOperationalManagement({ ...state, lifecycleState: "revoked" }), false);
   assert.equal(canUseDeviceForOperationalManagement({ ...state, managementRecoveryEligible: false }), false);
   assert.equal(canUseDeviceForOperationalManagement({ ...state, managementAccessLevel: "recovery_only" }), false);
+});
+
+test("media credential route denies immediately suspended devices before resolving camera credentials", async () => {
+  const route = await readFile("app/api/device/v1/media-credentials/route.ts", "utf8");
+  assert.match(route, /serviceEntitlementState: nightlyDevices\.serviceEntitlementState/);
+  assert.match(route, /serviceSuspendedAt: nightlyDevices\.serviceSuspendedAt/);
+  assert.match(route, /device\.serviceEntitlementState !== "active"/);
+  assert.match(route, /device\.serviceSuspendedAt !== null/);
 });

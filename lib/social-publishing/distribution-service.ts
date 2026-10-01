@@ -1093,6 +1093,8 @@ async function executeClaimedDestination(claimed: NonNullable<Awaited<ReturnType
       deviceLifecycleState: row.deviceLifecycleState, serviceEntitlementState: row.serviceEntitlementState, serviceSuspendedAt: row.serviceSuspendedAt,
       contentEligibility: row.contentEligibility, hotReelEligible: row.hotReelEligible, publicPublishingEnabled: row.publicPublishingEnabled, privacyMode: row.privacyMode,
     })) throw new SocialProviderError("media_not_eligible", false);
+    const preflightCommercial = await evaluateCommercialEntitlement({ scope: "venue", scopeId: destination.venueId, capability: "venue.social_publishing" });
+    if (!preflightCommercial.allowed) return cancelClaimedDestination(claimed, preflightCommercial.reasonCode === "suspended" ? "entitlement_suspended" : "entitlement_required");
     if (account.venueId !== destination.venueId || account.connectionState !== "connected" || account.authorizationState !== "valid" || account.reconnectRequired || !account.credentialRef || (account.expiresAt && account.expiresAt <= new Date())) {
       throw new SocialProviderError("account_disconnected", false);
     }
