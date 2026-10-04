@@ -1,6 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { CalendarDays, CircleUserRound, Clapperboard } from "lucide-react";
+import { CircleUserRound, Clapperboard } from "lucide-react";
 
 import HomePhotoCard, { type HomePhotoItem } from "@/components/home/HomePhotoCard";
 import { getHomeData } from "@/lib/consumer/data";
@@ -13,17 +13,14 @@ function hasPhotographicImage(imageUrl: string | null | undefined) {
 }
 
 function crowdLabel(level: string | null) {
-  if (level === "Packed") return "Very Busy";
-  if (level === "Buzzing") return "Busy";
-  if (level === "Steady") return "Steady";
-  if (level === "Mellow") return "Mellow";
-  return null;
+  return level;
 }
 
 function toVenuePhotoItem(venue: ConsumerVenueCard): HomePhotoItem {
   const isLive = venue.liveLabel === "EVENT LIVE" || venue.liveLabel === "CAMERA LIVE";
   return {
     id: `venue-${venue.id}`,
+    analyticsId: venue.id,
     kind: "venue",
     href: venue.href,
     name: venue.name,
@@ -40,6 +37,7 @@ function toVenuePhotoItem(venue: ConsumerVenueCard): HomePhotoItem {
 function toEventPhotoItem(event: ConsumerEventCard): HomePhotoItem {
   return {
     id: `event-${event.id}`,
+    analyticsId: event.id,
     kind: "event",
     href: event.href,
     name: event.name,
@@ -53,51 +51,35 @@ function toEventPhotoItem(event: ConsumerEventCard): HomePhotoItem {
   };
 }
 
-function HomeMobile({
-  displayName,
-  isSignedIn,
-  items,
-  liveAvailable,
-  eventAvailable,
-}: {
-  displayName: string | null;
-  isSignedIn: boolean;
-  items: HomePhotoItem[];
-  liveAvailable: boolean;
-  eventAvailable: boolean;
-}) {
+function HomeMobile({ displayName, items }: { displayName: string | null; items: HomePhotoItem[] }) {
   const [primary, secondary, ...more] = items;
 
   return (
     <section className="home-mobile mx-auto w-full px-4 pb-8 pt-[max(10px,env(safe-area-inset-top))] md:hidden" aria-label="Nightly tonight">
-      <header className="mb-3 flex min-h-10 items-center justify-between gap-3">
+      <header className="mb-2 flex min-h-10 items-center">
         <p className="min-w-0 text-[15px] font-semibold leading-[1.12] text-white">
-          <span className="block">Good evening,</span>
-          <span className="mt-0.5 block">{displayName ?? "Atlanta"} <span aria-hidden="true">👋</span></span>
+          {displayName ? (
+            <>
+              <span className="block">Good evening,</span>
+              <span className="mt-0.5 block">{displayName} <span aria-hidden="true">👋</span></span>
+            </>
+          ) : (
+            <>Good evening <span aria-hidden="true">👋</span></>
+          )}
         </p>
-        <Link
-          href={isSignedIn ? "/profile" : "/sign-in"}
-          prefetch={false}
-          aria-label={isSignedIn ? "Open profile" : "Sign in"}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#111019] text-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70"
-        >
-          <CircleUserRound size={18} strokeWidth={1.8} aria-hidden="true" />
-        </Link>
       </header>
 
-      <div className="mb-2.5 flex min-h-7 items-center justify-between gap-3">
-        <h1 className="text-[19px] font-semibold leading-tight text-white">Tonight in Atlanta</h1>
-        {liveAvailable ? (
-          <Link href="/live" prefetch={false} className="shrink-0 text-[11px] font-semibold text-rose-200">Live now</Link>
-        ) : eventAvailable ? (
-          <Link href="/events" className="shrink-0 text-[11px] font-medium text-violet-200">Events</Link>
-        ) : null}
+      <div className="mb-2.5 flex min-h-7 items-center justify-between rounded-[7px] border border-violet-300/25 bg-[linear-gradient(100deg,rgba(114,58,204,0.16),rgba(28,20,42,0.72)_55%,rgba(16,13,24,0.8))] px-2.5 shadow-[0_0_12px_rgba(128,71,230,0.08)]">
+        <h1 className="text-[13px] font-semibold leading-none text-white">Tonight in Atlanta</h1>
+        <Link href="/live" prefetch={false} aria-label="Open Hot Reels" title="Hot Reels" className="inline-flex h-6 w-6 items-center justify-center text-white/70 transition hover:text-violet-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70">
+          <Clapperboard size={14} strokeWidth={1.7} aria-hidden="true" />
+        </Link>
       </div>
 
       {primary ? (
-        <div className="grid gap-2.5">
-          <HomePhotoCard item={primary} priority className="home-mobile-photo aspect-[1.45]" />
-          {secondary ? <HomePhotoCard item={secondary} className="home-mobile-photo aspect-[1.45]" /> : null}
+        <div className="grid gap-1.5">
+          <HomePhotoCard item={primary} priority className="home-mobile-photo home-mobile-photo-primary aspect-[1.45]" />
+          {secondary ? <HomePhotoCard item={secondary} className="home-mobile-photo home-mobile-photo-secondary aspect-[1.08]" /> : null}
         </div>
       ) : (
         <Link href="/discover" className="flex aspect-[1.72] items-end rounded-[15px] border border-white/10 bg-[#100d18] p-4 text-sm text-white">
@@ -113,24 +95,6 @@ function HomeMobile({
           </div>
         </section>
       ) : null}
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Link href="/live" prefetch={false} className="flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#100d18] text-[11px] font-medium text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70">
-          <Clapperboard size={15} strokeWidth={1.8} aria-hidden="true" />
-          Hot Reels
-        </Link>
-        {eventAvailable ? (
-          <Link href="/events" className="flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#100d18] text-[11px] font-medium text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70">
-            <CalendarDays size={15} strokeWidth={1.8} aria-hidden="true" />
-            Events
-          </Link>
-        ) : (
-          <Link href="/discover" className="flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#100d18] text-[11px] font-medium text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70">
-            <CalendarDays size={15} strokeWidth={1.8} aria-hidden="true" />
-            Explore
-          </Link>
-        )}
-      </div>
     </section>
   );
 }
@@ -250,7 +214,7 @@ export default async function ConsumerHomePage() {
 
   return (
     <div className="nightly-page nightly-page-shell nightly-home">
-      <HomeMobile displayName={displayName} isSignedIn={isSignedIn} items={photoItems} liveAvailable={liveAvailable} eventAvailable={events.length > 0} />
+      <HomeMobile displayName={displayName} items={photoItems} />
       <HomeTablet displayName={displayName} isSignedIn={isSignedIn} items={photoItems} liveAvailable={liveAvailable} eventAvailable={events.length > 0} />
       <HomeDesktop displayName={displayName} items={photoItems} liveAvailable={liveAvailable} eventAvailable={events.length > 0} />
     </div>

@@ -458,10 +458,10 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
             </div>
           ) : null}
 
-          <main className={`nightly-route-transition min-h-0 flex-1 ${isConsumerHome ? "pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-8" : "pb-28 lg:pb-8"}`}>{children}</main>
+          <main className={`nightly-route-transition min-h-0 flex-1 ${isConsumerHome ? "pb-[calc(3.25rem+env(safe-area-inset-bottom))] lg:pb-8" : "pb-28 lg:pb-8"}`}>{children}</main>
 
-          <nav className={`${layoutRole === "consumer" ? "bg-[#09080e]/95 backdrop-blur-xl" : "nightly-nav-blur"} nightly-bottom-safe fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--border)] px-2 pt-1.5 lg:hidden`}>
-            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1 text-xs">
+          <nav className={`${layoutRole === "consumer" ? "bg-[#08070c]/96 backdrop-blur-xl" : "nightly-nav-blur"} nightly-bottom-safe fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] px-3 pt-1 lg:hidden`}>
+            <div className="mx-auto grid max-w-3xl grid-cols-5 gap-0.5 text-xs">
               {bottomNavItems.map((item) => {
                 const active = isCurrentPath(pathname, item.href);
                 const Icon = consumerBottomIcons[item.icon];
@@ -471,20 +471,20 @@ export default function AppNavigation({ role, hasDeviceAccess, children }: AppNa
                     key={item.label}
                     href={item.href}
                     prefetch={item.href !== "/profile" && item.href !== "/crews"}
-                    className={`min-h-11 rounded-xl px-1.5 py-1.5 text-center transition ${
+                    className={`min-h-9 rounded-md px-1 py-1 text-center transition ${
                       active
                         ? layoutRole === "consumer" ? "text-violet-100" : "border border-[color:var(--border-active)] bg-[rgba(76,199,255,0.16)] text-[color:var(--text-primary)]"
-                        : "border border-transparent bg-white/5 text-[color:var(--text-secondary)] hover:border-[color:var(--border)]"
+                        : layoutRole === "consumer" ? "bg-transparent text-white/50 hover:text-white/80" : "border border-transparent bg-white/5 text-[color:var(--text-secondary)] hover:border-[color:var(--border)]"
                     }`}
                     aria-label={item.label}
                     aria-current={active ? "page" : undefined}
                   >
                     {layoutRole === "consumer" && Icon ? (
-                      <Icon className={`mx-auto block h-[18px] w-[18px] ${active ? "text-violet-300" : ""}`} strokeWidth={active ? 2.2 : 1.75} aria-hidden="true" />
+                      <Icon className={`mx-auto block h-4 w-4 ${active ? "text-violet-300" : ""}`} strokeWidth={active ? 2.1 : 1.65} aria-hidden="true" />
                     ) : (
                       <span className="block text-sm leading-none" aria-hidden="true">{item.icon}</span>
                     )}
-                    <span className={`mt-1 block text-[0.62rem] leading-none ${active && layoutRole === "consumer" ? "font-semibold text-violet-100" : ""}`}>{item.label}</span>
+                    <span className={`mt-0.5 block text-[0.58rem] leading-none ${active && layoutRole === "consumer" ? "font-semibold text-violet-100" : ""}`}>{item.label}</span>
                   </Link>
                 );
               })}
