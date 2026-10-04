@@ -55,7 +55,7 @@ function HomeMobile({ displayName, isSignedIn, items }: { displayName: string | 
   const [primary, secondary, ...more] = items;
 
   return (
-    <section className="home-mobile mx-auto w-full px-4 pb-8 pt-[max(10px,env(safe-area-inset-top))] md:hidden" aria-label="Nightly tonight">
+    <section className="home-mobile mx-auto w-full px-4 pb-8 pt-[max(18px,env(safe-area-inset-top))] md:hidden" aria-label="Nightly tonight">
       <header className="mb-2 flex min-h-9 items-center justify-between gap-2">
         <p className="min-w-0 text-[13px] font-semibold leading-[1.08] text-white">
           {displayName ? (
@@ -72,7 +72,7 @@ function HomeMobile({ displayName, isSignedIn, items }: { displayName: string | 
         </Link>
       </header>
 
-      <div className="mb-2 flex min-h-6 items-center justify-between gap-2">
+      <div className="mb-1 flex min-h-5 items-center justify-between gap-2">
         <h1 className="text-[13px] font-semibold leading-none text-white">Tonight in Atlanta</h1>
         <Link href="/live" prefetch={false} aria-label="Open Hot Reels" title="Hot Reels" className="inline-flex h-6 w-6 items-center justify-center text-white/55 transition hover:text-violet-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/70">
           <Clapperboard size={13} strokeWidth={1.6} aria-hidden="true" />
@@ -81,8 +81,8 @@ function HomeMobile({ displayName, isSignedIn, items }: { displayName: string | 
 
       {primary ? (
         <div className="grid gap-1">
-          <HomePhotoCard item={primary} priority className="home-mobile-photo aspect-[1.2]" />
-          {secondary ? <HomePhotoCard item={secondary} className="home-mobile-photo aspect-[1.2]" /> : null}
+          <HomePhotoCard item={primary} priority className="home-mobile-photo aspect-[1.28]" />
+          {secondary ? <HomePhotoCard item={secondary} className="home-mobile-photo aspect-[1.28]" /> : null}
         </div>
       ) : (
         <Link href="/discover" className="flex aspect-[1.72] items-end rounded-[15px] border border-white/10 bg-[#100d18] p-4 text-sm text-white">

@@ -31,7 +31,8 @@ type HomePhotoCardProps = {
 
 export default function HomePhotoCard({ item, className = "", priority = false }: HomePhotoCardProps) {
   const [isSaved, setIsSaved] = useState(false);
-  const imageClassName = "!absolute !inset-0 !h-full !w-full !aspect-auto !rounded-none object-center transition-transform duration-500 group-hover:scale-[1.025]";
+  const isFallback = item.imageUrl.includes("/assets/nightly-fallback-");
+  const imageClassName = `!absolute !inset-0 !h-full !w-full !aspect-auto !rounded-none object-center transition-transform duration-500 group-hover:scale-[1.025] ${isFallback ? "brightness-[0.42] opacity-45 saturate-[0.55]" : ""}`;
   const crowdDot = item.crowdLabel === "Packed" ? "bg-rose-300" : item.crowdLabel === "Buzzing" ? "bg-pink-300" : item.crowdLabel === "Steady" ? "bg-violet-200" : "bg-emerald-200";
 
   return (
@@ -46,12 +47,12 @@ export default function HomePhotoCard({ item, className = "", priority = false }
         ) : (
           <EventImage src={item.imageUrl} alt={item.imageAlt} orientation="horizontal" className={imageClassName} priority={priority} />
         )}
-        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
+        <span aria-hidden="true" className={`absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent ${isFallback ? "bg-black/25" : ""}`} />
 
         <span className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2 sm:p-2.5">
           <span className="flex min-w-0 flex-wrap gap-1">
             {item.statusLabel ? (
-              <span className={`inline-flex min-h-5 items-center rounded-[4px] px-1.5 py-0.5 text-[9px] font-semibold leading-none tracking-[0.02em] ${item.statusTone === "live" ? "bg-rose-500/90 text-white" : "border border-violet-200/35 bg-[#100b1b]/80 text-violet-50"}`}>
+              <span className={`inline-flex min-h-5 items-center rounded-[4px] px-1.5 py-0.5 text-[8px] font-semibold leading-none tracking-[0.02em] sm:text-[10px] ${item.statusTone === "live" ? "bg-rose-500/90 text-white" : "border border-violet-200/35 bg-[#100b1b]/80 text-violet-50"}`}>
                 {item.statusLabel}
               </span>
             ) : null}
@@ -59,9 +60,9 @@ export default function HomePhotoCard({ item, className = "", priority = false }
         </span>
 
           <span className={`absolute inset-x-0 bottom-0 block p-2.5 ${item.kind === "venue" ? "pr-9" : ""}`}>
-            {item.specialGuestTitle ? <span className="mb-0.5 block truncate text-[8px] font-medium text-amber-100">Special Guest · {item.specialGuestTitle}</span> : null}
-            <span className="block line-clamp-1 text-[12px] font-semibold leading-[1.12] text-white">{item.name}</span>
-            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[9px] leading-tight text-white/75">
+            {item.specialGuestTitle ? <span className="mb-0.5 block truncate text-[8px] font-medium text-amber-100 sm:text-[10px]">Special Guest · {item.specialGuestTitle}</span> : null}
+            <span className="block line-clamp-1 text-[12px] font-semibold leading-[1.12] text-white sm:text-sm">{item.name}</span>
+            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[9px] leading-tight text-white/75 sm:text-xs">
               <span className="min-w-0 truncate">{item.detail}</span>
               {item.crowdLabel ? <span className="inline-flex shrink-0 items-center gap-1"><span className={`h-1 w-1 rounded-full ${crowdDot}`} aria-hidden="true" />{item.crowdLabel}</span> : null}
             </span>
