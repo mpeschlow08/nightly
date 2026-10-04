@@ -32,9 +32,10 @@ type HomePhotoCardProps = {
 export default function HomePhotoCard({ item, className = "", priority = false }: HomePhotoCardProps) {
   const [isSaved, setIsSaved] = useState(false);
   const imageClassName = "!absolute !inset-0 !h-full !w-full !aspect-auto !rounded-none object-center transition-transform duration-500 group-hover:scale-[1.025]";
+  const crowdDot = item.crowdLabel === "Packed" ? "bg-rose-300" : item.crowdLabel === "Buzzing" ? "bg-pink-300" : item.crowdLabel === "Steady" ? "bg-violet-200" : "bg-emerald-200";
 
   return (
-    <article className={`group relative w-full overflow-hidden rounded-[10px] border border-white/[0.07] bg-[#100d18] ${className}`}>
+    <article className={`group relative w-full overflow-hidden rounded-[8px] border border-white/[0.045] bg-[#100d18] ${className}`}>
       <Link
         href={item.href}
         aria-label={`Open ${item.name}${item.kind === "event" ? " event" : " venue"}`}
@@ -54,18 +55,16 @@ export default function HomePhotoCard({ item, className = "", priority = false }
                 {item.statusLabel}
               </span>
             ) : null}
-            {item.crowdLabel ? (
-              <span className="inline-flex min-h-5 items-center rounded-[4px] bg-black/50 px-1.5 py-0.5 text-[9px] font-medium leading-none text-white/90">
-                {item.crowdLabel}
-              </span>
-            ) : null}
           </span>
         </span>
 
-        <span className={`absolute inset-x-0 bottom-0 block p-2.5 sm:p-3 ${item.kind === "venue" ? "pr-11" : ""}`}>
-          {item.specialGuestTitle ? <span className="mb-0.5 block truncate text-[9px] font-medium text-amber-100">Special Guest · {item.specialGuestTitle}</span> : null}
-          <span className="block line-clamp-1 text-[13px] font-semibold leading-[1.15] text-white">{item.name}</span>
-          <span className="mt-0.5 block line-clamp-1 text-[10px] leading-tight text-white/75">{item.detail}</span>
+          <span className={`absolute inset-x-0 bottom-0 block p-2.5 ${item.kind === "venue" ? "pr-9" : ""}`}>
+            {item.specialGuestTitle ? <span className="mb-0.5 block truncate text-[8px] font-medium text-amber-100">Special Guest · {item.specialGuestTitle}</span> : null}
+            <span className="block line-clamp-1 text-[12px] font-semibold leading-[1.12] text-white">{item.name}</span>
+            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[9px] leading-tight text-white/75">
+              <span className="min-w-0 truncate">{item.detail}</span>
+              {item.crowdLabel ? <span className="inline-flex shrink-0 items-center gap-1"><span className={`h-1 w-1 rounded-full ${crowdDot}`} aria-hidden="true" />{item.crowdLabel}</span> : null}
+            </span>
         </span>
       </Link>
       {item.kind === "venue" ? (
@@ -83,9 +82,9 @@ export default function HomePhotoCard({ item, className = "", priority = false }
               itemId: item.analyticsId ?? item.id,
             });
           }}
-          className="absolute bottom-2 right-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white/90 transition hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/80"
+          className="absolute bottom-2 right-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/25 text-white/80 transition hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/80"
         >
-          <Bookmark size={15} strokeWidth={1.7} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" />
+          <Bookmark size={13} strokeWidth={1.6} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" />
         </button>
       ) : null}
     </article>
